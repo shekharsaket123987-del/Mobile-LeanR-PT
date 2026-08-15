@@ -18,11 +18,16 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
     '[supabase] EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY are not set. ' +
-      'Copy .env.example to .env and fill in your project values — see leanr-mobile-app/README.md.'
+      'Copy .env.example to .env and fill in your project values — see leanr-mobile-app/README.md. ' +
+      'Auth/data calls will fail until then, but the app will still render.'
   );
 }
 
-export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
+// createClient throws synchronously on an empty/invalid URL, which would
+// crash the whole app before a developer ever sees a screen. Fall back to
+// a syntactically valid placeholder so the app boots and the warning above
+// is the only symptom until real .env values are added.
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-anon-key', {
   auth: {
     storage: new LargeSecureStore(),
     autoRefreshToken: true,

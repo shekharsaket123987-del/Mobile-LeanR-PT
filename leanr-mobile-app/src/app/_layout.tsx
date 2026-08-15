@@ -1,13 +1,13 @@
-import { Manrope_500Medium, Manrope_700Bold } from '@expo-google-fonts/manrope';
+import { Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 import { Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Slot, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
 import { useColorScheme } from 'react-native';
 
-import AppTabs from '@/components/app-tabs';
 import { BrandLaunchAnimation } from '@/components/brand-launch-animation';
+import { AuthProvider } from '@/lib/auth/auth-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -18,6 +18,7 @@ export default function RootLayout() {
     Oswald_700Bold,
     Oswald_600SemiBold,
     Manrope_500Medium,
+    Manrope_600SemiBold,
     Manrope_700Bold,
   });
 
@@ -27,8 +28,16 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AppTabs />
-      {showLaunch && <BrandLaunchAnimation onFinish={() => setShowLaunch(false)} />}
+      <AuthProvider>
+        {/* Real auth bootstrap (session restore + role lookup) runs inside
+            AuthProvider in parallel with the launch animation below, per
+            LEANR_PT_NEXTGEN_APP_PRD.md §18.4 — the animation is a ceiling
+            on load time, never a gate in front of it. The (auth) and
+            (client) group layouts each render `null` while auth is still
+            loading, so there's nothing to see under the overlay anyway. */}
+        <Slot />
+        {showLaunch && <BrandLaunchAnimation onFinish={() => setShowLaunch(false)} />}
+      </AuthProvider>
     </ThemeProvider>
   );
 }

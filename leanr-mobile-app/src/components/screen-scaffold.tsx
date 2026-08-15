@@ -5,7 +5,7 @@
  * (§9 Key Screen Specs) replace the body content, not this shell.
  */
 import { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand, Colors } from '@/constants/theme';
@@ -33,6 +33,35 @@ export function Card({ children }: PropsWithChildren) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
   return <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>{children}</View>;
+}
+
+/** Shared inline states for the useAsync-backed screens (§9). */
+export function LoadingState() {
+  return (
+    <View style={styles.centeredState}>
+      <ActivityIndicator color={Brand.yellow} />
+    </View>
+  );
+}
+
+export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <Card>
+      <Text style={styles.cardLabel}>SOMETHING WENT WRONG</Text>
+      <Text style={styles.errorText}>{message}</Text>
+      <Text style={styles.retryLink} onPress={onRetry}>
+        Try again
+      </Text>
+    </Card>
+  );
+}
+
+export function EmptyState({ message }: { message: string }) {
+  return (
+    <View style={styles.centeredState}>
+      <Text style={styles.emptyText}>{message}</Text>
+    </View>
+  );
 }
 
 export const styles = StyleSheet.create({
@@ -77,4 +106,8 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: Brand.black,
   },
+  centeredState: { paddingVertical: 32, alignItems: 'center' },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  retryLink: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 4 },
+  emptyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, opacity: 0.6 },
 });

@@ -29,7 +29,14 @@ testing auth.
   Keychain/Keystore via `expo-secure-store` — see
   `src/lib/supabase/large-secure-store.ts`), role-based routing
   (`(auth)` vs `(client)` route groups gate on session + `profiles.role`).
-- **Phase 2+**: not started — see nextgen PRD §16 roadmap.
+- **Phase 2 — Core client journey**: partially done. Home, Sessions
+  (list + cancel), Coach (profile), and Progress (log + list) are wired to
+  real Supabase reads/writes — see `src/lib/data/`. Cancel and reschedule
+  use RPC signatures the PRD documents exactly (§8e/§8f); rate-session is
+  a direct column update the PRD names exactly (§10). Deliberately **not**
+  wired yet: the "Book a Session" hold→confirm wizard and chat — see open
+  items below for why.
+- **Phase 3+**: not started — see nextgen PRD §16 roadmap.
 
 ## Open items (need a decision or a credential, not more code)
 
@@ -51,6 +58,21 @@ testing auth.
 4. **Wordmark asset** — the launch animation renders "LEANR" as real
    Oswald-italic text (matches how the web app does it), not an exported
    image — this was a deliberate simplification, not a gap.
+5. **Schema columns marked VERIFY in `src/lib/data/*.ts`** — the PRD
+   confirms these tables/relationships exist (coach assignment,
+   subscriptions, progress_logs) but doesn't name every column. Grep for
+   `VERIFY` in that folder and check each one against the real
+   `supabase/migrations/*.sql` before trusting the write paths
+   (`logProgress`, coach lookup's `client_profiles.coach_id`,
+   `subscriptions.client_id`) with real client data. The two RPC writes
+   that ARE wired (`cancelBooking`, `rescheduleBooking`) are safe — their
+   full parameter lists are given verbatim in the PRD (§8e/§8f).
+6. **"Book a Session" wizard + chat — not built yet.** `confirm_booking`'s
+   RPC parameters and the `messages`/`conversations` column names aren't
+   documented anywhere in the PRD (only prose, no exact signature), so
+   guessing them risked a silently broken write. Needs either the real
+   migration SQL or your confirmation of the actual column names before
+   these get wired for real.
 
 ## Everyday commands
 

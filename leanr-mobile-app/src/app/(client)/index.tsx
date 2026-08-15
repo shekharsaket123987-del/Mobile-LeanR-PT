@@ -1,40 +1,71 @@
 /**
- * Home (Client) — LEANR_PT_NEXTGEN_APP_PRD.md §9.1.
- * Phase 0: static brand shell only. Phase 2 replaces the mock values below
- * with getClientDashboardAction-equivalent Supabase reads (original PRD §5).
+ * Home (Client) — LEANR_PT_NEXTGEN_APP_PRD.md §9.1, wired to real data.
+ * Mirrors the web dashboard's parallel-load pattern (original PRD §5:
+ * "6 parallel actions") with the reads this phase actually built.
  */
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Text, View } from 'react-native';
 
+import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
-import { Card, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { useAuth } from '@/lib/auth/auth-context';
+import { getUpcomingBookings } from '@/lib/data/bookings';
+import { getMyCoach } from '@/lib/data/coach';
+import { getMySubscription } from '@/lib/data/subscription';
+import { useAsync } from '@/lib/data/use-async';
+
+function formatSessionTime(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
 export default function HomeScreen() {
+  const { session } = useAuth();
+  const { data, loading, error, reload } = useAsync(
+    () => Promise.all([getUpcomingBookings(1), getMySubscription(), getMyCoach()]),
+    []
+  );
+
+  const greetingName = session?.user.email?.split('@')[0] ?? 'there';
+  const [nextBookings, subscription, coach] = data ?? [[], null, null];
+  const nextBooking = nextBookings?.[0] ?? null;
+
   return (
-    <ScreenScaffold title="Hi Aman 👋" subtitle="Let's keep the streak alive">
-      <Card>
-        <Text style={shared.cardLabel}>🔥 STREAK</Text>
-        <Text style={shared.bigStat}>5 weeks</Text>
-        <Text style={[shared.cardLabel, styles.spaced]}>Next session in 2h 14m with Coach Riya</Text>
-      </Card>
+    <ScreenScaffold title={`Hi ${greetingName} 👋`}>
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
 
-      <Card>
-        <Text style={shared.cardLabel}>THIS MONTH</Text>
-        <Text style={shared.bigStat}>3 / 5 sessions</Text>
-      </Card>
+      {!loading && !error && (
+        <>
+          {nextBooking ? (
+            <Card>
+              <Text style={shared.cardLabel}>NEXT SESSION</Text>
+              <Text style={shared.bigStat}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
+              {coach && <Text style={shared.cardLabel}>with {coach.full_name}</Text>}
+            </Card>
+          ) : (
+            <EmptyState message="No upcoming sessions booked yet." />
+          )}
 
-      <Card>
-        <Text style={shared.cardLabel}>📝 COACH NOTE</Text>
-        <Text style={styles.note}>&ldquo;Great form on your last set — keep that tempo.&rdquo;</Text>
-      </Card>
+          {subscription && (
+            <Card>
+              <Text style={shared.cardLabel}>THIS PLAN</Text>
+              <Text style={shared.bigStat}>
+                {subscription.sessions_used ?? '—'} / {subscription.sessions_total ?? '—'} sessions
+              </Text>
+            </Card>
+          )}
 
-      <View style={shared.ctaButton}>
-        <Text style={shared.ctaButtonText}>Join next session</Text>
-      </View>
+          <View style={shared.ctaButton}>
+            <Text style={shared.ctaButtonText} onPress={() => router.push('/sessions')}>
+              {nextBooking ? 'View sessions' : 'Book a session'}
+            </Text>
+          </View>
+        </>
+      )}
     </ScreenScaffold>
   );
 }
-
-const styles = StyleSheet.create({
-  spaced: { marginTop: 4 },
-  note: { fontFamily: 'Manrope_500Medium', fontSize: 15, color: Brand.charcoal2 },
-});

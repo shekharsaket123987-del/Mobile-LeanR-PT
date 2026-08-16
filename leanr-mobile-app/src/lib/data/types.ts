@@ -23,6 +23,7 @@ export type Booking = {
   no_show_party: 'client' | 'coach' | null;
   attendance_overdue: boolean;
   coach_joined_at: string | null; // VERIFY exact column name — see original PRD §7g
+  zoom_join_url: string | null; // VERIFY exact column name — see original PRD §7f (ensureZoomMeetingForBooking)
 };
 
 export type ClientProfile = {
@@ -52,4 +53,11 @@ export type ProgressLog = {
   logged_at: string; // VERIFY exact column name
   weight_kg: number | null; // VERIFY exact column name
   note: string | null; // VERIFY exact column name
+};
+
+export type Plan = {
+  id: string;
+  name: string; // VERIFY exact column name
+  price_paise: number; // VERIFY exact column name — original PRD §8g works in paise
+  sessions_count: number | null; // VERIFY exact column name
 };

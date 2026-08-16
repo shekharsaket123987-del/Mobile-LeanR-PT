@@ -19,6 +19,7 @@ import {
   submitSessionNotes,
 } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
+import { openZoomLink } from '@/lib/data/zoom';
 
 function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -42,6 +43,11 @@ export default function SessionWorkflow() {
   const onJoin = async () => {
     try {
       await markJoined(id);
+      // Original PRD §7g: "Join" -> Zoom opens + coach_joined_at set. The
+      // deep-link half is real if a zoom_join_url already exists on the
+      // booking; the timestamp write above is what actually gates
+      // Present/Late eligibility below (attendanceEligible).
+      if (booking?.zoom_join_url) await openZoomLink(booking);
       reload();
     } catch (err) {
       Alert.alert('Could not mark joined', err instanceof Error ? err.message : String(err));

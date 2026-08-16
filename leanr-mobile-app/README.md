@@ -56,7 +56,33 @@ testing auth.
   write path in the whole coach app: `attendance` and `workout_notes`
   have exact documented columns in the PRD (§8b–§8d), not just prose —
   see `src/lib/data/coach-portal.ts`.
-- **Phase 5+**: not started — see nextgen PRD §16 roadmap.
+- **Phase 5 — Payments + Zoom**: partially done, deliberately scoped down
+  from the roadmap's original framing. **Zoom join is real**: Home's
+  next-session card and the coach session workflow both deep-link into
+  whatever `zoom_join_url` already exists on a booking, gated by a
+  join-window helper (`src/lib/data/zoom.ts`). **Plans listing is real**
+  (Supabase read). **Purchase is an honest stub, not a fake success or an
+  insecure implementation** — see "Why payments can't be finished from
+  this repo" below before assuming this is unfinished work rather than a
+  hard architectural boundary.
+- **Phase 6+**: not started — see nextgen PRD §16 roadmap.
+
+### Why payments can't be finished from this repo
+
+Razorpay order creation requires the account's **secret key**, and
+verifying a completed payment requires an HMAC-SHA256 signature check
+against that same secret (original PRD §8g). That key can never be
+shipped inside a mobile app — doing so would let anyone extract it and
+create fraudulent orders or forge "paid" signatures. The web app gets
+away with this today only because Next.js Server Actions run entirely
+server-side; a mobile client has no equivalent. This is the same
+structural gap as push-notification dispatch in Phase 3: real payment
+processing needs a small server-side endpoint (an Edge Function or
+Route Handler) that creates the order and verifies the signature,
+which is new backend work outside this repo, not something to fake
+from the client. `src/app/(client)/plans.tsx` explains this to anyone
+who taps "Purchase Plan" rather than silently doing nothing or lying
+about success.
 
 ## Open items (need a decision or a credential, not more code)
 
@@ -115,6 +141,14 @@ testing auth.
    Expo's push API when a `notifications` row is created), which is
    outside this mobile repo. Also: since Expo SDK 53, remote push
    requires a development build — it will not work in Expo Go.
+9. **Zoom/Plans schema guesses** — `bookings.zoom_join_url` (VERIFY) is
+   the one new column Zoom join needs; if it's null/missing, Join simply
+   shows nothing rather than erroring (`src/lib/data/zoom.ts`'s
+   `JOIN_LABEL['no-link']`). The `packages` table name and its columns
+   (`name`, `price_paise`, `sessions_count`) in `src/lib/data/plans.ts`
+   are inferred from the admin `createPackageAction` naming in the PRD,
+   not confirmed — a wrong guess here just surfaces as an empty/error
+   Plans screen, never a bad write, since it's read-only.
 
 ## Everyday commands
 

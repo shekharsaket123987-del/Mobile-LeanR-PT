@@ -11,12 +11,14 @@ import { Text, View } from 'react-native';
 import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { StreakChip } from '@/components/streak-chip';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getUpcomingBookings } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
 import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+import { getJoinState, openZoomLink } from '@/lib/data/zoom';
 
 const LAST_CELEBRATED_KEY = 'leanr.lastCelebratedMilestone';
 
@@ -69,6 +71,7 @@ export default function HomeScreen() {
               <Text style={shared.cardLabel}>NEXT SESSION</Text>
               <Text style={shared.bigStat}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
               {coach && <Text style={shared.cardLabel}>with {coach.full_name}</Text>}
+              <JoinRow booking={nextBooking} />
             </Card>
           ) : (
             <EmptyState message="No upcoming sessions booked yet." />
@@ -99,5 +102,31 @@ export default function HomeScreen() {
         />
       )}
     </ScreenScaffold>
+  );
+}
+
+const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
+  'no-link': null, // Zoom meeting not yet created for this booking — nothing to show
+  'too-early': 'Join opens 10 min before start',
+  joinable: 'Join session →',
+  ended: null,
+};
+
+function JoinRow({ booking }: { booking: Parameters<typeof getJoinState>[0] }) {
+  const state = getJoinState(booking);
+  const label = JOIN_LABEL[state];
+  if (!label) return null;
+
+  return (
+    <Text
+      style={{
+        fontFamily: 'Manrope_700Bold',
+        fontSize: 14,
+        color: state === 'joinable' ? Brand.yellow : '#888',
+        marginTop: 8,
+      }}
+      onPress={state === 'joinable' ? () => openZoomLink(booking) : undefined}>
+      {label}
+    </Text>
   );
 }

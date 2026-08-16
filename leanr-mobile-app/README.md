@@ -36,7 +36,16 @@ testing auth.
   a direct column update the PRD names exactly (§10). Deliberately **not**
   wired yet: the "Book a Session" hold→confirm wizard and chat — see open
   items below for why.
-- **Phase 3+**: not started — see nextgen PRD §16 roadmap.
+- **Phase 3 — Motivation layer**: partially done. Real `ProgressRing`
+  (SVG, animated fill) and `StreakChip` (computed client-side from
+  completed bookings, no new schema) are wired into Home + Progress;
+  `CelebrationOverlay` fires once per newly-hit milestone (10/25/50/100
+  completed sessions), tracked locally so it doesn't replay on every
+  app open. Push notification **registration** (permission + Expo push
+  token) is scaffolded in `src/lib/notifications/register-push-token.ts`
+  — actually **sending** a push still needs server-side work this repo
+  can't do (see open items).
+- **Phase 4+**: not started — see nextgen PRD §16 roadmap.
 
 ## Open items (need a decision or a credential, not more code)
 
@@ -73,6 +82,18 @@ testing auth.
    guessing them risked a silently broken write. Needs either the real
    migration SQL or your confirmation of the actual column names before
    these get wired for real.
+7. **Push notifications only get you a device token, not a working push.**
+   `registerPushToken()` requests permission and fetches an Expo push
+   token, then tries to store it in a `push_tokens` table that **does not
+   exist anywhere in the functional PRD** — this is new schema the
+   feature needs (columns: `user_id`, `expo_push_token`, `updated_at`);
+   create it (or point the upsert at wherever you'd rather store device
+   tokens) before this write will succeed. Separately, and more
+   fundamentally: nothing anywhere in this project can *send* a push yet
+   — that requires server-side code (an Edge Function or route calling
+   Expo's push API when a `notifications` row is created), which is
+   outside this mobile repo. Also: since Expo SDK 53, remote push
+   requires a development build — it will not work in Expo Go.
 
 ## Everyday commands
 

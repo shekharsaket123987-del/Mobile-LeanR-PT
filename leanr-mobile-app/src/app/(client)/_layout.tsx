@@ -12,10 +12,12 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { ColorValue, useColorScheme } from 'react-native';
 
 import { Brand, Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import { registerPushToken } from '@/lib/notifications/register-push-token';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -27,6 +29,17 @@ export default function ClientLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
   const { session, profile, loading } = useAuth();
+
+  useEffect(() => {
+    if (!session) return;
+    // Fire-and-forget: registration failure (no device, permission denied,
+    // missing push_tokens table) should never block the client app from
+    // being usable — see src/lib/notifications/register-push-token.ts for
+    // exactly what this does and doesn't do.
+    registerPushToken().then(({ error }) => {
+      if (error) console.log('[push] not registered:', error);
+    });
+  }, [session]);
 
   if (loading) return null; // launch animation overlay (root _layout) is still covering the screen
   if (!session) return <Redirect href="/login" />;

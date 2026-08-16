@@ -1,18 +1,24 @@
 /**
- * Home (Client) — LEANR_PT_NEXTGEN_APP_PRD.md §9.1, wired to real data.
- * Mirrors the web dashboard's parallel-load pattern (original PRD §5:
- * "6 parallel actions") with the reads this phase actually built.
+ * Home (Client) — LEANR_PT_NEXTGEN_APP_PRD.md §9.1, wired to real data,
+ * now carrying the motivation layer (§8): streak chip + milestone
+ * celebration, both computed client-side from bookings already fetched.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { Brand } from '@/constants/theme';
+import { StreakChip } from '@/components/streak-chip';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getUpcomingBookings } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
+import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+
+const LAST_CELEBRATED_KEY = 'leanr.lastCelebratedMilestone';
 
 function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -25,13 +31,29 @@ function formatSessionTime(iso: string) {
 export default function HomeScreen() {
   const { session } = useAuth();
   const { data, loading, error, reload } = useAsync(
-    () => Promise.all([getUpcomingBookings(1), getMySubscription(), getMyCoach()]),
+    () => Promise.all([getUpcomingBookings(1), getMySubscription(), getMyCoach(), getCompletedBookings()]),
     []
   );
+  const [milestone, setMilestone] = useState<number | null>(null);
 
   const greetingName = session?.user.email?.split('@')[0] ?? 'there';
-  const [nextBookings, subscription, coach] = data ?? [[], null, null];
+  const [nextBookings, subscription, coach, completedBookings] = data ?? [[], null, null, []];
   const nextBooking = nextBookings?.[0] ?? null;
+  const streakWeeks = completedBookings ? computeWeekStreak(completedBookings) : 0;
+
+  useEffect(() => {
+    if (!completedBookings || completedBookings.length === 0) return;
+    const hit = milestoneHitAt(completedBookings.length);
+    if (!hit) return;
+
+    AsyncStorage.getItem(LAST_CELEBRATED_KEY).then((lastRaw) => {
+      const last = lastRaw ? Number(lastRaw) : 0;
+      if (hit > last) {
+        setMilestone(hit);
+        AsyncStorage.setItem(LAST_CELEBRATED_KEY, String(hit));
+      }
+    });
+  }, [completedBookings]);
 
   return (
     <ScreenScaffold title={`Hi ${greetingName} 👋`}>
@@ -40,6 +62,8 @@ export default function HomeScreen() {
 
       {!loading && !error && (
         <>
+          <StreakChip weeks={streakWeeks} />
+
           {nextBooking ? (
             <Card>
               <Text style={shared.cardLabel}>NEXT SESSION</Text>
@@ -65,6 +89,14 @@ export default function HomeScreen() {
             </Text>
           </View>
         </>
+      )}
+
+      {milestone && (
+        <CelebrationOverlay
+          title={`${milestone} sessions! 🎉`}
+          subtitle="Your consistency is showing — keep it up."
+          onDismiss={() => setMilestone(null)}
+        />
       )}
     </ScreenScaffold>
   );

@@ -1,15 +1,18 @@
 /**
  * Progress tab — LEANR_PT_NEXTGEN_APP_PRD.md §9.3, wired to real
- * progress_logs data. Measurement column names are VERIFY (see
- * src/lib/data/progress.ts) — confirm against the real schema before
- * this write path goes live for actual clients.
+ * progress_logs data plus the real ProgressRing (§8/§14). Measurement
+ * column names are VERIFY (see src/lib/data/progress.ts) — confirm
+ * against the real schema before this write path goes live for actual
+ * clients.
  */
 import { useState } from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
+import { ProgressRing } from '@/components/progress-ring';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
+import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 
 function formatDate(iso: string) {
@@ -17,11 +20,18 @@ function formatDate(iso: string) {
 }
 
 export default function ProgressScreen() {
-  const { data: logs, loading, error, reload } = useAsync(getProgressLogs, []);
+  const { data, loading, error, reload } = useAsync(
+    () => Promise.all([getProgressLogs(), getMySubscription()]),
+    []
+  );
   const [weight, setWeight] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const [logs, subscription] = data ?? [[], null];
   const latest = logs?.[0] ?? null;
+  const used = subscription?.sessions_used ?? 0;
+  const total = subscription?.sessions_total ?? 0;
+  const ringProgress = total > 0 ? used / total : 0;
 
   const onSubmit = async () => {
     const weightKg = weight ? Number(weight) : undefined;
@@ -48,6 +58,12 @@ export default function ProgressScreen() {
 
       {!loading && !error && (
         <>
+          {subscription && (
+            <View style={{ alignItems: 'center', marginBottom: 4 }}>
+              <ProgressRing progress={ringProgress} valueText={`${used}/${total}`} label="sessions this plan" />
+            </View>
+          )}
+
           {latest ? (
             <Card>
               <Text style={shared.cardLabel}>LATEST — {formatDate(latest.logged_at)}</Text>

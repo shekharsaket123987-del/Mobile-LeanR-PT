@@ -21,6 +21,14 @@ export type Booking = {
   rating_note: string | null;
   recurring_slot_id: string | null;
   no_show_party: 'client' | 'coach' | null;
+  attendance_overdue: boolean;
+  coach_joined_at: string | null; // VERIFY exact column name — see original PRD §7g
+};
+
+export type ClientProfile = {
+  id: string;
+  full_name: string; // VERIFY exact column name
+  coach_id: string | null; // VERIFY exact column name
 };
 
 export type CoachProfile = {

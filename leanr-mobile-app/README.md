@@ -45,7 +45,18 @@ testing auth.
   token) is scaffolded in `src/lib/notifications/register-push-token.ts`
   — actually **sending** a push still needs server-side work this repo
   can't do (see open items).
-- **Phase 4+**: not started — see nextgen PRD §16 roadmap.
+- **Phase 4 — Coach app**: partially done. New `(coach)` route group
+  (Dashboard, Schedule, Clients, session workflow, More) parallel to
+  `(client)`, gated by `profiles.role`. Role-based post-auth routing is
+  now centralized in `src/lib/auth/role-routing.ts` — `(auth)`,
+  `(client)`, and `(coach)` layouts all redirect through it instead of
+  each hardcoding a destination (login/signup no longer force a client
+  redirect, which would've misrouted a coach). The session workflow
+  (Join → Present/Late/Absent → Notes → Complete) is the best-grounded
+  write path in the whole coach app: `attendance` and `workout_notes`
+  have exact documented columns in the PRD (§8b–§8d), not just prose —
+  see `src/lib/data/coach-portal.ts`.
+- **Phase 5+**: not started — see nextgen PRD §16 roadmap.
 
 ## Open items (need a decision or a credential, not more code)
 
@@ -82,7 +93,17 @@ testing auth.
    guessing them risked a silently broken write. Needs either the real
    migration SQL or your confirmation of the actual column names before
    these get wired for real.
-7. **Push notifications only get you a device token, not a working push.**
+7. **Coach app schema guesses** — `src/lib/data/coach-portal.ts`: the
+   `attendance` table's FK back to a booking (`booking_id`) and
+   `workout_notes`' FK + snake_case column names are standard-convention
+   guesses, not confirmed; `client_profiles.coach_id` reuses the same
+   guess as the client-side coach lookup; `bookings.coach_joined_at` is
+   a new column this phase needs (original PRD §7g mentions the concept
+   in prose, "Zoom opens + coach_joined_at set", but there's no real Zoom
+   integration yet — Join just timestamps this column). None of these
+   block the app from running; they'd surface as a write failure, not
+   silent corruption.
+8. **Push notifications only get you a device token, not a working push.**
    `registerPushToken()` requests permission and fetches an Expo push
    token, then tries to store it in a `push_tokens` table that **does not
    exist anywhere in the functional PRD** — this is new schema the

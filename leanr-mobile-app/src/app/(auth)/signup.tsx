@@ -3,7 +3,7 @@
  * "this is the only role the public can self-register as"). Coach/admin
  * accounts are ops-provisioned only and have no mobile signup surface.
  */
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,9 +31,11 @@ export default function SignupScreen() {
       setError(signUpError);
       return;
     }
-    // Matches the web app's post-signup destination (original PRD §5/§7a):
-    // straight into plan selection, not the dashboard.
-    router.replace('/(client)/index');
+    // No manual navigation here — (auth)/_layout.tsx redirects reactively
+    // once session + role resolve. New signups are always role='client'
+    // (set in signUpWithPassword), so this lands on the client home; see
+    // README open items re: original PRD's "straight into plan selection"
+    // destination, not yet distinguished from the plain home route.
   };
 
   return (

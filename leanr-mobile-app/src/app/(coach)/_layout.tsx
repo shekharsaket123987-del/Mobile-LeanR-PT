@@ -1,14 +1,8 @@
 /**
- * Client tab bar — LEANR_PT_NEXTGEN_APP_PRD.md §6.
- * Uses the JS `Tabs` (not NativeTabs) so we fully control brand styling
- * (yellow active state, black bar) instead of platform-default chrome —
- * matches Design Principle #5 (one disciplined, reused visual language).
- *
- * This layout is also the route-group's auth/role gate — the mobile
- * equivalent of the web app's middleware (LEANR_PT_MOBILE_PRD.md §4):
- * no session -> /login; session but role isn't "client" -> that role's
- * own home via getHomeRouteForRole (coach -> (coach) app, admin -> the
- * role-not-supported screen, per LEANR_PT_NEXTGEN_APP_PRD.md §16).
+ * Coach tab bar — LEANR_PT_NEXTGEN_APP_PRD.md §6 coach nav, §7 "kept
+ * dense/functional per Design Principle #5 (coach app ≠ motivation
+ * surface)" — lighter design investment than the client app, same
+ * underlying pattern (JS Tabs, role gate in the layout).
  */
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
@@ -23,28 +17,24 @@ import { registerPushToken } from '@/lib/notifications/register-push-token';
 type IconName = keyof typeof Ionicons.glyphMap;
 
 function TabIcon({ name, color }: { name: IconName; color: ColorValue }) {
-  return <Ionicons name={name} size={24} color={color as string} />;
+  return <Ionicons name={name} size={22} color={color as string} />;
 }
 
-export default function ClientLayout() {
+export default function CoachLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
   const { session, profile, loading } = useAuth();
 
   useEffect(() => {
     if (!session) return;
-    // Fire-and-forget: registration failure (no device, permission denied,
-    // missing push_tokens table) should never block the client app from
-    // being usable — see src/lib/notifications/register-push-token.ts for
-    // exactly what this does and doesn't do.
     registerPushToken().then(({ error }) => {
       if (error) console.log('[push] not registered:', error);
     });
   }, [session]);
 
-  if (loading) return null; // launch animation overlay (root _layout) is still covering the screen
+  if (loading) return null;
   if (!session) return <Redirect href="/login" />;
-  if (profile && profile.role !== 'client') return <Redirect href={getHomeRouteForRole(profile.role)} />;
+  if (profile && profile.role !== 'coach') return <Redirect href={getHomeRouteForRole(profile.role)} />;
 
   return (
     <Tabs
@@ -52,10 +42,7 @@ export default function ClientLayout() {
         headerShown: false,
         tabBarActiveTintColor: Brand.black,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.backgroundElement,
-        },
+        tabBarStyle: { backgroundColor: colors.background, borderTopColor: colors.backgroundElement },
         tabBarActiveBackgroundColor: colors.background,
         tabBarLabelStyle: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
       }}>
@@ -69,32 +56,20 @@ export default function ClientLayout() {
         }}
       />
       <Tabs.Screen
-        name="sessions"
+        name="schedule"
         options={{
-          title: 'Sessions',
+          title: 'Schedule',
           tabBarIcon: ({ focused, color }) => (
             <TabIcon name={focused ? 'calendar' : 'calendar-outline'} color={focused ? Brand.yellow : color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="coach"
+        name="clients"
         options={{
-          title: 'Coach',
+          title: 'Clients',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon
-              name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
-              color={focused ? Brand.yellow : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="progress"
-        options={{
-          title: 'Progress',
-          tabBarIcon: ({ focused, color }) => (
-            <TabIcon name={focused ? 'stats-chart' : 'stats-chart-outline'} color={focused ? Brand.yellow : color} />
+            <TabIcon name={focused ? 'people' : 'people-outline'} color={focused ? Brand.yellow : color} />
           ),
         }}
       />
@@ -107,6 +82,7 @@ export default function ClientLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="session/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

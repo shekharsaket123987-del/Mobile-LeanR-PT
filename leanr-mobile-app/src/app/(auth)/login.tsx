@@ -8,7 +8,7 @@
  * needs a Google Cloud OAuth client ID this project doesn't have yet
  * (see leanr-mobile-app/README.md "Open items").
  */
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,7 +32,9 @@ export default function LoginScreen() {
       setError(signInError);
       return;
     }
-    router.replace('/(client)/index');
+    // No manual navigation here — (auth)/_layout.tsx redirects reactively
+    // once the session + role resolve, routing by role (role-routing.ts)
+    // instead of always assuming client.
   };
 
   return (

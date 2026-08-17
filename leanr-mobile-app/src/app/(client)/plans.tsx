@@ -11,8 +11,8 @@ import { CtaButton } from '@/components/tappable';
 import { getMarketingPlans } from '@/lib/data/plans';
 import { useAsync } from '@/lib/data/use-async';
 
-function formatPrice(paise: number) {
-  return `₹${(paise / 100).toLocaleString()}`;
+function formatPrice(price: number) {
+  return `₹${price.toLocaleString()}`;
 }
 
 export default function PlansScreen() {
@@ -35,7 +35,7 @@ export default function PlansScreen() {
         plans?.map((plan) => (
           <Card key={plan.id}>
             <Text style={shared.cardLabel}>{plan.name}</Text>
-            <Text style={shared.bigStat}>{formatPrice(plan.price_paise)}</Text>
+            <Text style={shared.bigStat}>{formatPrice(plan.price)}</Text>
             {plan.sessions_count && <Text style={shared.cardLabel}>{plan.sessions_count} sessions</Text>}
             <CtaButton onPress={() => onPurchase(plan.name)} style={{ marginTop: 12 }}>
               Purchase Plan

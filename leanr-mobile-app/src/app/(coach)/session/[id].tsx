@@ -66,13 +66,14 @@ export default function SessionWorkflow() {
   };
 
   const onSubmitNotes = async () => {
+    if (!booking) return;
     if (!summary.trim()) {
       Alert.alert('Add a session summary first.');
       return;
     }
     setSubmitting(true);
     try {
-      await submitSessionNotes(id, { summary });
+      await submitSessionNotes(booking, { notes: summary });
       setStage('completed');
     } catch (err) {
       Alert.alert('Could not save notes', err instanceof Error ? err.message : String(err));

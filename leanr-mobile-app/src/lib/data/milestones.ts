@@ -5,13 +5,18 @@
  * PRD's explicit constraint that this layer is "a new visual/motivational
  * treatment of data the original PRD already stores," not new scope.
  */
+import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking } from './types';
 
 export async function getCompletedBookings(): Promise<Booking[]> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return [];
+
   const { data, error } = await supabase
     .from('bookings')
     .select('*')
+    .eq('client_id', clientId)
     .eq('status', 'completed')
     .order('scheduled_start', { ascending: false });
   if (error) throw error;

@@ -1,10 +1,9 @@
 /**
  * Coach tab — LEANR_PT_NEXTGEN_APP_PRD.md §9.5, coach profile wired to
- * real data. Chat (conversations/messages + Realtime) is deliberately
- * deferred: its exact column names aren't documented anywhere in the PRD,
- * unlike coach_profiles/bookings, so guessing them risks a silently
- * broken write path rather than just a broken read — see README open
- * items.
+ * real data. Chat (conversations/messages) schema is now confirmed
+ * (src/lib/data/types.ts Conversation/Message) but the UI itself hasn't
+ * been built yet — see README open items for scope, not a schema-risk
+ * excuse anymore.
  */
 import { EmptyState, ErrorState, LoadingState, ScreenScaffold, Card, styles as shared } from '@/components/screen-scaffold';
 import { Text } from 'react-native';

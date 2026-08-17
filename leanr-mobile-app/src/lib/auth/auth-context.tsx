@@ -6,6 +6,12 @@
  *
  * This context is the mobile equivalent of the web app's `getCallerContext()`
  * (§4) — resolve the Supabase session, then look up the caller's role.
+ *
+ * Confirmed against the real schema: a `handle_new_user()` trigger on
+ * `auth.users` (AFTER INSERT) already creates the `profiles` row (with
+ * `full_name` defaulted from user metadata or the email prefix) AND the
+ * matching `client_profiles`/`coach_profiles` row based on role — so
+ * signUpWithPassword no longer needs to insert anything itself.
  */
 import type { Session } from '@supabase/supabase-js';
 import { createContext, PropsWithChildren, useContext, useEffect, useState } from 'react';
@@ -17,6 +23,7 @@ export type UserRole = 'client' | 'coach' | 'admin';
 export type Profile = {
   id: string;
   role: UserRole;
+  full_name: string;
 };
 
 type AuthState = {
@@ -32,11 +39,7 @@ type AuthState = {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
-  // NOTE: only `id`/`role` are selected because those are the two columns
-  // the functional PRD documents with certainty (§3). Extend this select
-  // once the exact `profiles` column names for name/photo are confirmed
-  // against the real migrations — do not guess column names here.
-  const { data, error } = await supabase.from('profiles').select('id, role').eq('id', userId).single();
+  const { data, error } = await supabase.from('profiles').select('id, role, full_name').eq('id', userId).single();
 
   if (error || !data) {
     console.warn('[auth] failed to load profile role', error?.message);
@@ -82,21 +85,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const signUpWithPassword: AuthState['signUpWithPassword'] = async (email, password) => {
     // Client-only self-serve signup — matches the web app exactly (§3):
     // coach/admin accounts are ops-provisioned only, never self-registered.
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-
-    if (data.user) {
-      // If the project has a `handle_new_user` DB trigger that inserts the
-      // `profiles` row automatically, this insert is redundant but
-      // harmless (upsert). If no such trigger exists, this is required.
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ id: data.user.id, role: 'client' }, { onConflict: 'id' });
-      if (profileError) {
-        console.warn('[auth] profile row upsert on signup failed', profileError.message);
-      }
-    }
-    return { error: null };
+    // No role passed in options.data, so the handle_new_user() trigger's
+    // default ('client') applies — it also creates the client_profiles
+    // row automatically, so there's nothing left for this app to insert.
+    const { error } = await supabase.auth.signUp({ email, password });
+    return { error: error?.message ?? null };
   };
 
   const signOut = async () => {

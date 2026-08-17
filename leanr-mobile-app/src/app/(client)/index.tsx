@@ -17,7 +17,7 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { getUpcomingBookings } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
 import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
-import { getMySubscription } from '@/lib/data/subscription';
+import { getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getJoinState, openZoomLink } from '@/lib/data/zoom';
 
@@ -32,15 +32,22 @@ function formatSessionTime(iso: string) {
 }
 
 export default function HomeScreen() {
-  const { session } = useAuth();
-  const { data, loading, error, reload } = useAsync(
-    () => Promise.all([getUpcomingBookings(1), getMySubscription(), getMyCoach(), getCompletedBookings()]),
-    []
-  );
+  const { session, profile } = useAuth();
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [nextBookings, subscription, coach, completedBookings] = await Promise.all([
+      getUpcomingBookings(1),
+      getMySubscription(),
+      getMyCoach(),
+      getCompletedBookings(),
+    ]);
+    const sessionsUsed = subscription ? await getSessionsUsedCount(subscription.id) : null;
+    return { nextBookings, subscription, coach, completedBookings, sessionsUsed };
+  }, []);
   const [milestone, setMilestone] = useState<number | null>(null);
 
-  const greetingName = session?.user.email?.split('@')[0] ?? 'there';
-  const [nextBookings, subscription, coach, completedBookings] = data ?? [[], null, null, []];
+  const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
+  const { nextBookings, subscription, coach, completedBookings, sessionsUsed } =
+    data ?? { nextBookings: [], subscription: null, coach: null, completedBookings: [], sessionsUsed: null };
   const nextBooking = nextBookings?.[0] ?? null;
   const streakWeeks = completedBookings ? computeWeekStreak(completedBookings) : 0;
 
@@ -82,7 +89,7 @@ export default function HomeScreen() {
             <Card>
               <Text style={shared.cardLabel}>THIS PLAN</Text>
               <Text style={shared.bigStat}>
-                {subscription.sessions_used ?? '—'} / {subscription.sessions_total ?? '—'} sessions
+                {sessionsUsed ?? '—'} / {subscription.sessions_total ?? '—'} sessions
               </Text>
             </Card>
           )}

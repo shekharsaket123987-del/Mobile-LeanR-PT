@@ -1,28 +1,24 @@
 /**
  * Coach-side reads/writes — LEANR_PT_MOBILE_PRD.md §5 (Coach Portal),
- * §8b (mark present), §8c (submit notes), §8d (mark absent).
- *
- * markAttendance/submitSessionNotes are wired with real confidence,
- * unlike the client-side booking wizard: the functional PRD gives the
- * exact table/column names for these operations (not just prose), e.g.
- * §8b: "UPSERT attendance(status='present', checked_in_at=scheduled_start,
- * checked_out_at=null); UPDATE bookings SET attendance_overdue=false".
- * The one guess here is the FK column name on `attendance` linking back
- * to the booking (`booking_id`) — standard Postgres convention, VERIFY
- * only that one column name before shipping.
+ * §8b (mark present), §8c (submit notes), §8d (mark absent). Confirmed
+ * against the real schema: `coach_id`/`client_id` everywhere reference
+ * `coach_profiles.id`/`client_profiles.id` (resolved via identity.ts),
+ * `attendance.booking_id` FK is real, and `workout_notes` columns are
+ * `notes`/`performance_rating` (not `summary`/`performance`) plus
+ * required `client_id`/`coach_id` FKs pulled from the booking itself.
  */
+import { getMyCoachProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking, ClientProfile } from './types';
 
 export async function getCoachBookings(range: 'today' | 'upcoming' = 'upcoming') {
-  const { data: userData } = await supabase.auth.getUser();
-  const coachId = userData.user?.id;
+  const coachId = await getMyCoachProfileId();
   if (!coachId) return [];
 
   let query = supabase
     .from('bookings')
     .select('*')
-    .eq('coach_id', coachId) // VERIFY column name, same guess used client-side
+    .eq('coach_id', coachId)
     .eq('status', 'upcoming')
     .order('scheduled_start', { ascending: true });
 
@@ -46,10 +42,8 @@ export async function getBookingById(bookingId: string) {
 }
 
 /**
- * Sets bookings.coach_joined_at — original PRD §7g: "Join" → "Zoom opens +
- * coach_joined_at set". This phase has no real Zoom integration (Phase 5
- * per the roadmap), so "Join" here just records the timestamp used by
- * the Present/Late gating rule below — VERIFY the column name.
+ * Sets bookings.coach_joined_at — original PRD §7g: "Join" -> "Zoom
+ * opens + coach_joined_at set". Confirmed real column.
  */
 export async function markJoined(bookingId: string) {
   const { error } = await supabase.from('bookings').update({ coach_joined_at: new Date().toISOString() }).eq('id', bookingId);
@@ -70,24 +64,7 @@ export function attendanceEligible(booking: Booking): boolean {
   return now >= end && (!isToday || Boolean(booking.coach_joined_at));
 }
 
-export async function getCoachClients() {
-  const { data: userData } = await supabase.auth.getUser();
-  const coachId = userData.user?.id;
-  if (!coachId) return [];
-
-  const { data, error } = await supabase
-    .from('client_profiles')
-    .select('*')
-    .eq('coach_id', coachId); // VERIFY — same coach-assignment column used in src/lib/data/coach.ts
-  if (error) throw error;
-  return (data ?? []) as ClientProfile[];
-}
-
-/**
- * §8b/§8d: UPSERT attendance(status, checked_in_at, checked_out_at) keyed
- * by booking_id, plus the matching bookings-table side effect for each
- * status the PRD documents.
- */
+/** §8b/§8d: UPSERT attendance(booking_id, status, checked_in_at, checked_out_at). */
 export async function markAttendance(booking: Booking, status: 'present' | 'late' | 'absent') {
   const now = new Date().toISOString();
 
@@ -105,7 +82,6 @@ export async function markAttendance(booking: Booking, status: 'present' | 'late
     return;
   }
 
-  // present | late
   const { error: attendanceError } = await supabase.from('attendance').upsert(
     {
       booking_id: booking.id,
@@ -126,33 +102,64 @@ export async function markAttendance(booking: Booking, status: 'present' | 'late
 
 /**
  * §8c: INSERT workout_notes; UPDATE bookings SET status='completed'.
- * Field names (summary, exercisesPerformed, performance, improvements,
- * homework, additionalRemarks) are as listed in the PRD's prose — mapped
- * to snake_case here per Postgres convention; VERIFY against the real
- * schema if this insert fails.
+ * `client_id`/`coach_id` are required NOT NULL columns on workout_notes
+ * — pulled directly from the booking rather than re-resolved.
  */
 export async function submitSessionNotes(
-  bookingId: string,
+  booking: Booking,
   notes: {
-    summary: string;
+    notes: string;
     exercisesPerformed?: string;
-    performance?: string;
+    performanceRating?: string;
     improvements?: string[];
     homework?: string;
     additionalRemarks?: string;
   }
 ) {
   const { error: notesError } = await supabase.from('workout_notes').insert({
-    booking_id: bookingId, // VERIFY FK column name
-    summary: notes.summary,
+    booking_id: booking.id,
+    client_id: booking.client_id,
+    coach_id: booking.coach_id,
+    notes: notes.notes,
     exercises_performed: notes.exercisesPerformed,
-    performance: notes.performance,
+    performance_rating: notes.performanceRating,
     improvements: notes.improvements,
     homework: notes.homework,
     additional_remarks: notes.additionalRemarks,
   });
   if (notesError) throw notesError;
 
-  const { error: bookingError } = await supabase.from('bookings').update({ status: 'completed' }).eq('id', bookingId);
+  const { error: bookingError } = await supabase.from('bookings').update({ status: 'completed' }).eq('id', booking.id);
   if (bookingError) throw bookingError;
+}
+
+/**
+ * Coach's client roster — confirmed there is no direct coach_id on
+ * client_profiles; the relationship lives on recurring_slots, same as
+ * the client-side getMyCoach() lookup, just reversed.
+ */
+export async function getCoachClients() {
+  const coachId = await getMyCoachProfileId();
+  if (!coachId) return [];
+
+  const { data: slots, error: slotsError } = await supabase
+    .from('recurring_slots')
+    .select('client_id')
+    .eq('coach_id', coachId)
+    .eq('status', 'active');
+  if (slotsError) throw slotsError;
+
+  const clientIds = [...new Set((slots ?? []).map((s) => s.client_id))];
+  if (clientIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('client_profiles')
+    .select('id, profile_id, status, profiles(full_name)')
+    .in('id', clientIds);
+  if (error) throw error;
+
+  return (data ?? []).map((c) => {
+    const profile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
+    return { id: c.id, profile_id: c.profile_id, status: c.status, full_name: profile?.full_name } as ClientProfile;
+  });
 }

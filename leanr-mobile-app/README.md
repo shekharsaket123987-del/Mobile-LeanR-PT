@@ -121,6 +121,20 @@ it's now in a chat transcript.
   **recurring schedule setup/change** (the `mwf`/`tts`/`sixday` pattern-
   matching ladder, §15) and **demo/assessment booking** (a different,
   partly-anonymous RPC path, `confirmDemoBooking`/`createAssessmentBooking`).
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 7 — Reschedule & Cancellation"**:
+  cancel was already done; reschedule is now built too. New screen:
+  `src/app/(client)/reschedule/[id].tsx`, reached from Sessions'
+  "Reschedule" link on an upcoming session. Reads the live
+  `reschedule_booking` RPC bodies directly (two overloads exist — this
+  uses the 4-arg one that tracks `was_rescheduled`) rather than the PRD's
+  prose description, and found the PRD overstates what's actually
+  enforced server-side: only the cutoff/working-hours/conflict checks are
+  real; the forward-window, weekly-cap, and same-day-only-once rules
+  (§13 rules 7-9) aren't in the live function at all. The client
+  deliberately doesn't invent stricter rules the server doesn't enforce —
+  see `isAfterRescheduleCutoff`'s comment in `booking-wizard.ts`. Same
+  verification/testing caveats as Phase 5 above (tsc/lint/export clean,
+  not click-tested live).
   Coach picking for a client with no assigned coach yet is a plain active-
   coach list, not the web app's lowest-utilization-first matching — noted
   as a simplification, not a schema gap.

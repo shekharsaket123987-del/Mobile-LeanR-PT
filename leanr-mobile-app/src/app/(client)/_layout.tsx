@@ -107,11 +107,12 @@ export default function ClientLayout() {
           ),
         }}
       />
-      {/* Book a Session — reachable via router.push('/book-session'), not
-          a tab itself (Design Principle #5: don't add a 6th tab for an
-          occasional action). `href: null` is expo-router's documented way
-          to keep a route in this group without a tab bar entry. */}
+      {/* Book a Session / Reschedule — reachable via router.push, not tabs
+          themselves (Design Principle #5: don't add extra tabs for
+          occasional actions). `href: null` is expo-router's documented
+          way to keep a route in this group without a tab bar entry. */}
       <Tabs.Screen name="book-session" options={{ href: null, title: 'Book a Session' }} />
+      <Tabs.Screen name="reschedule/[id]" options={{ href: null, title: 'Reschedule' }} />
     </Tabs>
   );
 }

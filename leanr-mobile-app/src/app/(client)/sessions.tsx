@@ -56,9 +56,14 @@ function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: 
       <Text style={shared.cardLabel}>{formatSessionTime(booking.scheduled_start)}</Text>
       {booking.was_rescheduled && <Text style={shared.cardLabel}>Rescheduled</Text>}
       {booking.status === 'upcoming' && (
-        <TextLink onPress={onCancel} style={styles.cancelLink}>
-          Cancel session
-        </TextLink>
+        <View style={styles.actionRow}>
+          <TextLink onPress={() => router.push(`/reschedule/${booking.id}`)} style={styles.rescheduleLink}>
+            Reschedule
+          </TextLink>
+          <TextLink onPress={onCancel} style={styles.cancelLink}>
+            Cancel session
+          </TextLink>
+        </View>
       )}
     </Card>
   );
@@ -116,5 +121,7 @@ const styles = StyleSheet.create({
   tabPressable: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
   tabLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, opacity: 0.5 },
   tabLabelActive: { opacity: 1, color: Brand.yellow },
-  cancelLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.alertRed, marginTop: 4 },
+  actionRow: { flexDirection: 'row', gap: 16, marginTop: 4 },
+  rescheduleLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
+  cancelLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.alertRed },
 });

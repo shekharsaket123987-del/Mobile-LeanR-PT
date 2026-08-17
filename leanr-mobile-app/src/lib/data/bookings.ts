@@ -39,6 +39,20 @@ export async function getSessionsByStatus(status: BookingStatus) {
   return (data ?? []) as Booking[];
 }
 
+export async function getClientBookingById(bookingId: string): Promise<Booking | null> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return null;
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('id', bookingId)
+    .eq('client_id', clientId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Booking | null;
+}
+
 /** §8f: RPC cancel_booking(p_booking_id, p_cancelled_by, p_reason, p_enforce_cutoff). */
 export async function cancelBooking(bookingId: string, reason: string | null, enforceCutoff = true) {
   const { data: userData } = await supabase.auth.getUser();
@@ -51,13 +65,16 @@ export async function cancelBooking(bookingId: string, reason: string | null, en
   if (error) throw error;
 }
 
-/** §8e: RPC reschedule_booking(p_booking_id, p_new_start, p_new_duration_minutes, p_enforce_cutoff, p_new_coach_id). */
-export async function rescheduleBooking(
-  bookingId: string,
-  newStart: string,
-  newDurationMinutes: number,
-  enforceCutoff = true
-) {
+/**
+ * §8e: `reschedule_booking` has two live overloads — a 4-arg one (used
+ * here) that sets `was_rescheduled`/`original_scheduled_start`, and a
+ * 5-arg one (adds `p_new_coach_id`) that changes the coach instead and
+ * does NOT track `was_rescheduled` at all. Confirmed via direct
+ * introspection on 2026-08-17. Passing exactly these 4 named params
+ * resolves to the tracked overload — this client never does a coach-swap
+ * reschedule, so the second overload is intentionally unused.
+ */
+export async function rescheduleBooking(bookingId: string, newStart: string, newDurationMinutes: number, enforceCutoff = true) {
   const { error } = await supabase.rpc('reschedule_booking', {
     p_booking_id: bookingId,
     p_new_start: newStart,

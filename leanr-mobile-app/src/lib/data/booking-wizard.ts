@@ -92,6 +92,7 @@ export type BookingSettings = {
   bookingWindowEndHour: number;
   defaultSessionDurationMinutes: number;
   temporaryBookingHoldMinutes: number;
+  rescheduleCutoffHours: number;
 };
 
 /** §13 system_settings — read live so an admin change is reflected without a client update. */
@@ -104,6 +105,7 @@ export async function getBookingSettings(): Promise<BookingSettings> {
       'booking_window_end_hour',
       'default_session_duration_minutes',
       'temporary_booking_hold_minutes',
+      'reschedule_cutoff_hours',
     ]);
   if (error) throw error;
 
@@ -113,7 +115,22 @@ export async function getBookingSettings(): Promise<BookingSettings> {
     bookingWindowEndHour: byKey.booking_window_end_hour ?? 22,
     defaultSessionDurationMinutes: byKey.default_session_duration_minutes ?? 45,
     temporaryBookingHoldMinutes: byKey.temporary_booking_hold_minutes ?? 10,
+    rescheduleCutoffHours: byKey.reschedule_cutoff_hours ?? 1,
   };
+}
+
+/**
+ * §13 rule 6 (reschedule_booking's own cutoff check, confirmed live: it
+ * only checks `scheduled_start - now() >= cutoff_hours` — NOT the forward-
+ * window/weekly-cap/same-day rules §13 rules 7-9 describe, which turned
+ * out not to be enforced in the live RPC. This mirrors exactly what the
+ * server actually checks, not the PRD's fuller aspirational rule set —
+ * showing a slot here that the server would reject wastes the client's
+ * tap, but inventing stricter client-side rules the server doesn't
+ * enforce would be its own kind of wrong.
+ */
+export function isAfterRescheduleCutoff(slotStartIso: string, cutoffHours: number): boolean {
+  return new Date(slotStartIso).getTime() - Date.now() >= cutoffHours * 60 * 60 * 1000;
 }
 
 export type CoachOption = { id: string; full_name: string; specialization: string | null };

@@ -78,10 +78,7 @@ or outright against real data:
 - **Chat schema is now known** (`conversations`/`messages` — see
   `src/lib/data/types.ts`) but the chat UI itself still isn't built; that's
   now a scoping decision, not a schema-risk blocker.
-- **The booking wizard's RPCs are now fully known**
-  (`create_temporary_booking(p_client_id, p_coach_id, p_slot_start, p_duration_minutes)`
-  → `confirm_booking(p_temp_booking_id, p_subscription_id, ...)`) but the
-  multi-step picker UI isn't built yet — same situation as chat.
+- **The booking wizard is now built** — see "Phase 5" below.
 
 **Security note**: a `service_role` key was shared in chat during this
 verification pass and used only transiently (schema introspection via
@@ -102,8 +99,31 @@ it's now in a chat transcript.
 - **Phase 2 — Core client journey**: schema-verified and corrected. Home,
   Sessions (list + cancel), Coach (profile, via `recurring_slots`), and
   Progress (log + list) all confirmed working against real data. Still
-  not built: the booking wizard and chat UI (schema for both is now known
-  — see above; this is scope, not risk, now).
+  not built: chat UI (schema is known — see above; this is scope, not
+  risk, now).
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 5 — Booking Engine" (ad-hoc slice)**:
+  built and schema-verified against the live `create_temporary_booking`/
+  `confirm_booking` RPC signatures, `system_settings`, and the
+  `coach_leave`/`coach_shifts`/`coach_availability` availability tables
+  (all confirmed via direct introspection on 2026-08-17 — see
+  `src/lib/data/booking-wizard.ts` for the exact query shapes). New
+  screen: `src/app/(client)/book-session.tsx` — IST-correct whole-hour
+  slot chips, hold->confirm with a live countdown, reachable from
+  Sessions ("+ Book a Session") and Home ("Book a session" when no
+  upcoming booking exists). `npx tsc --noEmit` and `npx expo lint` both
+  pass; `npx expo export` compiles the bundle. **Not click-tested in a
+  running app** — no mobile simulator is available in this environment,
+  and the `expo start --web` target currently crashes during SSR
+  (`window is not defined` in `LargeSecureStore.getItem`, pre-existing,
+  unrelated to this feature — `src/lib/supabase/large-secure-store.ts`
+  isn't guarded for the server-render pass of `web.output: "static"`).
+  Explicitly out of scope for this slice, same file's header comment:
+  **recurring schedule setup/change** (the `mwf`/`tts`/`sixday` pattern-
+  matching ladder, §15) and **demo/assessment booking** (a different,
+  partly-anonymous RPC path, `confirmDemoBooking`/`createAssessmentBooking`).
+  Coach picking for a client with no assigned coach yet is a plain active-
+  coach list, not the web app's lowest-utilization-first matching — noted
+  as a simplification, not a schema gap.
 - **Phase 3 — Motivation layer**: schema-verified. `ProgressRing`/
   `StreakChip`/`CelebrationOverlay` all confirmed correct against real
   completed-booking data. Push notification **registration** works;
@@ -169,17 +189,33 @@ Plan" rather than silently doing nothing or lying about success.
    or route calling Expo's push API when a `notifications` row is
    created), outside this mobile repo. Also: since Expo SDK 53, remote
    push requires a development build — it will not work in Expo Go.
-3. **Booking wizard + chat UI — schema known, not built.** See the schema
-   section above for the confirmed RPC/table shapes. This is now a
-   straightforward (if multi-step) UI build, not a research problem.
-4. **Wordmark asset** — the launch animation renders "LEANR" as real
+3. **Chat UI — schema known, not built.** See the schema section above
+   for the confirmed `conversations`/`messages` shapes. The booking
+   wizard (this item's former other half) is now built — see "Phase 5"
+   above.
+4. **Recurring schedule setup/change + demo booking — not built.**
+   Deliberately out of scope for the booking-wizard pass (see Phase 5
+   above for why): the pattern-matching ladder (`mwf`/`tts`/`sixday`) and
+   the separate anonymous demo-booking entry point are each their own
+   scoped build, not a schema-risk blocker.
+5. **Web dev target crashes on boot** (`expo start --web` /
+   `npx expo export --platform web`) — `ReferenceError: window is not
+   defined` in `LargeSecureStore.getItem` (`src/lib/supabase/large-secure-store.ts`)
+   during the SSR pass `web.output: "static"` triggers. Pre-existing, not
+   introduced by this pass — found while trying to browser-test the
+   booking wizard, which is untestable in this environment without it
+   (no mobile simulator available either — see Phase 5 above). Likely fix:
+   guard the AsyncStorage-backed calls with a `typeof window !==
+   'undefined'` check, but that's a product decision (do you want a web
+   build at all?) more than a one-line patch, so left unfixed here.
+6. **Wordmark asset** — the launch animation renders "LEANR" as real
    Oswald-italic text (matches how the web app does it), not an exported
    image — this was a deliberate simplification, not a gap.
-5. **App icon** — still just the default Expo icon; a real LEANR icon
+7. **App icon** — still just the default Expo icon; a real LEANR icon
    asset needs to be designed/exported outside this repo (same open
    question the functional PRD itself flags — no icon-only asset exists
    anywhere, only the full `image.png` lockup).
-6. **Store submission** — `eas.json` has build profiles and `app.json`
+8. **Store submission** — `eas.json` has build profiles and `app.json`
    has placeholder bundle identifiers (`com.fitelo.leanr` — confirm or
    change to whatever you actually register), but `eas build`/
    `eas submit` need you logged into a real EAS/Expo account plus an

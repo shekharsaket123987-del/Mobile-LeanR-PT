@@ -1,14 +1,15 @@
 /**
  * Sessions tab — LEANR_PT_NEXTGEN_APP_PRD.md §6/§9.2, wired to real
- * bookings data. "Book a Session" (the hold->confirm wizard) is
- * deliberately not wired yet — see leanr-mobile-app/README.md open items
- * for why (confirm_booking's RPC signature isn't fully documented).
+ * bookings data. "+ Book a Session" opens the hold->confirm wizard
+ * (src/app/(client)/book-session.tsx) — reloads on focus so a session
+ * booked there shows up immediately without a manual pull-to-refresh.
  */
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { TextLink } from '@/components/tappable';
+import { CtaButton, TextLink } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
 import { cancelBooking, getSessionsByStatus } from '@/lib/data/bookings';
 import type { Booking, BookingStatus } from '@/lib/data/types';
@@ -67,8 +68,23 @@ export default function SessionsScreen() {
   const [activeTab, setActiveTab] = useState<BookingStatus>('upcoming');
   const { data, loading, error, reload } = useAsync(() => getSessionsByStatus(activeTab), [activeTab]);
 
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      // reload() is stable-enough here (useAsync recreates it each render,
+      // but it only bumps a tick counter) — depending on it would refetch
+      // on every render; empty deps + useFocusEffect's own re-run-on-focus
+      // behavior is what we actually want.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
   return (
     <ScreenScaffold title="Sessions">
+      <CtaButton onPress={() => router.push('/book-session')} style={styles.bookButton}>
+        + Book a Session
+      </CtaButton>
+
       <View style={styles.tabRow} accessibilityRole="tablist">
         {TABS.map((tab) => (
           <Pressable
@@ -95,6 +111,7 @@ export default function SessionsScreen() {
 }
 
 const styles = StyleSheet.create({
+  bookButton: { marginBottom: 4 },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   tabPressable: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
   tabLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, opacity: 0.5 },

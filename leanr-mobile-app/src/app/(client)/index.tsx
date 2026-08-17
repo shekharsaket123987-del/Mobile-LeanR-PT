@@ -94,7 +94,7 @@ export default function HomeScreen() {
             </Card>
           )}
 
-          <CtaButton onPress={() => router.push('/sessions')}>
+          <CtaButton onPress={() => router.push(nextBooking ? '/sessions' : '/book-session')}>
             {nextBooking ? 'View sessions' : 'Book a session'}
           </CtaButton>
         </>

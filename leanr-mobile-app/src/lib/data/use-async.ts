@@ -31,7 +31,12 @@ export function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[] = []): As
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // This hook takes a caller-supplied deps array by design (it's a
+    // generic wrapper, not a single fixed fetch), so the dependency list
+    // can't be a static array literal — spreading is what makes callers'
+    // primitive deps (e.g. an activeTab string) tracked by value instead
+    // of by the deps array's reference, which is what we actually want.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
   }, [...deps, tick]);
 
   useEffect(() => load(), [load]);

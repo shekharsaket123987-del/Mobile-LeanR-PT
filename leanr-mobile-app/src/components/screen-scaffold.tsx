@@ -5,7 +5,7 @@
  * (§9 Key Screen Specs) replace the body content, not this shell.
  */
 import { PropsWithChildren } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand, Colors } from '@/constants/theme';
@@ -47,11 +47,18 @@ export function LoadingState() {
 export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <Card>
-      <Text style={styles.cardLabel}>SOMETHING WENT WRONG</Text>
-      <Text style={styles.errorText}>{message}</Text>
-      <Text style={styles.retryLink} onPress={onRetry}>
-        Try again
+      <Text style={styles.cardLabel} accessibilityRole="alert">
+        SOMETHING WENT WRONG
       </Text>
+      <Text style={styles.errorText}>{message}</Text>
+      <Pressable
+        onPress={onRetry}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Try again"
+        style={styles.retryLinkWrap}>
+        <Text style={styles.retryLink}>Try again</Text>
+      </Pressable>
     </Card>
   );
 }
@@ -108,6 +115,7 @@ export const styles = StyleSheet.create({
   },
   centeredState: { paddingVertical: 32, alignItems: 'center' },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
-  retryLink: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 4 },
+  retryLinkWrap: { alignSelf: 'flex-start', marginTop: 4 },
+  retryLink: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow },
   emptyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, opacity: 0.6 },
 });

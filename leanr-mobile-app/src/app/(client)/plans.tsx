@@ -4,9 +4,10 @@
  * insecure client-side order creation. See the Alert copy below and
  * README open items for exactly why.
  */
-import { Alert, Text, View } from 'react-native';
+import { Alert, Text } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { CtaButton } from '@/components/tappable';
 import { getMarketingPlans } from '@/lib/data/plans';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -36,11 +37,9 @@ export default function PlansScreen() {
             <Text style={shared.cardLabel}>{plan.name}</Text>
             <Text style={shared.bigStat}>{formatPrice(plan.price_paise)}</Text>
             {plan.sessions_count && <Text style={shared.cardLabel}>{plan.sessions_count} sessions</Text>}
-            <View style={[shared.ctaButton, { marginTop: 12 }]}>
-              <Text style={shared.ctaButtonText} onPress={() => onPurchase(plan.name)}>
-                Purchase Plan
-              </Text>
-            </View>
+            <CtaButton onPress={() => onPurchase(plan.name)} style={{ marginTop: 12 }}>
+              Purchase Plan
+            </CtaButton>
           </Card>
         ))}
     </ScreenScaffold>

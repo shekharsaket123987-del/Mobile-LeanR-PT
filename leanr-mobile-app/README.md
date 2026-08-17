@@ -65,7 +65,29 @@ testing auth.
   insecure implementation** — see "Why payments can't be finished from
   this repo" below before assuming this is unfinished work rather than a
   hard architectural boundary.
-- **Phase 6+**: not started — see nextgen PRD §16 roadmap.
+- **Phase 6 — Polish & store prep**: partially done, scoped to what's
+  actually possible without design tooling or store accounts on this
+  side. **Accessibility pass (real, done)**: introduced `TextLink` and
+  `CtaButton` (`src/components/tappable.tsx`) to replace a
+  codebase-wide pattern of bare `<Text onPress>` — no accessibility
+  role, no touch target bigger than the glyphs — with two disciplined
+  primitives that add `accessibilityRole`/`accessibilityLabel`/
+  `accessibilityState` and either a proper hit target or `hitSlop`,
+  per §12's "≥44×44pt" requirement. Applied across all 19 tappable
+  elements in the app (buttons, links, sign-out, tab chips).
+  `ProgressRing`/`StreakChip` now collapse into one screen-reader
+  element announcing the actual number, not "ring" or two disjointed
+  text reads, per §12's explicit requirement. **EAS Build scaffolding
+  (real, done)**: `eas.json` build profiles + `ios.bundleIdentifier`/
+  `android.package` set in `app.json` (`com.fitelo.leanr` —
+  placeholder reverse-domain id, confirm/change to whatever you
+  register in App Store Connect / Play Console). **Blocked on your
+  input, not code**: a real app icon (needs design tooling/an
+  isolated LEANR mark this repo can't produce — see original PRD's
+  own open question on this) and actual TestFlight/Play internal-track
+  submission (needs your Apple Developer + Google Play Console
+  accounts; `eas build`/`eas submit` can't run without logging into
+  an actual EAS/Expo account).
 
 ### Why payments can't be finished from this repo
 
@@ -149,12 +171,29 @@ about success.
    are inferred from the admin `createPackageAction` naming in the PRD,
    not confirmed — a wrong guess here just surfaces as an empty/error
    Plans screen, never a bad write, since it's read-only.
+10. **App icon** — still just the default Expo icon; a real LEANR icon
+    asset needs to be designed/exported outside this repo (same open
+    question the functional PRD itself flags — no icon-only asset
+    exists anywhere, only the full `image.png` lockup).
+11. **Store submission** — `eas.json` has build profiles and `app.json`
+    has placeholder bundle identifiers (`com.fitelo.leanr` — confirm or
+    change to whatever you actually register), but `eas build`/
+    `eas submit` need you logged into a real EAS/Expo account plus an
+    Apple Developer Program membership and Google Play Console access.
+    Nothing to build here without those credentials.
 
 ## Everyday commands
 
 ```bash
 npx expo start        # dev server
 npx tsc --noEmit       # type-check
+npx expo lint          # lint (first run installs eslint-config-expo)
 npx expo export --platform ios      # verify the JS bundle compiles (no simulator needed)
 npx expo export --platform android
 ```
+
+`npx expo lint` will report one pre-existing warning in
+`src/hooks/use-color-scheme.web.ts` (a `setState` call inside a
+`useEffect`) — that's the standard, correct pattern for avoiding a
+web hydration mismatch, not a bug; left as-is rather than "fixed" into
+something worse.

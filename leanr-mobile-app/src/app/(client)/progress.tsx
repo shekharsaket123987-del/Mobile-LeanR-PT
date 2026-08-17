@@ -11,6 +11,7 @@ import { Alert, Text, TextInput, View } from 'react-native';
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
 import { ProgressRing } from '@/components/progress-ring';
+import { CtaButton } from '@/components/tappable';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
@@ -89,11 +90,9 @@ export default function ProgressScreen() {
             />
           </Card>
 
-          <View style={[shared.ctaButton, submitting && { opacity: 0.7 }]}>
-            <Text style={shared.ctaButtonText} onPress={submitting ? undefined : onSubmit}>
-              {submitting ? 'Saving…' : "Log this week's update"}
-            </Text>
-          </View>
+          <CtaButton onPress={onSubmit} loading={submitting}>
+            Log this week&apos;s update
+          </CtaButton>
         </>
       )}
     </ScreenScaffold>

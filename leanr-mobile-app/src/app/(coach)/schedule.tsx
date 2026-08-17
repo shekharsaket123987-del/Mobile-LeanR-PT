@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Text } from 'react-native';
+import { TextLink } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
 import { getCoachBookings } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
@@ -34,11 +35,11 @@ export default function CoachSchedule() {
         bookings?.map((booking) => (
           <Card key={booking.id}>
             <Text style={shared.cardLabel}>{formatSessionTime(booking.scheduled_start)}</Text>
-            <Text
-              style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 4 }}
-              onPress={() => router.push({ pathname: '/session/[id]', params: { id: booking.id } })}>
+            <TextLink
+              onPress={() => router.push({ pathname: '/session/[id]', params: { id: booking.id } })}
+              style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 4 }}>
               View →
-            </Text>
+            </TextLink>
           </Card>
         ))}
     </ScreenScaffold>

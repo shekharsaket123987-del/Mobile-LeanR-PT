@@ -3,7 +3,7 @@
  * Notifications, Profile, Chats (LEANR_PT_MOBILE_PRD.md §5 coach nav).
  * Same pattern as the client More tab: placeholder rows + real sign out.
  */
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
@@ -22,11 +22,9 @@ export default function CoachMore() {
         </View>
       ))}
 
-      <View style={styles.signOutButton}>
-        <Text style={styles.signOutText} onPress={signOut}>
-          Sign out
-        </Text>
-      </View>
+      <Pressable style={styles.signOutButton} onPress={signOut} accessibilityRole="button" accessibilityLabel="Sign out">
+        <Text style={styles.signOutText}>Sign out</Text>
+      </Pressable>
     </ScreenScaffold>
   );
 }

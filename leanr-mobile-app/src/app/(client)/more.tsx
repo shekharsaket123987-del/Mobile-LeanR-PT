@@ -17,7 +17,11 @@ export default function MoreScreen() {
 
   return (
     <ScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
-      <Pressable style={styles.row} onPress={() => router.push('/plans')}>
+      <Pressable
+        style={styles.row}
+        onPress={() => router.push('/plans')}
+        accessibilityRole="button"
+        accessibilityLabel="Subscription & Plans">
         <Text style={shared.cardLabel}>Subscription & Plans</Text>
       </Pressable>
 
@@ -27,11 +31,9 @@ export default function MoreScreen() {
         </View>
       ))}
 
-      <View style={styles.signOutButton}>
-        <Text style={styles.signOutText} onPress={signOut}>
-          Sign out
-        </Text>
-      </View>
+      <Pressable style={styles.signOutButton} onPress={signOut} accessibilityRole="button" accessibilityLabel="Sign out">
+        <Text style={styles.signOutText}>Sign out</Text>
+      </Pressable>
     </ScreenScaffold>
   );
 }

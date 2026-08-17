@@ -5,7 +5,7 @@
  * this screen is the honest interim state rather than silently showing
  * the wrong role's tab bar.
  */
-import { Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand } from '@/constants/theme';
@@ -22,14 +22,13 @@ export default function UnsupportedRoleScreen() {
       <Text style={{ fontFamily: 'Manrope_500Medium', fontSize: 15, color: '#FFFFFF' }}>
         The {profile?.role ?? 'admin'} app isn&apos;t built yet — please continue on the LEANR web portal for now.
       </Text>
-      <View
+      <Pressable
+        onPress={signOut}
+        accessibilityRole="button"
+        accessibilityLabel="Sign out"
         style={{ backgroundColor: Brand.charcoal2, borderRadius: 16, paddingVertical: 14, alignItems: 'center' }}>
-        <Text
-          onPress={signOut}
-          style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' }}>
-          Sign out
-        </Text>
-      </View>
+        <Text style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' }}>Sign out</Text>
+      </Pressable>
     </SafeAreaView>
   );
 }

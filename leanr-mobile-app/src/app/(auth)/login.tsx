@@ -10,9 +10,10 @@
  */
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CtaButton } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
@@ -70,13 +71,14 @@ export default function LoginScreen() {
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <View style={[styles.ctaButton, submitting && styles.ctaButtonDisabled]}>
-            <Text style={styles.ctaButtonText} onPress={submitting ? undefined : onSubmit}>
-              {submitting ? <ActivityIndicator color={Brand.black} /> : 'Log in'}
-            </Text>
-          </View>
+          <CtaButton onPress={onSubmit} loading={submitting} style={styles.ctaSpacing}>
+            Log in
+          </CtaButton>
 
-          <View style={[styles.secondaryButton, styles.disabled]}>
+          <View
+            style={[styles.secondaryButton, styles.disabled]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: true }}>
             <Text style={styles.secondaryButtonText}>Continue with Google (coming soon)</Text>
           </View>
 
@@ -118,15 +120,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  ctaButton: {
-    backgroundColor: Brand.yellow,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  ctaButtonDisabled: { opacity: 0.7 },
-  ctaButtonText: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: Brand.black },
+  ctaSpacing: { marginTop: 8 },
   secondaryButton: {
     borderRadius: 16,
     paddingVertical: 16,

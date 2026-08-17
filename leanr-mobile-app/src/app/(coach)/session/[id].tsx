@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { CtaButton, TextLink } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
 import {
   attendanceEligible,
@@ -113,11 +114,9 @@ export default function SessionWorkflow() {
               onChangeText={setSummary}
             />
           </Card>
-          <View style={[shared.ctaButton, submitting && { opacity: 0.7 }]}>
-            <Text style={shared.ctaButtonText} onPress={submitting ? undefined : onSubmitNotes}>
-              {submitting ? 'Saving…' : 'Mark Completed'}
-            </Text>
-          </View>
+          <CtaButton onPress={onSubmitNotes} loading={submitting}>
+            Mark Completed
+          </CtaButton>
         </>
       )}
 
@@ -125,34 +124,38 @@ export default function SessionWorkflow() {
         <>
           <Card>
             <Text style={shared.cardLabel}>JOIN</Text>
-            <Text
-              style={{ fontFamily: 'Manrope_700Bold', fontSize: 15, color: Brand.yellow, marginTop: 4 }}
-              onPress={onJoin}>
+            <TextLink
+              onPress={onJoin}
+              accessibilityLabel={booking.coach_joined_at ? 'Joined — tap to reopen Zoom' : 'Mark joined'}
+              style={{ fontFamily: 'Manrope_700Bold', fontSize: 15, color: Brand.yellow, marginTop: 4 }}>
               {booking.coach_joined_at ? '✓ Joined' : 'Mark joined →'}
-            </Text>
+            </TextLink>
           </Card>
 
           <Card>
             <Text style={shared.cardLabel}>MARK ATTENDANCE</Text>
             {!eligible && (
-              <Text style={shared.cardLabel}>Available once the session's scheduled time has passed.</Text>
+              <Text style={shared.cardLabel}>Available once the session&apos;s scheduled time has passed.</Text>
             )}
             <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-              <Text
-                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.successEmerald : '#888' }}
-                onPress={eligible ? () => onMarkAttendance('present') : undefined}>
+              <TextLink
+                disabled={!eligible}
+                onPress={() => onMarkAttendance('present')}
+                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.successEmerald : '#888' }}>
                 Present
-              </Text>
-              <Text
-                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.streakEmberStart : '#888' }}
-                onPress={eligible ? () => onMarkAttendance('late') : undefined}>
+              </TextLink>
+              <TextLink
+                disabled={!eligible}
+                onPress={() => onMarkAttendance('late')}
+                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.streakEmberStart : '#888' }}>
                 Late
-              </Text>
-              <Text
-                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.alertRed : '#888' }}
-                onPress={eligible ? () => onMarkAttendance('absent') : undefined}>
+              </TextLink>
+              <TextLink
+                disabled={!eligible}
+                onPress={() => onMarkAttendance('absent')}
+                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.alertRed : '#888' }}>
                 Absent
-              </Text>
+              </TextLink>
             </View>
           </Card>
         </>

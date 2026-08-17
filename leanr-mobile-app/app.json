@@ -9,9 +9,11 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.fitelo.leanr"
     },
     "android": {
+      "package": "com.fitelo.leanr",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

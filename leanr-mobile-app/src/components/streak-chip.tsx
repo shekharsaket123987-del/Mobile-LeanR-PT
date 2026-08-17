@@ -4,7 +4,7 @@
  * ("streak flames pulse").
  */
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Brand } from '@/constants/theme';
@@ -29,8 +29,13 @@ export function StreakChip({ weeks }: { weeks: number }) {
   if (weeks <= 0) return null;
 
   return (
-    <Animated.View style={[styles.chip, animatedStyle]}>
-      <Text style={styles.emoji}>🔥</Text>
+    <Animated.View
+      style={[styles.chip, animatedStyle]}
+      accessible
+      accessibilityLabel={`${weeks} week${weeks === 1 ? '' : 's'} streak`}>
+      <Text style={styles.emoji} importantForAccessibility="no">
+        🔥
+      </Text>
       <Text style={styles.text}>
         {weeks} week{weeks === 1 ? '' : 's'} streak
       </Text>

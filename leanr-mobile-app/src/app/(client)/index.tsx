@@ -6,11 +6,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 
 import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { StreakChip } from '@/components/streak-chip';
+import { CtaButton, TextLink } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getUpcomingBookings } from '@/lib/data/bookings';
@@ -86,11 +87,9 @@ export default function HomeScreen() {
             </Card>
           )}
 
-          <View style={shared.ctaButton}>
-            <Text style={shared.ctaButtonText} onPress={() => router.push('/sessions')}>
-              {nextBooking ? 'View sessions' : 'Book a session'}
-            </Text>
-          </View>
+          <CtaButton onPress={() => router.push('/sessions')}>
+            {nextBooking ? 'View sessions' : 'Book a session'}
+          </CtaButton>
         </>
       )}
 
@@ -118,15 +117,16 @@ function JoinRow({ booking }: { booking: Parameters<typeof getJoinState>[0] }) {
   if (!label) return null;
 
   return (
-    <Text
+    <TextLink
+      disabled={state !== 'joinable'}
+      onPress={() => openZoomLink(booking)}
       style={{
         fontFamily: 'Manrope_700Bold',
         fontSize: 14,
         color: state === 'joinable' ? Brand.yellow : '#888',
         marginTop: 8,
-      }}
-      onPress={state === 'joinable' ? () => openZoomLink(booking) : undefined}>
+      }}>
       {label}
-    </Text>
+    </TextLink>
   );
 }

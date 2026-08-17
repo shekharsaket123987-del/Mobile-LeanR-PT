@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { TextLink } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
 import { cancelBooking, getSessionsByStatus } from '@/lib/data/bookings';
 import type { Booking, BookingStatus } from '@/lib/data/types';
@@ -54,9 +55,9 @@ function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: 
       <Text style={shared.cardLabel}>{formatSessionTime(booking.scheduled_start)}</Text>
       {booking.was_rescheduled && <Text style={shared.cardLabel}>Rescheduled</Text>}
       {booking.status === 'upcoming' && (
-        <Text style={styles.cancelLink} onPress={onCancel}>
+        <TextLink onPress={onCancel} style={styles.cancelLink}>
           Cancel session
-        </Text>
+        </TextLink>
       )}
     </Card>
   );
@@ -68,9 +69,16 @@ export default function SessionsScreen() {
 
   return (
     <ScreenScaffold title="Sessions">
-      <View style={styles.tabRow}>
+      <View style={styles.tabRow} accessibilityRole="tablist">
         {TABS.map((tab) => (
-          <Pressable key={tab.key} onPress={() => setActiveTab(tab.key)} style={styles.tabPressable}>
+          <Pressable
+            key={tab.key}
+            onPress={() => setActiveTab(tab.key)}
+            style={styles.tabPressable}
+            hitSlop={8}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: activeTab === tab.key }}>
             <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>{tab.label}</Text>
           </Pressable>
         ))}

@@ -8,7 +8,7 @@
  * unnecessary dependencies" rule (§18.4) holds here too.
  */
 import { useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { Brand } from '@/constants/theme';
@@ -75,7 +75,12 @@ export function CelebrationOverlay({ title, subtitle, onDismiss }: Props) {
   }));
 
   return (
-    <Pressable style={styles.overlay} onPress={onDismiss}>
+    <Pressable
+      style={styles.overlay}
+      onPress={onDismiss}
+      accessibilityRole="alert"
+      accessibilityLabel={[title, subtitle].filter(Boolean).join('. ')}
+      accessibilityHint="Double tap to dismiss">
       {particles.map((i) => (
         <Particle key={i} index={i} originX={originX} originY={originY} />
       ))}

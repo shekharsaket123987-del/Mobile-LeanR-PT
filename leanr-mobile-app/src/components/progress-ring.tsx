@@ -39,8 +39,18 @@ export function ProgressRing({ progress, size = 160, strokeWidth = 14, label, va
     strokeDashoffset: circumference * (1 - animatedProgress.value),
   }));
 
+  // Collapse the SVG + two text nodes into one screen-reader-focusable
+  // element that announces the actual number, not "ring" or two
+  // disconnected text reads (LEANR_PT_NEXTGEN_APP_PRD.md §12).
+  const accessibilityLabel = [valueText, label].filter(Boolean).join(' ');
+
   return (
-    <View style={[styles.wrap, { width: size, height: size }]}>
+    <View
+      style={[styles.wrap, { width: size, height: size }]}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={accessibilityLabel || undefined}
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(Math.min(Math.max(progress, 0), 1) * 100) }}>
       <Svg width={size} height={size}>
         <Circle
           cx={size / 2}

@@ -4,10 +4,11 @@
  * insecure client-side order creation. See the Alert copy below and
  * README open items for exactly why.
  */
+import { router } from 'expo-router';
 import { Alert, Text } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
+import { CtaButton, TextLink } from '@/components/tappable';
 import { getMarketingPlans } from '@/lib/data/plans';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -27,6 +28,10 @@ export default function PlansScreen() {
 
   return (
     <ScreenScaffold title="Choose Your Plan">
+      <TextLink onPress={() => router.push('/demo-booking')} style={shared.retryLink}>
+        Book a Free Demo first →
+      </TextLink>
+
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && (plans?.length ?? 0) === 0 && <EmptyState message="No plans available right now." />}

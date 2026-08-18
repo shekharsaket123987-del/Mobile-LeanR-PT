@@ -26,8 +26,11 @@
  * sees those regardless, so correctness doesn't depend on this file
  * seeing them too.
  *
- * Demo/assessment booking and recurring-schedule setup are explicitly
- * out of scope for this file — see leanr-mobile-app/README.md.
+ * `confirmHold` is also reused by src/lib/data/demo-booking.ts for
+ * assessment sessions (see that file's header for what's different
+ * there) and recurring-schedule setup lives in its own file
+ * (recurring-schedule.ts) since it doesn't use the hold->confirm
+ * mechanism at all — see leanr-mobile-app/README.md for both.
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
@@ -93,6 +96,7 @@ export type BookingSettings = {
   defaultSessionDurationMinutes: number;
   temporaryBookingHoldMinutes: number;
   rescheduleCutoffHours: number;
+  assessmentSessionDurationMinutes: number;
 };
 
 /** §13 system_settings — read live so an admin change is reflected without a client update. */
@@ -106,6 +110,7 @@ export async function getBookingSettings(): Promise<BookingSettings> {
       'default_session_duration_minutes',
       'temporary_booking_hold_minutes',
       'reschedule_cutoff_hours',
+      'assessment_session_duration_minutes',
     ]);
   if (error) throw error;
 
@@ -116,6 +121,7 @@ export async function getBookingSettings(): Promise<BookingSettings> {
     defaultSessionDurationMinutes: byKey.default_session_duration_minutes ?? 45,
     temporaryBookingHoldMinutes: byKey.temporary_booking_hold_minutes ?? 10,
     rescheduleCutoffHours: byKey.reschedule_cutoff_hours ?? 1,
+    assessmentSessionDurationMinutes: byKey.assessment_session_duration_minutes ?? 60,
   };
 }
 
@@ -255,14 +261,30 @@ export async function holdSlot(coachId: string, slotStartIso: string, durationMi
 }
 
 /** §15 step 2: re-validates the hold and creates the real `bookings` row. */
-export async function confirmHold(tempBookingId: string, subscriptionId: string): Promise<string> {
-  const { data, error } = await supabase.rpc('confirm_booking', {
+/**
+ * `subscriptionId` is nullable and `options.amountPaid` is optional
+ * because demo-booking.ts reuses this for assessment sessions (no
+ * subscription, `amount_paid=0`) — passing `amountPaid` switches to the
+ * 6-arg `confirm_booking` overload; omitting it keeps the original 5-arg
+ * regular-booking behavior unchanged.
+ */
+export async function confirmHold(
+  tempBookingId: string,
+  subscriptionId: string | null,
+  options?: { sessionType?: 'regular' | 'assessment'; amountPaid?: number }
+): Promise<string> {
+  const params: Record<string, unknown> = {
     p_temp_booking_id: tempBookingId,
     p_subscription_id: subscriptionId,
     p_recurring_slot_id: null,
     p_assessment_session_id: null,
-    p_session_type: 'regular',
-  });
+    p_session_type: options?.sessionType ?? 'regular',
+  };
+  if (options?.amountPaid !== undefined) {
+    params.p_amount_paid = options.amountPaid;
+  }
+
+  const { data, error } = await supabase.rpc('confirm_booking', params);
   if (error) throw error;
   return data as string;
 }

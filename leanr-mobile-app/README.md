@@ -191,7 +191,7 @@ it's now in a chat transcript.
 This completes all of §28 Phase 9 (Coach Change, Escalations, Chat) to
 the extent buildable from this mobile-only repo.
 - **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 5 — Booking Engine" (recurring
-  schedule slice — completes Phase 5)**: new screen
+  schedule slice)**: new screen
   `src/app/(client)/my-schedule.tsx`, reached from Sessions ("Manage my
   schedule"). Confirmed live on 2026-08-18: a "pattern" is actually N
   separate `recurring_slots` rows (one per weekday, no single "pattern"
@@ -212,6 +212,24 @@ the extent buildable from this mobile-only repo.
   see happen. Same same-coach-only and verification/testing caveats as
   the other phases above — see `recurring-schedule.ts`'s header comment
   for the full detail.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 5 — Booking Engine" (demo-booking
+  slice — completes Phase 5)**: new screen
+  `src/app/(client)/demo-booking.tsx`, reached from Plans ("Book a Free
+  Demo first"). Authenticated-client path only — books a free assessment
+  session (`session_type='assessment'`, `amount_paid=0`) through the same
+  hold->confirm pair as ad-hoc booking, generalized in
+  `confirmHold`/`booking-wizard.ts` to support the 6-arg `confirm_booking`
+  overload. The web app's other demo entry point,
+  `createAssessmentBooking()`, is for anonymous prospects with no account
+  at all, writing to a separate `assessment_sessions` lead table — every
+  screen in this app assumes a logged-in role, so that's a structurally
+  different, ungated route tree, deliberately out of scope (see
+  `demo-booking.ts`'s header). Coach matching ("client never picks,
+  sorted by utilization") is simplified to one pass: active coaches
+  ranked by ascending upcoming-booking count, first one with an open
+  slot on the chosen date wins. Same verification/testing caveats as the
+  phases above. This completes §28 Phase 5 to the extent buildable from
+  this mobile-only repo.
 - **Phase 3 — Motivation layer**: schema-verified. `ProgressRing`/
   `StreakChip`/`CelebrationOverlay` all confirmed correct against real
   completed-booking data. Push notification **registration** works;
@@ -282,10 +300,12 @@ Plan" rather than silently doing nothing or lying about success.
    RLS are confirmed to exist and ready; wiring a picker needs a new
    native dependency (`expo-image-picker`) plus `app.json` permission
    config — a deliberate follow-on, not a schema-risk blocker.
-4. **Demo/assessment booking — not built.** Recurring schedule setup is
-   now built (see "Phase 5" above). The separate anonymous demo-booking
-   entry point (`confirmDemoBooking`/`createAssessmentBooking`, no
-   account required) is its own scoped build, not a schema-risk blocker.
+4. **Anonymous demo booking — not built.** The authenticated-client demo
+   booking flow is now built (see "Phase 5" above). The separate
+   anonymous entry point (`createAssessmentBooking()`, no account
+   required, writes to `assessment_sessions` not `bookings`) is a
+   structurally different, ungated route tree — its own scoped build,
+   not a schema-risk blocker.
 5. **Web dev target crashes on boot** (`expo start --web` /
    `npx expo export --platform web`) — `ReferenceError: window is not
    defined` in `LargeSecureStore.getItem` (`src/lib/supabase/large-secure-store.ts`)

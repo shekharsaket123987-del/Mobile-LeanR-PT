@@ -29,7 +29,7 @@ import { Brand, Colors } from '@/constants/theme';
 import {
   getMyActiveConversation,
   getMessages,
-  markCoachMessagesRead,
+  markMessagesRead,
   sendMessage,
   subscribeToConversation,
   uploadChatImage,
@@ -83,7 +83,7 @@ export default function CoachScreen() {
       .catch((err) => {
         if (!cancelled) setMessagesError(err instanceof Error ? err.message : String(err));
       });
-    markCoachMessagesRead(conversation.id).catch(() => {});
+    markMessagesRead(conversation.id, 'coach').catch(() => {});
 
     const unsubscribe = subscribeToConversation(conversation.id, (message, event) => {
       setMessages((prev) => {
@@ -94,7 +94,7 @@ export default function CoachScreen() {
         return prev.map((m) => (m.id === message.id ? message : m));
       });
       if (event === 'INSERT' && message.sender_role === 'coach') {
-        markCoachMessagesRead(conversation.id).catch(() => {});
+        markMessagesRead(conversation.id, 'coach').catch(() => {});
       }
     });
 

@@ -27,10 +27,17 @@
  *   the standard Expo+Supabase Storage pattern — React Native's `Blob`
  *   support is unreliable enough that Supabase's own docs recommend
  *   this over passing a `Blob`/`FormData` directly.
+ * - `sendMessage`/`markMessagesRead` take a `senderRole` because both
+ *   apps share this file — src/lib/data/coach-chat.ts (coach-side
+ *   conversation list) reuses these directly rather than duplicating
+ *   the insert/update logic. `sendMessage`'s default (`'client'`) keeps
+ *   the existing client call site unchanged.
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 import type { Conversation, Message } from './types';
+
+type ChatRole = 'client' | 'coach';
 
 export async function getMyActiveConversation(): Promise<Conversation | null> {
   const clientId = await getMyClientProfileId();
@@ -58,7 +65,8 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
 export async function sendMessage(
   conversationId: string,
-  content: { body?: string | null; attachmentUrl?: string | null }
+  content: { body?: string | null; attachmentUrl?: string | null },
+  senderRole: ChatRole = 'client'
 ): Promise<Message> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Not signed in.');
@@ -67,7 +75,7 @@ export async function sendMessage(
     .from('messages')
     .insert({
       conversation_id: conversationId,
-      sender_role: 'client',
+      sender_role: senderRole,
       sender_profile_id: userData.user.id,
       body: content.body ?? null,
       attachment_url: content.attachmentUrl ?? null,
@@ -97,13 +105,13 @@ export async function uploadChatImage(conversationId: string, localUri: string, 
   return data.publicUrl;
 }
 
-/** Marks every unread COACH message in this conversation as read (client viewing the thread). */
-export async function markCoachMessagesRead(conversationId: string): Promise<void> {
+/** Marks every unread message FROM `fromRole` in this conversation as read (the other party viewing the thread). */
+export async function markMessagesRead(conversationId: string, fromRole: ChatRole): Promise<void> {
   const { error } = await supabase
     .from('messages')
     .update({ read_at: new Date().toISOString() })
     .eq('conversation_id', conversationId)
-    .eq('sender_role', 'coach')
+    .eq('sender_role', fromRole)
     .is('read_at', null);
   if (error) throw error;
 }

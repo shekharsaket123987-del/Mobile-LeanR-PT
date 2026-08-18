@@ -278,9 +278,30 @@ the extent buildable from this mobile-only repo.
   computed fresh from `bookings` rather than trusting the
   `coach_profiles.rating`/`review_count` columns, matching §13 rule 21
   ("recomputed live... not a stored/incrementally-maintained field").
-  Still placeholder rows on Coach More: Chats, Search — a further slice,
-  not built in this pass. Same verification/testing caveats as the
-  phases above.
+  Same verification/testing caveats as the phases above.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 11 — Coach Portal Completion"
+  (second slice — completes Phase 11)**: **Chats**
+  (`src/lib/data/coach-chat.ts`, `src/app/(coach)/chats.tsx` +
+  `chat/[id].tsx`) — a coach has many clients, unlike the client app's
+  single-conversation Coach tab, so this is a list (client name, last
+  message preview, unread count, confirmed via the same
+  `conversations_select_participant`/`coach_id = my_coach_id()` policy
+  the client side already uses) into a per-conversation thread screen.
+  Generalized `chat.ts`'s `sendMessage`/`markMessagesRead` to take a
+  `senderRole` parameter (default `'client'`, so the existing client
+  call site is unchanged) rather than duplicating the insert/update
+  logic for the coach side — only the thread UI is duplicated, same
+  per-screen-component convention already used throughout this app.
+  **Search** (`coach-search.ts`, `search.tsx`) — confirmed live that
+  `client_profiles_select_by_any_coach` really does let any coach read
+  every client's name/status, not just linked ones, matching §3's
+  "read-only global client search (any client, not just own roster)."
+  No full client-detail screen — the PRD itself says non-linked clients
+  found this way get billing/progress hidden behind a read-only banner,
+  so a detail view would mostly be a stub; the searchable list is the
+  useful part. This completes §28 Phase 11 to the extent buildable from
+  this mobile-only repo — every row on Coach More is now real. Same
+  verification/testing caveats as the phases above.
 - **Notifications + Profile (both apps)**: these were missing from
   *both* client and coach More tabs, not just coach — built once,
   shared logic. `src/lib/data/notifications.ts` — a real finding here:

@@ -1,11 +1,11 @@
 /**
  * Coach More — Availability, Escalations, Performance, Search, Renewals,
  * Notifications, Profile, Chats (LEANR_PT_MOBILE_PRD.md §5 coach nav).
- * Availability/Escalations/Renewals/Performance/Notifications/Profile
- * are now real; only Chats and Search remain placeholder rows.
+ * All eight rows are now real — this completes §28 Phase 11 to the
+ * extent buildable from this mobile-only repo.
  */
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
@@ -13,16 +13,17 @@ import { useAuth } from '@/lib/auth/auth-context';
 
 const LINKED_ROWS: {
   label: string;
-  href: '/availability' | '/escalations' | '/renewals' | '/performance' | '/notifications' | '/profile';
+  href: '/availability' | '/escalations' | '/renewals' | '/performance' | '/notifications' | '/profile' | '/chats' | '/search';
 }[] = [
   { label: 'Availability', href: '/availability' },
+  { label: 'Chats', href: '/chats' },
   { label: 'Escalations', href: '/escalations' },
-  { label: 'Renewals', href: '/renewals' },
   { label: 'Performance', href: '/performance' },
+  { label: 'Search', href: '/search' },
+  { label: 'Renewals', href: '/renewals' },
   { label: 'Notifications', href: '/notifications' },
   { label: 'Profile', href: '/profile' },
 ];
-const PLACEHOLDER_ROWS = ['Chats', 'Search'];
 
 export default function CoachMore() {
   const { session, signOut } = useAuth();
@@ -38,12 +39,6 @@ export default function CoachMore() {
           accessibilityLabel={row.label}>
           <Text style={shared.cardLabel}>{row.label}</Text>
         </Pressable>
-      ))}
-
-      {PLACEHOLDER_ROWS.map((row) => (
-        <View key={row} style={styles.row}>
-          <Text style={shared.cardLabel}>{row}</Text>
-        </View>
       ))}
 
       <Pressable style={styles.signOutButton} onPress={signOut} accessibilityRole="button" accessibilityLabel="Sign out">

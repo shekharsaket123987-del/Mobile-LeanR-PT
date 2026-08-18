@@ -118,9 +118,9 @@ it's now in a chat transcript.
   unrelated to this feature — `src/lib/supabase/large-secure-store.ts`
   isn't guarded for the server-render pass of `web.output: "static"`).
   Explicitly out of scope for this slice, same file's header comment:
-  **recurring schedule setup/change** (the `mwf`/`tts`/`sixday` pattern-
-  matching ladder, §15) and **demo/assessment booking** (a different,
-  partly-anonymous RPC path, `confirmDemoBooking`/`createAssessmentBooking`).
+  recurring schedule setup (now built separately — see below) and
+  **demo/assessment booking** (a different, partly-anonymous RPC path,
+  `confirmDemoBooking`/`createAssessmentBooking`).
   Coach picking for a client with no assigned coach yet is a plain active-
   coach list, not the web app's lowest-utilization-first matching — noted
   as a simplification, not a schema gap.
@@ -190,6 +190,28 @@ it's now in a chat transcript.
 
 This completes all of §28 Phase 9 (Coach Change, Escalations, Chat) to
 the extent buildable from this mobile-only repo.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 5 — Booking Engine" (recurring
+  schedule slice — completes Phase 5)**: new screen
+  `src/app/(client)/my-schedule.tsx`, reached from Sessions ("Manage my
+  schedule"). Confirmed live on 2026-08-18: a "pattern" is actually N
+  separate `recurring_slots` rows (one per weekday, no single "pattern"
+  row exists), clients CAN insert/update their own `recurring_slots`
+  directly (unlike coach-change stage 2), and
+  `generate_bookings_from_recurring_slot(slot_id, count)` materializes
+  the first real bookings per row. §13 rule 19 ("recurring collision
+  check is leave-agnostic") is honored deliberately — this only checks
+  the coach's permanent weekly template, never `coach_leave`, when
+  picking a time; it also structurally *can't* check other clients'
+  recurring_slots for collisions (RLS restricts SELECT to your own), so
+  it leans on `generate_bookings_from_recurring_slot`'s own conflict
+  check at generation time and reports back exactly how many of the
+  requested 4 occurrences per day actually got confirmed, rather than
+  assuming success. §15's 4-step matching ladder is simplified to one
+  step: show every hour that works across all selected days, instead of
+  a requested-time-first-then-fallback substitution the client wouldn't
+  see happen. Same same-coach-only and verification/testing caveats as
+  the other phases above — see `recurring-schedule.ts`'s header comment
+  for the full detail.
 - **Phase 3 — Motivation layer**: schema-verified. `ProgressRing`/
   `StreakChip`/`CelebrationOverlay` all confirmed correct against real
   completed-booking data. Push notification **registration** works;
@@ -260,11 +282,10 @@ Plan" rather than silently doing nothing or lying about success.
    RLS are confirmed to exist and ready; wiring a picker needs a new
    native dependency (`expo-image-picker`) plus `app.json` permission
    config — a deliberate follow-on, not a schema-risk blocker.
-4. **Recurring schedule setup/change + demo booking — not built.**
-   Deliberately out of scope for the booking-wizard pass (see Phase 5
-   above for why): the pattern-matching ladder (`mwf`/`tts`/`sixday`) and
-   the separate anonymous demo-booking entry point are each their own
-   scoped build, not a schema-risk blocker.
+4. **Demo/assessment booking — not built.** Recurring schedule setup is
+   now built (see "Phase 5" above). The separate anonymous demo-booking
+   entry point (`confirmDemoBooking`/`createAssessmentBooking`, no
+   account required) is its own scoped build, not a schema-risk blocker.
 5. **Web dev target crashes on boot** (`expo start --web` /
    `npx expo export --platform web`) — `ReferenceError: window is not
    defined` in `LargeSecureStore.getItem` (`src/lib/supabase/large-secure-store.ts`)

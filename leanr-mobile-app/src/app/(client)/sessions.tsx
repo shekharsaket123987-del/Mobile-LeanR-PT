@@ -89,6 +89,9 @@ export default function SessionsScreen() {
       <CtaButton onPress={() => router.push('/book-session')} style={styles.bookButton}>
         + Book a Session
       </CtaButton>
+      <TextLink onPress={() => router.push('/my-schedule')} style={styles.scheduleLink}>
+        Manage my schedule
+      </TextLink>
 
       <View style={styles.tabRow} accessibilityRole="tablist">
         {TABS.map((tab) => (
@@ -117,6 +120,7 @@ export default function SessionsScreen() {
 
 const styles = StyleSheet.create({
   bookButton: { marginBottom: 4 },
+  scheduleLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginBottom: 8 },
   tabRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   tabPressable: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
   tabLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, opacity: 0.5 },

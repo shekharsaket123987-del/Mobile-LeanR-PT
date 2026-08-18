@@ -1,7 +1,8 @@
 /**
  * More tab — Subscription, My Concerns, Notifications, Profile
- * (LEANR_PT_NEXTGEN_APP_PRD.md §6). "Subscription" now links to the real
- * Plans screen (Phase 5); the rest stay placeholder rows until wired.
+ * (LEANR_PT_NEXTGEN_APP_PRD.md §6). "Subscription" links to the real
+ * Plans screen (Phase 5), "My Concerns" to the real concerns screen
+ * (Phase 9); the rest stay placeholder rows until wired.
  */
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,7 +11,7 @@ import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
-const ROWS = ['Progress', 'My Concerns', 'Notifications', 'Profile'];
+const PLACEHOLDER_ROWS = ['Progress', 'Notifications', 'Profile'];
 
 export default function MoreScreen() {
   const { session, signOut } = useAuth();
@@ -25,7 +26,15 @@ export default function MoreScreen() {
         <Text style={shared.cardLabel}>Subscription & Plans</Text>
       </Pressable>
 
-      {ROWS.map((row) => (
+      <Pressable
+        style={styles.row}
+        onPress={() => router.push('/concerns')}
+        accessibilityRole="button"
+        accessibilityLabel="My Concerns">
+        <Text style={shared.cardLabel}>My Concerns</Text>
+      </Pressable>
+
+      {PLACEHOLDER_ROWS.map((row) => (
         <View key={row} style={styles.row}>
           <Text style={shared.cardLabel}>{row}</Text>
         </View>

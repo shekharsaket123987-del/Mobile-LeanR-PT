@@ -121,6 +121,9 @@ it's now in a chat transcript.
   **recurring schedule setup/change** (the `mwf`/`tts`/`sixday` pattern-
   matching ladder, §15) and **demo/assessment booking** (a different,
   partly-anonymous RPC path, `confirmDemoBooking`/`createAssessmentBooking`).
+  Coach picking for a client with no assigned coach yet is a plain active-
+  coach list, not the web app's lowest-utilization-first matching — noted
+  as a simplification, not a schema gap.
 - **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 7 — Reschedule & Cancellation"**:
   cancel was already done; reschedule is now built too. New screen:
   `src/app/(client)/reschedule/[id].tsx`, reached from Sessions'
@@ -152,9 +155,18 @@ it's now in a chat transcript.
   its upload RLS are confirmed to exist, but wiring a picker needs a new
   native dependency (`expo-image-picker`) this repo doesn't have yet.
   Same verification/testing caveats as Phase 5/7 above.
-  Coach picking for a client with no assigned coach yet is a plain active-
-  coach list, not the web app's lowest-utilization-first matching — noted
-  as a simplification, not a schema gap.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 9" (My Concerns slice)**: client
+  can raise a concern and track its status (open/in progress/resolved),
+  including any admin-added client-visible notes and the final
+  resolution text once closed. `src/lib/data/concerns.ts` — confirmed
+  live on 2026-08-18: a client can INSERT/SELECT their own `escalations`
+  rows and SELECT (never write) `escalation_notes`, matching §3's "can
+  only raise/request them, not resolve." Reached from More ("My
+  Concerns"). `category` is free text in the live schema, not an enum —
+  the chip set offered is an inferred, reasonable vocabulary (two of the
+  five values are confirmed live: `technical_issue`, `other`), not a
+  confirmed canonical list. Same verification/testing caveats as the
+  phases above.
 - **Phase 3 — Motivation layer**: schema-verified. `ProgressRing`/
   `StreakChip`/`CelebrationOverlay` all confirmed correct against real
   completed-booking data. Push notification **registration** works;

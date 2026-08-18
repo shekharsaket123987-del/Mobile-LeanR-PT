@@ -113,6 +113,7 @@ export default function ClientLayout() {
           way to keep a route in this group without a tab bar entry. */}
       <Tabs.Screen name="book-session" options={{ href: null, title: 'Book a Session' }} />
       <Tabs.Screen name="reschedule/[id]" options={{ href: null, title: 'Reschedule' }} />
+      <Tabs.Screen name="concerns" options={{ href: null, title: 'My Concerns' }} />
     </Tabs>
   );
 }

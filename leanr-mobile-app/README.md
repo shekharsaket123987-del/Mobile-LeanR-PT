@@ -135,6 +135,23 @@ it's now in a chat transcript.
   see `isAfterRescheduleCutoff`'s comment in `booking-wizard.ts`. Same
   verification/testing caveats as Phase 5 above (tsc/lint/export clean,
   not click-tested live).
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 9" (chat slice)**: real-time
+  client<->coach text chat, built into the Coach tab per
+  `LEANR_PT_NEXTGEN_APP_PRD.md` §9.5's "unified Coach tab" (coach card +
+  chat thread on one screen). `src/lib/data/chat.ts` — confirmed live on
+  2026-08-18: `messages`/`conversations` RLS does all the enforcement (no
+  RPC layer), `messages` is already in the `supabase_realtime` publication
+  (no setup needed), and — importantly — **this app can never create a
+  conversation**: there's no client/coach INSERT policy on `conversations`
+  and no DB trigger auto-creates one, confirmed by live data showing some
+  clients have one and some don't. So the Coach tab shows a conversation
+  only if one already exists (admin-created), matching §10's "My Chats
+  surfaces only if a chat has ever existed." Read receipts (WhatsApp-style
+  single/double check) and realtime delivery both wired. **Image
+  attachments are not built** — the `chat-attachments` storage bucket and
+  its upload RLS are confirmed to exist, but wiring a picker needs a new
+  native dependency (`expo-image-picker`) this repo doesn't have yet.
+  Same verification/testing caveats as Phase 5/7 above.
   Coach picking for a client with no assigned coach yet is a plain active-
   coach list, not the web app's lowest-utilization-first matching — noted
   as a simplification, not a schema gap.
@@ -203,10 +220,11 @@ Plan" rather than silently doing nothing or lying about success.
    or route calling Expo's push API when a `notifications` row is
    created), outside this mobile repo. Also: since Expo SDK 53, remote
    push requires a development build — it will not work in Expo Go.
-3. **Chat UI — schema known, not built.** See the schema section above
-   for the confirmed `conversations`/`messages` shapes. The booking
-   wizard (this item's former other half) is now built — see "Phase 5"
-   above.
+3. **Chat image attachments — not built.** Text chat is now built (see
+   "Phase 9" above). The `chat-attachments` storage bucket and its upload
+   RLS are confirmed to exist and ready; wiring a picker needs a new
+   native dependency (`expo-image-picker`) plus `app.json` permission
+   config — a deliberate follow-on, not a schema-risk blocker.
 4. **Recurring schedule setup/change + demo booking — not built.**
    Deliberately out of scope for the booking-wizard pass (see Phase 5
    above for why): the pattern-matching ladder (`mwf`/`tts`/`sixday`) and

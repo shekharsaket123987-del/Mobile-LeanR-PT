@@ -87,6 +87,8 @@ export default function CoachLayout() {
       <Tabs.Screen name="escalations" options={{ href: null, title: 'Escalations' }} />
       <Tabs.Screen name="renewals" options={{ href: null, title: 'Renewals' }} />
       <Tabs.Screen name="performance" options={{ href: null, title: 'Performance' }} />
+      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      <Tabs.Screen name="profile" options={{ href: null, title: 'Profile' }} />
     </Tabs>
   );
 }

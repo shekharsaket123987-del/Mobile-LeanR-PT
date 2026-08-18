@@ -278,9 +278,32 @@ the extent buildable from this mobile-only repo.
   computed fresh from `bookings` rather than trusting the
   `coach_profiles.rating`/`review_count` columns, matching §13 rule 21
   ("recomputed live... not a stored/incrementally-maintained field").
-  Still placeholder rows on Coach More: Chats, Search, Notifications,
-  Profile — a second slice, not built in this pass. Same
-  verification/testing caveats as the phases above.
+  Still placeholder rows on Coach More: Chats, Search — a further slice,
+  not built in this pass. Same verification/testing caveats as the
+  phases above.
+- **Notifications + Profile (both apps)**: these were missing from
+  *both* client and coach More tabs, not just coach — built once,
+  shared logic. `src/lib/data/notifications.ts` — a real finding here:
+  §20/§26 says push should deep-link via
+  `notifications.related_entity_type/id`, but **every one of the 32 real
+  notification rows sampled live has both columns null** —
+  `createFromTemplate()` never actually populates them in practice. So
+  routing is done by `template_key` substring instead (which is always
+  populated) — several live keys don't even match the PRD §20 catalog's
+  exact names (`schedule_changed_client` in real data vs.
+  `admin_changed_schedule` in the prose), so it's substring-matched into
+  a few route *categories* rather than a rigid 22-key exact table that
+  would silently fail on any key it hadn't seen. Coach chat isn't built
+  yet, so a `new_chat_message` notification on the coach side just marks
+  read without navigating. `src/lib/data/profile.ts` — confirmed real,
+  direct write access via each table's `_update_own` RLS policy (not a
+  boundary like coach-change stage 2). Deliberately scoped to
+  name/phone/emergency-contact + a small role-specific subset (client
+  goals/equipment, coach bio/specialization) + password change, not
+  every column (`medical_notes`, `certifications`, `languages`, `skills`
+  are real, writable, and left for later) — and no photo upload (same
+  class of work as the chat image picker, not repeated for one avatar
+  field). Same verification/testing caveats as the phases above.
 - **Phase 5 — Payments + Zoom**: Zoom join and Plans listing
   schema-verified and corrected (`package_tiers`, plain `price`). Purchase
   remains a deliberate stub — see "Why payments can't be finished from

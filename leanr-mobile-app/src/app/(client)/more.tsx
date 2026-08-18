@@ -1,8 +1,8 @@
 /**
  * More tab — Subscription, My Concerns, Notifications, Profile
- * (LEANR_PT_NEXTGEN_APP_PRD.md §6). "Subscription" links to the real
- * Plans screen (Phase 5), "My Concerns" to the real concerns screen
- * (Phase 9); the rest stay placeholder rows until wired.
+ * (LEANR_PT_NEXTGEN_APP_PRD.md §6). All four are real now; only
+ * "Progress" stays a placeholder row (it's already its own tab, this
+ * row predates that and is effectively vestigial).
  */
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,28 +11,29 @@ import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
-const PLACEHOLDER_ROWS = ['Progress', 'Notifications', 'Profile'];
+const LINKED_ROWS: { label: string; href: '/plans' | '/concerns' | '/notifications' | '/profile' }[] = [
+  { label: 'Subscription & Plans', href: '/plans' },
+  { label: 'My Concerns', href: '/concerns' },
+  { label: 'Notifications', href: '/notifications' },
+  { label: 'Profile', href: '/profile' },
+];
+const PLACEHOLDER_ROWS = ['Progress'];
 
 export default function MoreScreen() {
   const { session, signOut } = useAuth();
 
   return (
     <ScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
-      <Pressable
-        style={styles.row}
-        onPress={() => router.push('/plans')}
-        accessibilityRole="button"
-        accessibilityLabel="Subscription & Plans">
-        <Text style={shared.cardLabel}>Subscription & Plans</Text>
-      </Pressable>
-
-      <Pressable
-        style={styles.row}
-        onPress={() => router.push('/concerns')}
-        accessibilityRole="button"
-        accessibilityLabel="My Concerns">
-        <Text style={shared.cardLabel}>My Concerns</Text>
-      </Pressable>
+      {LINKED_ROWS.map((row) => (
+        <Pressable
+          key={row.label}
+          style={styles.row}
+          onPress={() => router.push(row.href)}
+          accessibilityRole="button"
+          accessibilityLabel={row.label}>
+          <Text style={shared.cardLabel}>{row.label}</Text>
+        </Pressable>
+      ))}
 
       {PLACEHOLDER_ROWS.map((row) => (
         <View key={row} style={styles.row}>

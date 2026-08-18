@@ -1,8 +1,8 @@
 /**
  * Coach More — Availability, Escalations, Performance, Search, Renewals,
  * Notifications, Profile, Chats (LEANR_PT_MOBILE_PRD.md §5 coach nav).
- * Availability/Escalations/Renewals/Performance are now real (Phase 11
- * slice); Chats/Search/Notifications/Profile stay placeholder rows.
+ * Availability/Escalations/Renewals/Performance/Notifications/Profile
+ * are now real; only Chats and Search remain placeholder rows.
  */
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,13 +11,18 @@ import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
-const LINKED_ROWS: { label: string; href: '/availability' | '/escalations' | '/renewals' | '/performance' }[] = [
+const LINKED_ROWS: {
+  label: string;
+  href: '/availability' | '/escalations' | '/renewals' | '/performance' | '/notifications' | '/profile';
+}[] = [
   { label: 'Availability', href: '/availability' },
   { label: 'Escalations', href: '/escalations' },
   { label: 'Renewals', href: '/renewals' },
   { label: 'Performance', href: '/performance' },
+  { label: 'Notifications', href: '/notifications' },
+  { label: 'Profile', href: '/profile' },
 ];
-const PLACEHOLDER_ROWS = ['Chats', 'Search', 'Notifications', 'Profile'];
+const PLACEHOLDER_ROWS = ['Chats', 'Search'];
 
 export default function CoachMore() {
   const { session, signOut } = useAuth();

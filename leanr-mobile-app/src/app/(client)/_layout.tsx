@@ -116,6 +116,8 @@ export default function ClientLayout() {
       <Tabs.Screen name="concerns" options={{ href: null, title: 'My Concerns' }} />
       <Tabs.Screen name="my-schedule" options={{ href: null, title: 'My Schedule' }} />
       <Tabs.Screen name="demo-booking" options={{ href: null, title: 'Book a Free Demo' }} />
+      <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
+      <Tabs.Screen name="profile" options={{ href: null, title: 'Profile' }} />
     </Tabs>
   );
 }

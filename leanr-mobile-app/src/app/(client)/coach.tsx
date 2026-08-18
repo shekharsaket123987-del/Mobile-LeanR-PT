@@ -1,9 +1,12 @@
 /**
  * Coach tab — LEANR_PT_NEXTGEN_APP_PRD.md §9.5 "Unified Coach tab: coach
- * card up top... chat thread below" — coach profile (unchanged) plus a
- * real-time text chat thread (LEANR_PT_MOBILE_PRD.md §20), wired against
- * the live schema (see src/lib/data/chat.ts header for exactly what was
- * confirmed on 2026-08-18).
+ * card up top... 'message'/'request change' affordances... chat thread
+ * below" — coach profile, a "Request Coach Change" affordance
+ * (LEANR_PT_MOBILE_PRD.md §7e, see src/lib/data/coach-change.ts for a
+ * real structural boundary this pass found there), and a real-time text
+ * chat thread (§20), wired against the live schema (see
+ * src/lib/data/chat.ts header for exactly what was confirmed on
+ * 2026-08-18).
  *
  * Text messages only — image attachments (`chat-attachments` storage
  * bucket, confirmed to exist) aren't wired up; that needs a native image
@@ -18,9 +21,16 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { CtaButton } from '@/components/tappable';
 import { Brand, Colors } from '@/constants/theme';
 import { getMyActiveConversation, getMessages, markCoachMessagesRead, sendMessage, subscribeToConversation } from '@/lib/data/chat';
 import { getMyCoach } from '@/lib/data/coach';
+import {
+  getMyCoachChangeRequests,
+  requestCoachChange,
+  type CoachChangeRequest,
+  type CoachChangeStatus,
+} from '@/lib/data/coach-change';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -28,14 +38,23 @@ function formatMessageTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function CoachScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [coach, conversation] = await Promise.all([getMyCoach(), getMyActiveConversation()]);
-    return { coach, conversation };
+    const [coach, conversation, changeRequests] = await Promise.all([
+      getMyCoach(),
+      getMyActiveConversation(),
+      getMyCoachChangeRequests(),
+    ]);
+    return { coach, conversation, changeRequests };
   }, []);
 
   const coach = data?.coach ?? null;
   const conversation = data?.conversation ?? null;
+  const changeRequests = data?.changeRequests ?? [];
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -104,6 +123,10 @@ export default function CoachScreen() {
         </Card>
       )}
 
+      {!loading && !error && coach && (
+        <CoachChangeSection requests={changeRequests} onSubmitted={reload} />
+      )}
+
       {!loading && !error && coach && !conversation && (
         <EmptyState message="No conversation with your coach yet." />
       )}
@@ -127,6 +150,111 @@ export default function CoachScreen() {
         </>
       )}
     </ScreenScaffold>
+  );
+}
+
+const CHANGE_STATUS_LABEL: Record<CoachChangeStatus, string> = {
+  pending: 'Pending review',
+  approved: 'Approved',
+  rejected: 'Not approved',
+};
+const CHANGE_STATUS_COLOR: Record<CoachChangeStatus, string> = {
+  pending: Brand.streakEmberStart,
+  approved: Brand.successEmerald,
+  rejected: Brand.alertRed,
+};
+
+function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRequest[]; onSubmitted: () => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [reason, setReason] = useState('');
+  const [coachRating, setCoachRating] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const hasOpenRequest = requests.some((r) => r.status === 'pending');
+
+  const onSubmit = async () => {
+    if (!reason.trim()) {
+      setFormError('Tell us why you want to switch coaches.');
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await requestCoachChange({ reason: reason.trim(), overallExperience: null, coachRating, additionalComments: null });
+      setReason('');
+      setCoachRating(null);
+      setShowForm(false);
+      onSubmitted();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <View style={styles.changeHeader}>
+        <Text style={shared.cardLabel}>COACH CHANGE</Text>
+        {!hasOpenRequest && (
+          <Pressable onPress={() => setShowForm((v) => !v)} hitSlop={8} accessibilityRole="button">
+            <Text style={styles.changeToggle}>{showForm ? 'Cancel' : 'Request change'}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {requests.map((r) => (
+        <View key={r.id} style={styles.changeRow}>
+          <Text style={styles.bubbleTime}>{formatDate(r.created_at)}</Text>
+          <Text style={[styles.changeStatus, { color: CHANGE_STATUS_COLOR[r.status] }]}>
+            {CHANGE_STATUS_LABEL[r.status]}
+          </Text>
+        </View>
+      ))}
+      {requests.some((r) => r.status === 'approved') && (
+        <Text style={styles.changeNote}>
+          Approved — your coach change is finalized by our team; you&apos;ll be notified once your new coach and
+          schedule are set.
+        </Text>
+      )}
+
+      {showForm && (
+        <View style={styles.changeForm}>
+          <TextInput
+            style={styles.reasonInput}
+            placeholder="Why do you want to switch coaches?"
+            value={reason}
+            onChangeText={setReason}
+            multiline
+            accessibilityLabel="Reason for coach change"
+          />
+          <Text style={styles.bubbleTime}>RATE YOUR CURRENT COACH (OPTIONAL)</Text>
+          <View style={styles.ratingRow}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Pressable
+                key={n}
+                onPress={() => setCoachRating(coachRating === n ? null : n)}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${n} out of 5`}
+                accessibilityState={{ selected: coachRating === n }}
+                style={[styles.ratingChip, coachRating === n && styles.ratingChipSelected]}>
+                <Text style={[styles.ratingChipText, coachRating === n && styles.ratingChipTextSelected]}>{n}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {formError && (
+            <Text style={styles.errorText} accessibilityRole="alert">
+              {formError}
+            </Text>
+          )}
+          <CtaButton onPress={onSubmit} loading={submitting}>
+            Submit request
+          </CtaButton>
+        </View>
+      )}
+    </Card>
   );
 }
 
@@ -195,6 +323,25 @@ function MessageInput({
 }
 
 const styles = StyleSheet.create({
+  changeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  changeToggle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
+  changeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  changeStatus: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
+  changeNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 6 },
+  changeForm: { marginTop: 8, gap: 8 },
+  reasonInput: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2, minHeight: 44 },
+  ratingRow: { flexDirection: 'row', gap: 8 },
+  ratingChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(128,128,128,0.15)',
+  },
+  ratingChipSelected: { backgroundColor: Brand.yellow },
+  ratingChipText: { fontFamily: 'Manrope_700Bold', fontSize: 15 },
+  ratingChipTextSelected: { color: Brand.black },
   thread: { gap: 8 },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowMine: { justifyContent: 'flex-end' },

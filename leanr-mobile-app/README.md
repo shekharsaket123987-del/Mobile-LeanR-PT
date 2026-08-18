@@ -167,6 +167,29 @@ it's now in a chat transcript.
   five values are confirmed live: `technical_issue`, `other`), not a
   confirmed canonical list. Same verification/testing caveats as the
   phases above.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 9" (coach-change slice — completes
+  Phase 9)**: this is the one place this pass found a genuine *structural*
+  boundary, not just an unbuilt screen. §7e's client flow is actually two
+  stages: (1) submit a reason, `status='pending'`, admin reviews; only
+  once approved does (2) "pick your new schedule" -> Find Available Coach
+  -> Confirm unlock and actually swap the coach. Stage 2
+  (`completeCoachChangeAction` in the web app) is **not reproducible from
+  this mobile-only repo**, confirmed live: `coach_change_requests` has no
+  client UPDATE policy at all (only `coach_change_admin_all`), and
+  closing/reopening the client's `conversations` row — which §20 says a
+  completed coach change must do — is admin-only too. Both are the same
+  class of problem as Razorpay payments (§8g): a privileged, multi-table
+  server-side operation this app has no elevated context to perform.
+  So `src/lib/data/coach-change.ts` / the Coach tab's new "Request Coach
+  Change" card only build what RLS actually allows a client to do:
+  submit a request (reason + optional 1-5 coach rating) and see its own
+  request history/status (pending/approved/rejected). If approved, the
+  card says so and explains the actual coach swap happens outside the
+  app — same "explain the boundary, don't fake success" pattern as
+  `plans.tsx`. Same verification/testing caveats as the phases above.
+
+This completes all of §28 Phase 9 (Coach Change, Escalations, Chat) to
+the extent buildable from this mobile-only repo.
 - **Phase 3 — Motivation layer**: schema-verified. `ProgressRing`/
   `StreakChip`/`CelebrationOverlay` all confirmed correct against real
   completed-booking data. Push notification **registration** works;

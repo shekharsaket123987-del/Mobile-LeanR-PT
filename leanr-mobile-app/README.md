@@ -256,6 +256,31 @@ the extent buildable from this mobile-only repo.
   client roster query correctly round-trips with the client-side "my
   coach" lookup. `attendance`/`workout_notes` writes use confirmed real
   columns.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 11 — Coach Portal Completion"
+  (first slice)**: four new screens off the coach More tab —
+  **Availability** (`src/lib/data/coach-availability.ts`): the coach's
+  weekly hours are genuinely read-only by RLS (no coach INSERT/UPDATE
+  policy on `coach_availability` at all, confirmed live — not just a UI
+  choice), plus a "Request Leave" form backed by three real CHECK
+  constraints (`ends_on >= starts_on`, partial-leave time bounds,
+  partial-leave-must-be-single-day). §13 rule 11's 24h-notice rule is
+  confirmed to NOT be a DB constraint (no trigger, no CHECK) — enforced
+  client-side only, same as the web app's stated behavior, documented as
+  such rather than assumed enforced. **Escalations**
+  (`coach-escalations.ts`): read-only view of linked clients'
+  escalations; confirmed live that `escalation_notes` has no coach
+  SELECT policy at all, so (unlike the client's My Concerns) there's no
+  notes/resolution detail available to show. **Renewals**
+  (`coach-renewals.ts`): clients at or under the `SESSIONS_LOW_THRESHOLD`
+  (hardcoded `5`, matching the web app's own hardcoded constant — not a
+  `system_settings` row). **Performance** (`coach-performance.ts`):
+  completed/upcoming/missed session counts plus average `trainer_rating`
+  computed fresh from `bookings` rather than trusting the
+  `coach_profiles.rating`/`review_count` columns, matching §13 rule 21
+  ("recomputed live... not a stored/incrementally-maintained field").
+  Still placeholder rows on Coach More: Chats, Search, Notifications,
+  Profile — a second slice, not built in this pass. Same
+  verification/testing caveats as the phases above.
 - **Phase 5 — Payments + Zoom**: Zoom join and Plans listing
   schema-verified and corrected (`package_tiers`, plain `price`). Purchase
   remains a deliberate stub — see "Why payments can't be finished from

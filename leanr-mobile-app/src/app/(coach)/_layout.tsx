@@ -83,6 +83,10 @@ export default function CoachLayout() {
         }}
       />
       <Tabs.Screen name="session/[id]" options={{ href: null }} />
+      <Tabs.Screen name="availability" options={{ href: null, title: 'Availability' }} />
+      <Tabs.Screen name="escalations" options={{ href: null, title: 'Escalations' }} />
+      <Tabs.Screen name="renewals" options={{ href: null, title: 'Renewals' }} />
+      <Tabs.Screen name="performance" options={{ href: null, title: 'Performance' }} />
     </Tabs>
   );
 }

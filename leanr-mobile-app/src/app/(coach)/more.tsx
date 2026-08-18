@@ -1,22 +1,41 @@
 /**
  * Coach More — Availability, Escalations, Performance, Search, Renewals,
  * Notifications, Profile, Chats (LEANR_PT_MOBILE_PRD.md §5 coach nav).
- * Same pattern as the client More tab: placeholder rows + real sign out.
+ * Availability/Escalations/Renewals/Performance are now real (Phase 11
+ * slice); Chats/Search/Notifications/Profile stay placeholder rows.
  */
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
-const ROWS = ['Availability', 'Chats', 'Escalations', 'Performance', 'Search', 'Renewals', 'Notifications', 'Profile'];
+const LINKED_ROWS: { label: string; href: '/availability' | '/escalations' | '/renewals' | '/performance' }[] = [
+  { label: 'Availability', href: '/availability' },
+  { label: 'Escalations', href: '/escalations' },
+  { label: 'Renewals', href: '/renewals' },
+  { label: 'Performance', href: '/performance' },
+];
+const PLACEHOLDER_ROWS = ['Chats', 'Search', 'Notifications', 'Profile'];
 
 export default function CoachMore() {
   const { session, signOut } = useAuth();
 
   return (
     <ScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
-      {ROWS.map((row) => (
+      {LINKED_ROWS.map((row) => (
+        <Pressable
+          key={row.label}
+          style={styles.row}
+          onPress={() => router.push(row.href)}
+          accessibilityRole="button"
+          accessibilityLabel={row.label}>
+          <Text style={shared.cardLabel}>{row.label}</Text>
+        </Pressable>
+      ))}
+
+      {PLACEHOLDER_ROWS.map((row) => (
         <View key={row} style={styles.row}>
           <Text style={shared.cardLabel}>{row}</Text>
         </View>

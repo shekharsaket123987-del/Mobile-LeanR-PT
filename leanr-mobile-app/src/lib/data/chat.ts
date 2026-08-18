@@ -17,9 +17,16 @@
  *   clients have an active conversation and some don't, so creation is an
  *   admin-side action outside this app's scope, matching §10's "My Chats
  *   surfaces only if a chat has ever existed."
- * - Image attachments are NOT built here — `chat-attachments` storage
- *   bucket + its upload RLS are confirmed to exist, but wiring a picker
- *   is a distinct, undone slice (see README open items).
+ * - **Image attachments** upload to the `chat-attachments` bucket (public
+ *   read, confirmed live) at path `${conversationId}/${filename}` — the
+ *   bucket's own INSERT policy requires that exact first path segment to
+ *   be a conversation the uploader participates in
+ *   (`storage.foldername(name)[1]` compared against
+ *   `client_id = my_client_id()`), confirmed via direct introspection on
+ *   2026-08-18. Uploaded as an ArrayBuffer (`fetch(uri).arrayBuffer()`),
+ *   the standard Expo+Supabase Storage pattern — React Native's `Blob`
+ *   support is unreliable enough that Supabase's own docs recommend
+ *   this over passing a `Blob`/`FormData` directly.
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
@@ -49,7 +56,10 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
   return (data ?? []) as Message[];
 }
 
-export async function sendMessage(conversationId: string, body: string): Promise<Message> {
+export async function sendMessage(
+  conversationId: string,
+  content: { body?: string | null; attachmentUrl?: string | null }
+): Promise<Message> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Not signed in.');
 
@@ -59,12 +69,32 @@ export async function sendMessage(conversationId: string, body: string): Promise
       conversation_id: conversationId,
       sender_role: 'client',
       sender_profile_id: userData.user.id,
-      body,
+      body: content.body ?? null,
+      attachment_url: content.attachmentUrl ?? null,
     })
     .select('*')
     .single();
   if (error) throw error;
   return data as Message;
+}
+
+/**
+ * Uploads an image to the `chat-attachments` bucket and returns its
+ * public URL. Does not send a message — call `sendMessage` with the
+ * result as `attachmentUrl` once this resolves.
+ */
+export async function uploadChatImage(conversationId: string, localUri: string, mimeType: string | undefined): Promise<string> {
+  const arrayBuffer = await fetch(localUri).then((res) => res.arrayBuffer());
+  const ext = mimeType?.split('/')[1] ?? 'jpg';
+  const path = `${conversationId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from('chat-attachments')
+    .upload(path, arrayBuffer, { contentType: mimeType ?? 'image/jpeg' });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('chat-attachments').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 /** Marks every unread COACH message in this conversation as read (client viewing the thread). */

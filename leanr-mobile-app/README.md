@@ -151,10 +151,24 @@ it's now in a chat transcript.
   only if one already exists (admin-created), matching §10's "My Chats
   surfaces only if a chat has ever existed." Read receipts (WhatsApp-style
   single/double check) and realtime delivery both wired. **Image
-  attachments are not built** — the `chat-attachments` storage bucket and
-  its upload RLS are confirmed to exist, but wiring a picker needs a new
-  native dependency (`expo-image-picker`) this repo doesn't have yet.
-  Same verification/testing caveats as Phase 5/7 above.
+  attachments are now built too** (added `expo-image-picker` — see
+  below). Same verification/testing caveats as Phase 5/7 above.
+- **Image attachments (chat)**: photo-library picker (`expo-image-picker`,
+  installed via `npx expo install` for SDK-correct versioning — no camera
+  capture, device library only) wired into the Coach tab's chat input.
+  Uploads to the `chat-attachments` bucket at
+  `${conversationId}/${filename}` as an `ArrayBuffer`
+  (`fetch(uri).arrayBuffer()`) — the standard Expo+Supabase pattern,
+  since React Native's `Blob` support is unreliable enough that
+  Supabase's own docs recommend this over passing a `Blob` directly. The
+  bucket's own upload RLS requires that exact path shape (first segment
+  = a conversation you participate in), confirmed live on 2026-08-18. No
+  captions alongside an image (image-only messages), no re-compression
+  beyond the picker's own `quality: 0.7` — reasonable first-pass cuts,
+  not gaps. `app.json` now has an `expo-image-picker` plugin entry
+  setting the iOS/Android photo-permission strings; confirmed applied via
+  `npx expo config --type introspect` (shows `NSPhotoLibraryUsageDescription`
+  set correctly), not just assumed from adding the plugin block.
 - **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 9" (My Concerns slice)**: client
   can raise a concern and track its status (open/in progress/resolved),
   including any admin-added client-visible notes and the final
@@ -295,11 +309,9 @@ Plan" rather than silently doing nothing or lying about success.
    or route calling Expo's push API when a `notifications` row is
    created), outside this mobile repo. Also: since Expo SDK 53, remote
    push requires a development build — it will not work in Expo Go.
-3. **Chat image attachments — not built.** Text chat is now built (see
-   "Phase 9" above). The `chat-attachments` storage bucket and its upload
-   RLS are confirmed to exist and ready; wiring a picker needs a new
-   native dependency (`expo-image-picker`) plus `app.json` permission
-   config — a deliberate follow-on, not a schema-risk blocker.
+3. **Chat image attachments — now built.** See "Image attachments (chat)"
+   above. No camera capture (library only) and no captions alongside an
+   image — reasonable first-pass cuts if you want them extended later.
 4. **Anonymous demo booking — not built.** The authenticated-client demo
    booking flow is now built (see "Phase 5" above). The separate
    anonymous entry point (`createAssessmentBooking()`, no account

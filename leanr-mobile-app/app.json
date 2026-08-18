@@ -41,6 +41,12 @@
         {
           "color": "#F5E400"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LEANR needs access to your photos to send images to your coach in chat."
+        }
       ]
     ],
     "experiments": {

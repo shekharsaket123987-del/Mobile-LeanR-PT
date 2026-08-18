@@ -8,22 +8,32 @@
  * src/lib/data/chat.ts header for exactly what was confirmed on
  * 2026-08-18).
  *
- * Text messages only — image attachments (`chat-attachments` storage
- * bucket, confirmed to exist) aren't wired up; that needs a native image
- * picker dependency this repo doesn't have yet, see README open items.
- * Layout is the same single-ScrollView shell every other screen uses
- * (Design Principle #5) rather than a pinned keyboard-avoiding input bar
- * — a reasonable first pass for a low-volume PT coaching chat, not a
- * high-frequency messaging app; a docked input bar is a fair polish-pass
- * upgrade later.
+ * Text + image messages. Attachments upload to the `chat-attachments`
+ * bucket via `expo-image-picker` (device photo library only — no camera
+ * capture, no captions alongside an image, both reasonable first-pass
+ * cuts) — see src/lib/data/chat.ts header for the confirmed upload-path/
+ * RLS shape. Layout is the same single-ScrollView shell every other
+ * screen uses (Design Principle #5) rather than a pinned keyboard-
+ * avoiding input bar — a reasonable first pass for a low-volume PT
+ * coaching chat, not a high-frequency messaging app; a docked input bar
+ * is a fair polish-pass upgrade later.
  */
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { CtaButton } from '@/components/tappable';
 import { Brand, Colors } from '@/constants/theme';
-import { getMyActiveConversation, getMessages, markCoachMessagesRead, sendMessage, subscribeToConversation } from '@/lib/data/chat';
+import {
+  getMyActiveConversation,
+  getMessages,
+  markCoachMessagesRead,
+  sendMessage,
+  subscribeToConversation,
+  uploadChatImage,
+} from '@/lib/data/chat';
 import { getMyCoach } from '@/lib/data/coach';
 import {
   getMyCoachChangeRequests,
@@ -60,6 +70,7 @@ export default function CoachScreen() {
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [attaching, setAttaching] = useState(false);
 
   useEffect(() => {
     if (!conversation) return;
@@ -100,13 +111,42 @@ export default function CoachScreen() {
     setMessagesError(null);
     setSending(true);
     try {
-      const sent = await sendMessage(conversation.id, body);
+      const sent = await sendMessage(conversation.id, { body });
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     } catch (err) {
       setMessagesError(err instanceof Error ? err.message : String(err));
       setDraft(body);
     } finally {
       setSending(false);
+    }
+  };
+
+  const onAttachImage = async () => {
+    if (!conversation) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Photo access needed', 'Enable photo library access in Settings to send images.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsEditing: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    setMessagesError(null);
+    setAttaching(true);
+    try {
+      const attachmentUrl = await uploadChatImage(conversation.id, asset.uri, asset.mimeType);
+      const sent = await sendMessage(conversation.id, { attachmentUrl });
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+    } catch (err) {
+      setMessagesError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAttaching(false);
     }
   };
 
@@ -146,7 +186,14 @@ export default function CoachScreen() {
             </Text>
           )}
 
-          <MessageInput value={draft} onChangeText={setDraft} onSend={onSend} sending={sending} />
+          <MessageInput
+            value={draft}
+            onChangeText={setDraft}
+            onSend={onSend}
+            sending={sending}
+            onAttach={onAttachImage}
+            attaching={attaching}
+          />
         </>
       )}
     </ScreenScaffold>
@@ -266,6 +313,9 @@ function MessageBubble({ message }: { message: Message }) {
   return (
     <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
       <View style={[styles.bubble, { backgroundColor: isMine ? Brand.yellow : colors.backgroundElement }]}>
+        {message.attachment_url && (
+          <Image source={{ uri: message.attachment_url }} style={styles.attachmentImage} contentFit="cover" />
+        )}
         {message.body && (
           <Text style={[styles.bubbleText, { color: isMine ? Brand.black : colors.text }]}>{message.body}</Text>
         )}
@@ -287,11 +337,15 @@ function MessageInput({
   onChangeText,
   onSend,
   sending,
+  onAttach,
+  attaching,
 }: {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
   sending: boolean;
+  onAttach: () => void;
+  attaching: boolean;
 }) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
@@ -299,6 +353,16 @@ function MessageInput({
 
   return (
     <View style={[styles.inputRow, { backgroundColor: colors.backgroundElement }]}>
+      <Pressable
+        onPress={onAttach}
+        disabled={attaching}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Attach a photo"
+        accessibilityState={{ disabled: attaching, busy: attaching }}
+        style={[styles.attachButton, attaching && styles.sendButtonDisabled]}>
+        <Text style={styles.attachButtonText}>{attaching ? '…' : '📷'}</Text>
+      </Pressable>
       <TextInput
         style={[styles.input, { color: colors.text }]}
         placeholder="Message your coach…"
@@ -347,6 +411,7 @@ const styles = StyleSheet.create({
   bubbleRowMine: { justifyContent: 'flex-end' },
   bubble: { maxWidth: '80%', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12, gap: 2 },
   bubbleText: { fontFamily: 'Manrope_500Medium', fontSize: 15 },
+  attachmentImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4 },
   bubbleMeta: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 2 },
   bubbleTime: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
   receipt: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(0,0,0,0.5)' },
@@ -359,6 +424,15 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   input: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 15, maxHeight: 100, paddingVertical: 8, paddingHorizontal: 8 },
+  attachButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(128,128,128,0.15)',
+  },
+  attachButtonText: { fontSize: 18 },
   sendButton: { backgroundColor: Brand.yellow, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
   sendButtonDisabled: { opacity: 0.5 },
   sendButtonText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.black },

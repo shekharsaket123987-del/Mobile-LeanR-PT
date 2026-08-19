@@ -1,25 +1,22 @@
 /**
  * Push notification registration — LEANR_PT_NEXTGEN_APP_PRD.md §11.
  *
- * IMPORTANT — read before wiring this into anything user-facing:
- * this file only gets a device an Expo push token and stores it. It does
- * NOT send any notifications. Actually dispatching a push (session
- * reminders, streak-at-risk nudges, coach messages, etc.) requires
- * server-side code that isn't part of this mobile repo — the original
- * PRD confirms zero push/SMS/email dispatch exists anywhere today
- * (§26: "deliberate, documented Phase-1 boundary"), and this is exactly
- * the "single largest new backend requirement" it flags. That backend
- * piece (an Edge Function or server route calling Expo's push API when a
- * `notifications` row is created) is a separate, real task — not
- * something that can be faked from the client.
+ * This file gets a device an Expo push token and stores it in
+ * `push_tokens` (migration `push_tokens_and_send_trigger`, applied
+ * 2026-08-19 — table + RLS confirmed live, no longer a VERIFY item).
+ * Actual sending is a separate piece, now also real: a Postgres trigger
+ * (`trigger_send_push_notification()`, same migration) fires
+ * `pg_net.http_post` to the `send-push` Edge Function on every
+ * `notifications` INSERT, which looks up this table and calls Expo's
+ * push API. Confirmed end-to-end via a live test insert (safe — no
+ * token was registered for the test user, so nothing was actually
+ * pushed; the trigger→function→200-response chain was what got
+ * verified). See `supabase/functions/send-push/index.ts` for the
+ * sending side.
  *
- * The `push_tokens` table this writes to does not appear anywhere in the
- * functional PRD — it's new schema this feature needs. VERIFY it exists
- * (or create it) before relying on this write succeeding.
- *
- * Also note: since Expo SDK 53, remote push notifications require a
- * development build — they do NOT work in Expo Go. Local/foreground
- * permission requests still work in Expo Go for testing the UI prompt.
+ * Since Expo SDK 53, remote push notifications require a development
+ * build — they do NOT work in Expo Go. Local/foreground permission
+ * requests still work in Expo Go for testing the UI prompt.
  */
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -57,14 +54,11 @@ export async function registerPushToken(): Promise<{ token: string | null; error
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
   if (userId) {
-    // VERIFY: push_tokens is new schema, not documented anywhere in the
-    // functional PRD. Confirm this table exists (columns: user_id,
-    // expo_push_token, updated_at) before trusting this write.
     const { error: upsertError } = await supabase
       .from('push_tokens')
       .upsert({ user_id: userId, expo_push_token: token, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     if (upsertError) {
-      console.warn('[push] token retrieved but could not be stored (table likely missing):', upsertError.message);
+      console.warn('[push] token retrieved but could not be stored:', upsertError.message);
     }
   }
 

@@ -8,6 +8,7 @@ import { useColorScheme } from 'react-native';
 
 import { BrandLaunchAnimation } from '@/components/brand-launch-animation';
 import { AuthProvider } from '@/lib/auth/auth-context';
+import { useNotificationTapRouting } from '@/lib/notifications/use-notification-tap';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -21,6 +22,7 @@ export default function RootLayout() {
     Manrope_600SemiBold,
     Manrope_700Bold,
   });
+  useNotificationTapRouting();
 
   // Native splash (app.json) stays up until fonts resolve — nothing renders
   // before this, so there is nothing to flash or jump.

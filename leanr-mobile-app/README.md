@@ -246,11 +246,8 @@ the extent buildable from this mobile-only repo.
   this mobile-only repo.
 - **Phase 3 — Motivation layer**: schema-verified. `ProgressRing`/
   `StreakChip`/`CelebrationOverlay` all confirmed correct against real
-  completed-booking data. Push notification **registration** works;
-  **sending** still needs server-side code this repo can't provide, and
-  the `push_tokens` table it writes to still doesn't exist (ready-to-run
-  SQL below, not yet applied — a deliberate scope decision, not an
-  oversight).
+  completed-booking data. Push notification **registration and sending
+  are both real now** — see "Push notifications are now real" below.
 - **Phase 4 — Coach app**: schema-verified. Dashboard/Schedule/Clients/
   session workflow all confirmed against real data for a real coach — the
   client roster query correctly round-trips with the client-side "my
@@ -427,6 +424,48 @@ supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... --project-ref h
 supabase secrets set ZOOM_ACCOUNT_ID=... ZOOM_CLIENT_ID=... ZOOM_CLIENT_SECRET=... --project-ref hdrpioypocyeclazkffl
 ```
 
+### Push notifications are now real (2026-08-19)
+
+Same insight as Razorpay/Zoom — "needs server-side code" never meant
+"needs a domain," it meant "needs an Edge Function," which this project
+already had the pattern for. The full pipeline is live:
+
+1. `push_tokens` table (migration `push_tokens_and_send_trigger`,
+   `supabase/migrations/20260819120000_push_tokens_and_send_trigger.sql`)
+   — `registerPushToken()`'s upsert now succeeds instead of warning into
+   the void.
+2. A Postgres trigger (`trigger_send_push_notification()`, same
+   migration) fires on every `INSERT` into `notifications` and calls
+   `pg_net.http_post()` — Postgres's own async-HTTP extension, installed
+   by this migration. This is the same mechanism behind Supabase's
+   "Database Webhooks" dashboard feature, wired directly since this
+   project didn't have that schema set up.
+3. **`send-push`** Edge Function (`supabase/functions/send-push/index.ts`)
+   — looks up the notification + the recipient's `push_tokens` row, POSTs
+   to Expo's push API (`https://exp.host/--/api/v2/push/send`). No
+   Firebase/APNs credentials needed — Expo-token-based push works with
+   just the token itself, which `register-push-token.ts` already collects.
+   `verify_jwt: false` since the caller is Postgres, not a logged-in app
+   user; deliberately no shared-secret gate either — see that file's
+   header for the (low-severity) tradeoff and how to harden it later.
+4. Client-side tap-to-open: `src/lib/notifications/use-notification-tap.ts`,
+   wired into the root layout, navigates to `/notifications` when a push
+   is tapped; the existing per-role Notifications screens
+   (`routeCategoryForTemplateKey`) take it from there.
+
+**Confirmed working end to end** via a live test: inserted a real
+`notifications` row for a real user with no push token registered,
+watched `pg_net`'s response log
+(`select * from net._http_response order by created desc`) — the
+trigger fired, `send-push` ran, returned `200
+{"sent":false,"reason":"No push token registered for this user."}` —
+proving the whole chain, deliberately without pushing anything to any
+real device. The test row was deleted immediately after. **What's still
+unverified**: an actual push arriving on a real device, since that needs
+a dev build (`npx expo prebuild` + `expo run:ios`/`run:android` — Expo
+Go doesn't support remote push since SDK 53) with a user who's completed
+`registerPushToken()`.
+
 ## Open items (need a decision or a credential, not more code)
 
 1. **Google OAuth** — the "Continue with Google" button on the login
@@ -442,26 +481,9 @@ supabase secrets set ZOOM_ACCOUNT_ID=... ZOOM_CLIENT_ID=... ZOOM_CLIENT_SECRET=.
    repo's control to verify or change. Its "Skip for now" link drops
    back to password login/signup so nobody gets stuck if that template
    isn't configured the way this screen assumes.
-2. **`push_tokens` table doesn't exist yet.** `registerPushToken()` gets a
-   device an Expo push token but the upsert that stores it will fail
-   until this table exists. Ready to run, not yet applied (deliberately —
-   creating tables in your real database wasn't part of what was asked
-   for in this pass):
-   ```sql
-   create table public.push_tokens (
-     user_id uuid primary key references public.profiles(id) on delete cascade,
-     expo_push_token text not null,
-     updated_at timestamptz not null default now()
-   );
-   alter table public.push_tokens enable row level security;
-   create policy push_tokens_manage_own on public.push_tokens
-     for all using (user_id = auth.uid()) with check (user_id = auth.uid());
-   ```
-   Separately, and more fundamentally: nothing anywhere in this project
-   can *send* a push yet — that needs server-side code (an Edge Function
-   or route calling Expo's push API when a `notifications` row is
-   created), outside this mobile repo. Also: since Expo SDK 53, remote
-   push requires a development build — it will not work in Expo Go.
+2. **Push notifications — now built.** See "Push notifications are now
+   real" below. Same one remaining caveat as always: since Expo SDK 53,
+   remote push requires a development build — it will not work in Expo Go.
 3. **Chat image attachments — now built.** See "Image attachments (chat)"
    above. No camera capture (library only) and no captions alongside an
    image — reasonable first-pass cuts if you want them extended later.

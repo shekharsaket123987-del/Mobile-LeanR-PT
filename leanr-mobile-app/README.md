@@ -404,12 +404,12 @@ equivalent, from this directory).
 (`RAZORPAY_KEY_ID`/`_SECRET`, `ZOOM_ACCOUNT_ID`/`ZOOM_CLIENT_ID`/
 `ZOOM_CLIENT_SECRET`) were added via the Supabase dashboard (Project
 Settings → Edge Functions → Secrets) and verified present using a
-throwaway diagnostic function
-(`supabase/functions/check-secrets/index.ts` — `verify_jwt: false`,
-returns only booleans, no values, no side effects; safe to delete
-whenever convenient, see that file's header). **This confirms the env
-vars are non-empty, not that the values are correct** — neither
-function has been exercised end to end yet (no real order/meeting
+throwaway diagnostic function (`check-secrets` — `verify_jwt: false`,
+returned only booleans, no values, no side effects). That function has
+since been deleted (both from the project and this repo) now that its
+one job is done — it isn't referenced by anything. **Presence confirmed
+is not the same as correctness confirmed** — neither `razorpay` nor
+`zoom-meeting` has been exercised end to end yet (no real order/meeting
 created), since that needs the actual app running on a device with a
 logged-in user, which hasn't happened in this environment. The Razorpay
 keys currently set are **live** keys (`rzp_live_...`) — test with

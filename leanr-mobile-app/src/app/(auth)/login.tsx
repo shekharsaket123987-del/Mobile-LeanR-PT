@@ -6,7 +6,10 @@
  *
  * "Continue with Google" is present but disabled — native Google OAuth
  * needs a Google Cloud OAuth client ID this project doesn't have yet
- * (see leanr-mobile-app/README.md "Open items").
+ * (see leanr-mobile-app/README.md "Open items"). "Sign in with a code
+ * instead" links to the new email-OTP flow (otp.tsx) — a real,
+ * no-domain-required alternative added alongside this screen, not a
+ * replacement for it.
  */
 import { Link } from 'expo-router';
 import { useState } from 'react';
@@ -81,6 +84,10 @@ export default function LoginScreen() {
             accessibilityState={{ disabled: true }}>
             <Text style={styles.secondaryButtonText}>Continue with Google (coming soon)</Text>
           </View>
+
+          <Link href="/otp" style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Sign in with a code instead</Text>
+          </Link>
 
           <Link href="/signup" style={styles.link}>
             <Text style={styles.linkText}>New to LEANR? Create an account</Text>

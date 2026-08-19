@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
 
 import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
@@ -112,7 +112,6 @@ export default function HomeScreen() {
 }
 
 const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
-  'no-link': null, // Zoom meeting not yet created for this booking — nothing to show
   'too-early': 'Join opens 10 min before start',
   joinable: 'Join session →',
   ended: null,
@@ -121,19 +120,31 @@ const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
 function JoinRow({ booking }: { booking: Parameters<typeof getJoinState>[0] }) {
   const state = getJoinState(booking);
   const label = JOIN_LABEL[state];
+  const [joining, setJoining] = useState(false);
   if (!label) return null;
+
+  const onJoin = async () => {
+    setJoining(true);
+    try {
+      await openZoomLink(booking);
+    } catch (err) {
+      Alert.alert('Could not join', err instanceof Error ? err.message : String(err));
+    } finally {
+      setJoining(false);
+    }
+  };
 
   return (
     <TextLink
-      disabled={state !== 'joinable'}
-      onPress={() => openZoomLink(booking)}
+      disabled={state !== 'joinable' || joining}
+      onPress={onJoin}
       style={{
         fontFamily: 'Manrope_700Bold',
         fontSize: 14,
         color: state === 'joinable' ? Brand.yellow : '#888',
         marginTop: 8,
       }}>
-      {label}
+      {joining ? 'Starting meeting…' : label}
     </TextLink>
   );
 }

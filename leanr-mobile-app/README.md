@@ -328,10 +328,9 @@ the extent buildable from this mobile-only repo.
   field). Same verification/testing caveats as the phases above.
 - **Phase 5 — Payments + Zoom**: Zoom join and Plans listing
   schema-verified and corrected (`package_tiers`, plain `price`). Purchase
-  remains a deliberate stub — see "Why payments can't be finished from
-  this repo" below; that reasoning is unchanged by schema access, since
-  it's about where the Razorpay secret key can live, not what the tables
-  are called.
+  and real Zoom meeting creation are now both live — see "Razorpay + Zoom
+  are now real" below for what changed and exactly what's still needed
+  (API secrets, not more code) before either actually works end to end.
 - **Phase 6 — Polish & store prep**: unchanged by this pass — accessibility
   pass and EAS scaffolding done; app icon and store submission still need
   your design assets and developer accounts.
@@ -361,21 +360,60 @@ the extent buildable from this mobile-only repo.
   clean, not click-tested live — no admin test account available in
   this environment either).
 
-### Why payments can't be finished from this repo
+### Razorpay + Zoom are now real (2026-08-19)
 
-Razorpay order creation requires the account's **secret key**, and
-verifying a completed payment requires an HMAC-SHA256 signature check
-against that same secret (original PRD §8g). That key can never be
-shipped inside a mobile app — doing so would let anyone extract it and
-create fraudulent orders or forge "paid" signatures. The web app gets
-away with this today only because Next.js Server Actions run entirely
-server-side; a mobile client has no equivalent. This is the same
-structural gap as push-notification dispatch: real payment processing
-needs a small server-side endpoint (an Edge Function or Route Handler)
-that creates the order and verifies the signature, which is new backend
-work outside this repo, not something to fake from the client.
-`src/app/(client)/plans.tsx` explains this to anyone who taps "Purchase
-Plan" rather than silently doing nothing or lying about success.
+The earlier blocker — "the secret key can never live in the mobile app"
+— was true, but the fix was never "can't be built," it was "needs a
+server-side endpoint." **You don't need a domain name for that**: Supabase
+Edge Functions get their own URL automatically
+(`https://hdrpioypocyeclazkffl.supabase.co/functions/v1/<name>`), called
+from the app via `supabase.functions.invoke(...)` — no custom domain, no
+separate hosting account, nothing beyond what this project already has.
+Two functions are deployed:
+
+- **`razorpay`** (`create-order` / `verify-payment` actions) —
+  `src/lib/data/payments.ts` is the client side, wired into
+  `plans.tsx`'s "Purchase Plan" using the official
+  `react-native-razorpay` checkout SDK (a native module — needs
+  `npx expo prebuild` + a dev build, same as `expo-image-picker`; won't
+  work in Expo Go). Order creation and HMAC-SHA256 signature
+  verification both happen inside the function, never on-device.
+  `payments`/`subscriptions` have no client write policy at all
+  (confirmed live) — the function uses the service-role key for those
+  writes, exactly like the web app's Server Actions do today. Enforces
+  §13 rule 16 (one active/awaiting plan at a time, renewal exception
+  under the low-sessions threshold) before creating an order.
+- **`zoom-meeting`** — `src/lib/data/zoom.ts`'s `ensureZoomMeeting()`,
+  called lazily on first "Join" tap (client Home, coach session
+  workflow) per §13 rule 20. Uses Zoom's Server-to-Server OAuth to
+  create a real meeting and writes `zoom_meeting_id`/`zoom_join_url`/
+  `zoom_start_url` back onto the booking — using the *caller's own*
+  forwarded JWT for that write (not service-role), since
+  `bookings_update_own_client`/`_update_own_coach` RLS already allows a
+  participant to do it directly; the only thing that has to stay
+  server-side is the Zoom API secret itself.
+
+Source is checked in at `supabase/functions/razorpay/index.ts` and
+`supabase/functions/zoom-meeting/index.ts` (deployed via the Supabase
+management API this pass, not the CLI — if you edit either file, deploy
+the change with `supabase functions deploy razorpay` /
+`supabase functions deploy zoom-meeting`, or the CLI's `functions deploy`
+equivalent, from this directory).
+
+**Neither is functional yet** — both need real credentials you have to
+provide, since I can't generate or guess API keys:
+
+```bash
+supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... --project-ref hdrpioypocyeclazkffl
+supabase secrets set ZOOM_ACCOUNT_ID=... ZOOM_CLIENT_ID=... ZOOM_CLIENT_SECRET=... --project-ref hdrpioypocyeclazkffl
+```
+
+(Razorpay: Dashboard → Settings → API Keys. Zoom: build a
+Server-to-Server OAuth app in the Zoom App Marketplace, needs the
+`meeting:write:admin` scope.) Until those secrets exist, both functions
+return a clear `503 { error: "... isn't configured on the server yet" }`
+instead of silently failing or faking success — surfaced as the actual
+error message in the Plans/Join UI.
 
 ## Open items (need a decision or a credential, not more code)
 
@@ -383,7 +421,15 @@ Plan" rather than silently doing nothing or lying about success.
    screen is present but disabled. Native Google sign-in needs an OAuth
    client ID from Google Cloud Console (separate for iOS/Android) plus
    `expo-auth-session` wiring; nothing to build until those credentials
-   exist.
+   exist. In the meantime, `(auth)/otp.tsx` ("Sign in with a code
+   instead") is a real, no-credential-needed alternative to password
+   login — `supabase.auth.signInWithOtp`/`verifyOtp`, no OAuth client, no
+   domain. Whether it emails a 6-digit code or a magic link depends on
+   this Supabase project's "Confirm signup"/"Magic Link" email template
+   (Authentication → Email Templates in the dashboard) — outside this
+   repo's control to verify or change. Its "Skip for now" link drops
+   back to password login/signup so nobody gets stuck if that template
+   isn't configured the way this screen assumes.
 2. **`push_tokens` table doesn't exist yet.** `registerPushToken()` gets a
    device an Expo push token but the upsert that stores it will fail
    until this table exists. Ready to run, not yet applied (deliberately —

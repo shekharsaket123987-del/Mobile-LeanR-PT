@@ -44,11 +44,12 @@ export default function SessionWorkflow() {
   const onJoin = async () => {
     try {
       await markJoined(id);
-      // Original PRD §7g: "Join" -> Zoom opens + coach_joined_at set. The
-      // deep-link half is real if a zoom_join_url already exists on the
-      // booking; the timestamp write above is what actually gates
+      // Original PRD §7g: "Join" -> Zoom opens + coach_joined_at set.
+      // openZoomLink now creates the meeting on first tap if one doesn't
+      // exist yet (zoom-meeting Edge Function, §13 rule 20's "lazily
+      // created"); the timestamp write above is what actually gates
       // Present/Late eligibility below (attendanceEligible).
-      if (booking?.zoom_join_url) await openZoomLink(booking);
+      if (booking) await openZoomLink(booking);
       reload();
     } catch (err) {
       Alert.alert('Could not mark joined', err instanceof Error ? err.message : String(err));

@@ -33,6 +33,8 @@ type AuthState = {
   loading: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
+  sendOtp: (email: string) => Promise<{ error: string | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -92,12 +94,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { error: error?.message ?? null };
   };
 
+  // OTP is the same client<->account relationship as password signup — a
+  // client-role account is auto-created by the handle_new_user() trigger
+  // on first verify if one doesn't exist yet (shouldCreateUser: true),
+  // exactly like signUpWithPassword. Whether Supabase actually emails a
+  // 6-digit code vs. a magic link depends on this project's "Confirm
+  // signup"/"Magic Link" email template in the dashboard (out of this
+  // repo's control) — verifyOtp below is the correct client call either
+  // way once a code exists.
+  const sendOtp: AuthState['sendOtp'] = async (email) => {
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    return { error: error?.message ?? null };
+  };
+
+  const verifyOtp: AuthState['verifyOtp'] = async (email, token) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+    return { error: error?.message ?? null };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signInWithPassword, signUpWithPassword, signOut }}>
+    <AuthContext.Provider
+      value={{ session, profile, loading, signInWithPassword, signUpWithPassword, sendOtp, verifyOtp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

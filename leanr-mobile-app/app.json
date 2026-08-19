@@ -10,7 +10,10 @@
     "backgroundColor": "#000000",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.fitelo.leanr"
+      "bundleIdentifier": "com.fitelo.leanr",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["tez", "phonepe", "paytmmp"]
+      }
     },
     "android": {
       "package": "com.fitelo.leanr",

@@ -2,26 +2,32 @@
  * Zoom join — LEANR_PT_MOBILE_PRD.md §7f (client join) and
  * LEANR_PT_NEXTGEN_APP_PRD.md §26 ("deep-link into the native Zoom app").
  *
- * There is no real Zoom integration to build here: meeting creation
- * happens server-side via Zoom's Server-to-Server OAuth (original PRD
- * §7f: `ensureZoomMeetingForBooking()`), which needs Zoom API credentials
- * this mobile repo doesn't have and shouldn't have. What IS safe and real
- * to build client-side is opening whatever join URL already exists on the
- * booking, gated by a join-window countdown — original PRD §15 mentions
- * this pattern ("Join in Nm" / "Live now" / "Session ended") without
- * giving exact minute thresholds, so this uses a reasonable default
- * (open 10 minutes before start, through the scheduled end).
+ * Meeting creation now happens via the `zoom-meeting` Edge Function
+ * deployed on 2026-08-19 (Zoom's Server-to-Server OAuth credentials live
+ * there, never in this mobile repo — see that function's source for
+ * exactly what it does and the secrets it needs before it actually
+ * works). §13 rule 20: meetings are "lazily created... only when someone
+ * needs to join" — so `getJoinState` no longer treats a missing
+ * `zoom_join_url` as a dead end; the join window is purely time-based,
+ * and `openZoomLink` creates the meeting on first tap if one doesn't
+ * exist yet.
+ *
+ * Join-window thresholds: original PRD §15 mentions "Join in Nm"/"Live
+ * now"/"Session ended" without exact minute values, so this keeps the
+ * same reasonable default as before (open 10 minutes before start,
+ * through the scheduled end).
  */
 import * as Linking from 'expo-linking';
+
+import { extractFunctionErrorMessage } from '@/lib/data/edge-functions';
+import { supabase } from '@/lib/supabase/client';
 import type { Booking } from './types';
 
 const JOIN_WINDOW_BEFORE_MIN = 10;
 
-export type JoinState = 'too-early' | 'joinable' | 'ended' | 'no-link';
+export type JoinState = 'too-early' | 'joinable' | 'ended';
 
 export function getJoinState(booking: Booking): JoinState {
-  if (!booking.zoom_join_url) return 'no-link';
-
   const start = new Date(booking.scheduled_start).getTime();
   const end = start + booking.duration_minutes * 60_000;
   const opensAt = start - JOIN_WINDOW_BEFORE_MIN * 60_000;
@@ -32,7 +38,15 @@ export function getJoinState(booking: Booking): JoinState {
   return 'joinable';
 }
 
-export async function openZoomLink(booking: Booking) {
-  if (!booking.zoom_join_url) return;
-  await Linking.openURL(booking.zoom_join_url);
+/** Creates the Zoom meeting on first call for this booking; a no-op re-fetch (returns the existing link) after that. */
+export async function ensureZoomMeeting(bookingId: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('zoom-meeting', { body: { bookingId } });
+  if (error) throw new Error(await extractFunctionErrorMessage(error, 'Could not start the meeting.'));
+  if (!data?.joinUrl) throw new Error('No join link was returned.');
+  return data.joinUrl as string;
+}
+
+export async function openZoomLink(booking: Booking): Promise<void> {
+  const joinUrl = booking.zoom_join_url ?? (await ensureZoomMeeting(booking.id));
+  await Linking.openURL(joinUrl);
 }

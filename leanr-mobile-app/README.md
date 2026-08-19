@@ -400,20 +400,32 @@ the change with `supabase functions deploy razorpay` /
 `supabase functions deploy zoom-meeting`, or the CLI's `functions deploy`
 equivalent, from this directory).
 
-**Neither is functional yet** — both need real credentials you have to
-provide, since I can't generate or guess API keys:
+**Secrets are set (confirmed 2026-08-19)** — all 5
+(`RAZORPAY_KEY_ID`/`_SECRET`, `ZOOM_ACCOUNT_ID`/`ZOOM_CLIENT_ID`/
+`ZOOM_CLIENT_SECRET`) were added via the Supabase dashboard (Project
+Settings → Edge Functions → Secrets) and verified present using a
+throwaway diagnostic function
+(`supabase/functions/check-secrets/index.ts` — `verify_jwt: false`,
+returns only booleans, no values, no side effects; safe to delete
+whenever convenient, see that file's header). **This confirms the env
+vars are non-empty, not that the values are correct** — neither
+function has been exercised end to end yet (no real order/meeting
+created), since that needs the actual app running on a device with a
+logged-in user, which hasn't happened in this environment. The Razorpay
+keys currently set are **live** keys (`rzp_live_...`) — test with
+Razorpay test-mode keys first if at all possible before a real charge
+is attempted, since this integration is unverified in practice.
+
+If either secret set is ever missing or wrong, both functions return a
+clear `503 { error: "... isn't configured on the server yet" }` instead
+of silently failing or faking success — surfaced as the actual error
+message in the Plans/Join UI. To (re)apply secrets from the CLI instead
+of the dashboard:
 
 ```bash
 supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... --project-ref hdrpioypocyeclazkffl
 supabase secrets set ZOOM_ACCOUNT_ID=... ZOOM_CLIENT_ID=... ZOOM_CLIENT_SECRET=... --project-ref hdrpioypocyeclazkffl
 ```
-
-(Razorpay: Dashboard → Settings → API Keys. Zoom: build a
-Server-to-Server OAuth app in the Zoom App Marketplace, needs the
-`meeting:write:admin` scope.) Until those secrets exist, both functions
-return a clear `503 { error: "... isn't configured on the server yet" }`
-instead of silently failing or faking success — surfaced as the actual
-error message in the Plans/Join UI.
 
 ## Open items (need a decision or a credential, not more code)
 

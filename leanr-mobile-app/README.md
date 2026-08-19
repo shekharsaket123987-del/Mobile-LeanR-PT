@@ -314,9 +314,10 @@ the extent buildable from this mobile-only repo.
   exact names (`schedule_changed_client` in real data vs.
   `admin_changed_schedule` in the prose), so it's substring-matched into
   a few route *categories* rather than a rigid 22-key exact table that
-  would silently fail on any key it hadn't seen. Coach chat isn't built
-  yet, so a `new_chat_message` notification on the coach side just marks
-  read without navigating. `src/lib/data/profile.ts` — confirmed real,
+  would silently fail on any key it hadn't seen. (Written before Coach
+  Chats existed — a `new_chat_message` notification on the coach side
+  currently just marks read without navigating; wiring it to `/chats`
+  is a trivial follow-up now that screen exists.) `src/lib/data/profile.ts` — confirmed real,
   direct write access via each table's `_update_own` RLS policy (not a
   boundary like coach-change stage 2). Deliberately scoped to
   name/phone/emergency-contact + a small role-specific subset (client
@@ -334,6 +335,31 @@ the extent buildable from this mobile-only repo.
 - **Phase 6 — Polish & store prep**: unchanged by this pass — accessibility
   pass and EAS scaffolding done; app icon and store submission still need
   your design assets and developer accounts.
+- **`LEANR_PT_MOBILE_PRD.md` §28 "Phase 12 — Admin Portal"**: §28 itself
+  says to "flag this scope decision to the user before starting" — full
+  admin parity (18 screens: coach/client CRUD, sales, sessions, reports,
+  settings, etc.) is desk-bound work not worth mobile investment per
+  §25/§26's own recommendation, so the reduced "on-call ops" subset was
+  built instead: a new `(admin)` route group (`getHomeRouteForRole` now
+  routes `admin` there instead of `/unsupported-role`) with **Escalations**
+  (full gated resolution workflow — Confirm Called → Save Assessment →
+  Add Note → Mark In Progress → Resolve — confirmed live that the
+  call-gate, §13 rule 22, is client-side only, same "not actually a DB
+  constraint" pattern found for the 24h-leave-notice rule), **Leave
+  Requests** (approve/reject a coach's pending leave), and **Shadow
+  Coverage** (`src/lib/data/admin-shadow.ts` — confirmed by reading
+  `assign_shadow_coach()`'s body directly that it's a single RPC that
+  both records the assignment AND reassigns the affected `upcoming`
+  bookings' `coach_id`, not just a passive record; "uncovered
+  leave-affected sessions" is a simplified direct computation — approved
+  full-day leave whose window still has `upcoming` bookings pointed at
+  the leave-taking coach — rather than a port of the web app's
+  `listShadowCoverageGapsAction`). `admin_issue_type`/`fault` are free
+  text with zero live rows to anchor a canonical vocabulary, so their
+  chip options are a reasonable inferred set, documented as such. Same
+  verification/testing caveats as the phases above (tsc/lint/export
+  clean, not click-tested live — no admin test account available in
+  this environment either).
 
 ### Why payments can't be finished from this repo
 

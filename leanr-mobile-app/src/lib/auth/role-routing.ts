@@ -3,9 +3,11 @@ import type { UserRole } from './auth-context';
 
 /**
  * Single source of truth for "where does this role land after auth" —
- * used by (auth)/_layout, (client)/_layout, and (coach)/_layout so the
- * branching logic exists in exactly one place. Admin has no mobile app
- * yet (LEANR_PT_NEXTGEN_APP_PRD.md §16: stays web/tablet, deprioritized).
+ * used by (auth)/_layout, (client)/_layout, (coach)/_layout, and
+ * (admin)/_layout so the branching logic exists in exactly one place.
+ * Admin now has a reduced-scope mobile app (§28 Phase 12 — Escalations/
+ * Leave/Shadow Coverage only; full admin parity stays web/tablet per
+ * (admin)/_layout.tsx's header).
  */
 export function getHomeRouteForRole(role: UserRole | undefined): Href {
   // Cast: Expo Router's generated template-literal types for a group's
@@ -15,5 +17,6 @@ export function getHomeRouteForRole(role: UserRole | undefined): Href {
   // regenerated .expo/types/router.d.ts, not a guess.
   if (role === 'client') return '/(client)' as Href;
   if (role === 'coach') return '/(coach)' as Href;
+  if (role === 'admin') return '/(admin)' as Href;
   return '/unsupported-role';
 }

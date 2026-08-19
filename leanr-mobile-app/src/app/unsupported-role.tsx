@@ -1,9 +1,10 @@
 /**
- * Landing spot for an admin account signing into the mobile app (coach
- * now has its own app as of Phase 4 — see getHomeRouteForRole). Per
- * LEANR_PT_NEXTGEN_APP_PRD.md §16 roadmap, admin stays web/tablet —
- * this screen is the honest interim state rather than silently showing
- * the wrong role's tab bar.
+ * Defensive fallback only — client, coach, and admin all have their own
+ * app now (getHomeRouteForRole handles all three `user_role` enum
+ * values). This screen only renders if `profile.role` is somehow
+ * something else, which shouldn't happen given the DB enum, but this is
+ * the honest state rather than silently showing the wrong role's tab
+ * bar if it ever does.
  */
 import { Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +21,7 @@ export default function UnsupportedRoleScreen() {
         Not available yet
       </Text>
       <Text style={{ fontFamily: 'Manrope_500Medium', fontSize: 15, color: '#FFFFFF' }}>
-        The {profile?.role ?? 'admin'} app isn&apos;t built yet — please continue on the LEANR web portal for now.
+        The {profile?.role ?? 'this'} app isn&apos;t built yet — please continue on the LEANR web portal for now.
       </Text>
       <Pressable
         onPress={signOut}

@@ -1,5 +1,11 @@
-import { Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
-import { Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald';
+import { Anton_400Regular } from '@expo-google-fonts/anton';
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from '@expo-google-fonts/manrope';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Slot, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,11 +22,12 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [showLaunch, setShowLaunch] = useState(true);
   const [fontsLoaded] = useFonts({
-    Oswald_700Bold,
-    Oswald_600SemiBold,
+    Anton_400Regular,
+    Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,
     Manrope_700Bold,
+    Manrope_800ExtraBold,
   });
   useNotificationTapRouting();
 

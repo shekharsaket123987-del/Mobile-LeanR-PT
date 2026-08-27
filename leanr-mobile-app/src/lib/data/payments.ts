@@ -13,6 +13,7 @@ import RazorpayCheckout from 'react-native-razorpay';
 
 import { extractFunctionErrorMessage } from '@/lib/data/edge-functions';
 import { supabase } from '@/lib/supabase/client';
+import { Brand } from '@/constants/theme';
 
 export type PurchaseResult = { subscriptionId: string };
 
@@ -36,7 +37,7 @@ export async function purchasePackage(
       description: packageName,
       order_id: orderData.orderId,
       prefill,
-      theme: { color: '#F5E400' },
+      theme: { color: Brand.yellow },
     });
   } catch (err) {
     const razorpayError = err as { code?: number; description?: string };

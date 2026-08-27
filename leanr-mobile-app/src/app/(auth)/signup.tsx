@@ -9,7 +9,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } fro
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CtaButton } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function SignupScreen() {
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Brand.black },
   flex: { flex: 1 },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  title: { fontFamily: 'Oswald_700Bold', fontStyle: 'italic', fontSize: 28, color: Brand.yellow },
+  title: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 28, color: Brand.yellow },
   subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#CCCCCC', marginBottom: 20 },
   input: {
     backgroundColor: Brand.charcoal2,

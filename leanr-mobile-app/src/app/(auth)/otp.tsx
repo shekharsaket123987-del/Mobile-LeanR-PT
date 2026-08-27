@@ -21,7 +21,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } fro
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 type Stage = 'email' | 'code';
@@ -129,9 +129,16 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Brand.black },
   flex: { flex: 1 },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  wordmark: { fontFamily: 'Oswald_700Bold', fontStyle: 'italic', fontSize: 40, color: Brand.yellow, letterSpacing: -0.5 },
+  wordmark: {
+    fontFamily: DisplayFont,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    fontSize: 40,
+    color: Brand.yellow,
+    letterSpacing: -0.5,
+  },
   subLockup: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: '#FFFFFF', marginBottom: 24 },
-  title: { fontFamily: 'Oswald_600SemiBold', fontStyle: 'italic', fontSize: 24, color: '#FFFFFF' },
+  title: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 24, color: '#FFFFFF' },
   subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#CCCCCC', marginBottom: 8 },
   input: {
     backgroundColor: Brand.charcoal2,

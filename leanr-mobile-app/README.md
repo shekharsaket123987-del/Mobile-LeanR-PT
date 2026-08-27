@@ -468,11 +468,22 @@ Go doesn't support remote push since SDK 53) with a user who's completed
 
 ## Open items (need a decision or a credential, not more code)
 
-1. **Google OAuth** — the "Continue with Google" button on the login
-   screen is present but disabled. Native Google sign-in needs an OAuth
-   client ID from Google Cloud Console (separate for iOS/Android) plus
-   `expo-auth-session` wiring; nothing to build until those credentials
-   exist. In the meantime, `(auth)/otp.tsx` ("Sign in with a code
+1. **Google OAuth — now built, needs a dashboard credential to actually work.**
+   The "Continue with Google" button on the login screen is real and
+   wired up (`auth-context.tsx::signInWithGoogle`), using Supabase's
+   documented web-based OAuth pattern for Expo/RN: `supabase.auth.
+   signInWithOAuth({provider:'google', options:{redirectTo, skipBrowserRedirect:true}})`
+   opens the returned URL via `expo-web-browser`'s `openAuthSessionAsync`,
+   and the resulting deep-link redirect (`leanrmobileapp://login#access_token=...`)
+   is parsed and applied via `setSession`/`exchangeCodeForSession`. This
+   app never holds a Google client ID — GoTrue holds it server-side — so
+   there's genuinely no more app code needed. What's still required
+   outside this repo: a Google Cloud OAuth client (redirect URI
+   `https://<project-ref>.supabase.co/auth/v1/callback`) pasted into
+   Supabase Dashboard → Authentication → Providers → Google. Until that's
+   done, tapping the button surfaces Supabase's "provider is not enabled"
+   error inline (same as a bad password), not a broken control.
+   In the meantime, `(auth)/otp.tsx` ("Sign in with a code
    instead") is a real, no-credential-needed alternative to password
    login — `supabase.auth.signInWithOtp`/`verifyOtp`, no OAuth client, no
    domain. Whether it emails a 6-digit code or a magic link depends on
@@ -481,19 +492,33 @@ Go doesn't support remote push since SDK 53) with a user who's completed
    repo's control to verify or change. Its "Skip for now" link drops
    back to password login/signup so nobody gets stuck if that template
    isn't configured the way this screen assumes.
-2. **Push notifications — now built.** See "Push notifications are now
+2. **Password reset — now built.** `(auth)/forgot-password.tsx` sends a
+   recovery email (`supabase.auth.resetPasswordForEmail`) whose link
+   deep-links back into the app; `auth-context.tsx` parses the incoming
+   `#access_token&refresh_token&type=recovery` (or PKCE `?code=`) params,
+   establishes the session, and holds a `recoveryInProgress` flag so
+   `(auth)/_layout.tsx` doesn't redirect the user home before they've
+   actually set a new password on `(auth)/reset-password.tsx`. No
+   credential needed — this uses the same Supabase Auth email delivery
+   already configured for signup/OTP. One dependency worth knowing:
+   Supabase's default "Reset Password" email template must point its
+   link at this app's redirect (`leanrmobileapp://reset-password`, or
+   whatever `EXPO_PUBLIC_*` scheme is active) rather than a web URL —
+   confirm that in Authentication → Email Templates → Reset Password if
+   the emailed link doesn't open the app.
+3. **Push notifications — now built.** See "Push notifications are now
    real" below. Same one remaining caveat as always: since Expo SDK 53,
    remote push requires a development build — it will not work in Expo Go.
-3. **Chat image attachments — now built.** See "Image attachments (chat)"
+4. **Chat image attachments — now built.** See "Image attachments (chat)"
    above. No camera capture (library only) and no captions alongside an
    image — reasonable first-pass cuts if you want them extended later.
-4. **Anonymous demo booking — not built.** The authenticated-client demo
+5. **Anonymous demo booking — not built.** The authenticated-client demo
    booking flow is now built (see "Phase 5" above). The separate
    anonymous entry point (`createAssessmentBooking()`, no account
    required, writes to `assessment_sessions` not `bookings`) is a
    structurally different, ungated route tree — its own scoped build,
    not a schema-risk blocker.
-5. **Web dev target crashes on boot** (`expo start --web` /
+6. **Web dev target crashes on boot** (`expo start --web` /
    `npx expo export --platform web`) — `ReferenceError: window is not
    defined` in `LargeSecureStore.getItem` (`src/lib/supabase/large-secure-store.ts`)
    during the SSR pass `web.output: "static"` triggers. Pre-existing, not
@@ -503,14 +528,16 @@ Go doesn't support remote push since SDK 53) with a user who's completed
    guard the AsyncStorage-backed calls with a `typeof window !==
    'undefined'` check, but that's a product decision (do you want a web
    build at all?) more than a one-line patch, so left unfixed here.
-6. **Wordmark asset** — the launch animation renders "LEANR" as real
-   Oswald-italic text (matches how the web app does it), not an exported
-   image — this was a deliberate simplification, not a gap.
-7. **App icon** — still just the default Expo icon; a real LEANR icon
+7. **Wordmark asset** — the launch animation renders "LEANR" as real
+   Anton-italic text (matches how the web app does it), not an exported
+   image — this was a deliberate simplification, not a gap. The real
+   logo PNG is available at `assets/images/leanr-by-fitelo-logo.png` for
+   any screen that wants the static-image treatment instead.
+8. **App icon** — still just the default Expo icon; a real LEANR icon
    asset needs to be designed/exported outside this repo (same open
    question the functional PRD itself flags — no icon-only asset exists
-   anywhere, only the full `image.png` lockup).
-8. **Store submission** — `eas.json` has build profiles and `app.json`
+   anywhere, only the full logo lockup).
+9. **Store submission** — `eas.json` has build profiles and `app.json`
    has placeholder bundle identifiers (`com.fitelo.leanr` — confirm or
    change to whatever you actually register), but `eas build`/
    `eas submit` need you logged into a real EAS/Expo account plus an

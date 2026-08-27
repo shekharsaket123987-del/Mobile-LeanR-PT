@@ -11,7 +11,7 @@ import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 
 const PARTICLE_COUNT = 14;
 const AUTO_DISMISS_MS = 1900;
@@ -103,7 +103,8 @@ const styles = StyleSheet.create({
   particle: { position: 'absolute', width: 10, height: 10, borderRadius: 5 },
   card: { alignItems: 'center', gap: 6, paddingHorizontal: 32 },
   title: {
-    fontFamily: 'Oswald_700Bold',
+    fontFamily: DisplayFont,
+    fontWeight: '700',
     fontStyle: 'italic',
     fontSize: 30,
     color: Brand.yellow,

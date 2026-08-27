@@ -5,7 +5,7 @@
 
 **Document type:** Product/UX PRD (business + design specification), companion to `LEANR_PT_MOBILE_PRD.md` (the technical web-to-mobile conversion spec).
 **Relationship to the existing doc:** `LEANR_PT_MOBILE_PRD.md` is the *functional* source of truth — every feature, screen, business rule, and data model in this document is inherited from it unchanged. This document does **not** change what the app does. It changes **how it feels to use** — the visual language, motivation layer, information architecture, and screen-level UX — and adds a competitive analysis to justify each change. Where the two documents conflict on a UI detail, this document wins; where they conflict on a business rule (cutoff hours, validation, role permissions), the original PRD wins.
-**Brand assets used as-is:** the "LEANR" wordmark (bold italic Oswald, yellow-on-black) and "By Fitelo" sub-lockup from `image.png` are the canonical logo — carried forward, not redesigned. Same brand name, same logo, same core black/yellow theme.
+**Brand assets used as-is:** the "LEANR" wordmark (bold italic Anton, yellow-on-black) and "By Fitelo" sub-lockup — canonical logo file: `public/01_LeanR_by_Fitelo_logo.png` in the web repo, mirrored at `assets/images/leanr-by-fitelo-logo.png` in the mobile project — are carried forward, not redesigned. Same brand name, same logo, same dark-only black/yellow theme (see §4.1, corrected).
 
 ---
 
@@ -62,40 +62,49 @@ Everything from §6 onward is built to deliver these four traits **without addin
 
 ### 4.1 Colors — same core palette, extended with functional/motivational tokens
 
+**Correction (synced with `LEANR_PT_MOBILE_PRD.md` §23, re-verified against the live web app's `tailwind.config.ts`/`globals.css`):** the table below replaces an earlier pass that assumed a light-mode variant existed (`#FAFAFA` background, `#F5E400` yellow). The product is **dark-only** — there is no light-mode surface anywhere in the shipped app.
+
 | Token | Hex | Usage (unchanged from original) |
 |---|---|---|
-| `brand.black` | `#000000` | primary dark surface, hero backgrounds |
-| `brand.charcoal` | `#111111` | body text on light surfaces |
-| `brand.charcoal2` | `#1A1A1A` | secondary surfaces, pressed states |
-| `brand.yellow` | `#F5E400` | primary accent — CTAs, active nav, progress rings |
-| `brand.yellow2` | `#FFE600` | pressed/hover state, gradient end |
-| Page background | `#FAFAFA` | light-mode body |
-| Card/white | `#FFFFFF` | light-mode cards |
+| `brand.black` | `#000000` | pure black accents |
+| `bg.DEFAULT` | `#060606` | app background — the actual base surface, not `brand.black` |
+| `bg.elevated` | `#0c0c0c` | slightly raised surfaces / cards |
+| `bg.soft` | `#141414` | further-raised surfaces |
+| `brand.charcoal` | `#111111` | dark surface fill |
+| `brand.charcoal2` | `#1A1A1A` | secondary surfaces, pressed states, native form-input background |
+| `brand.yellow` | `#F5D90A` | primary accent — CTAs, active nav, progress rings |
+| `brand.yellow2` | `#FFE94D` | pressed/hover state, gradient end |
+| `yellow.dim` | `#B8A400` | de-emphasized yellow (rarely used) |
 
 **New — motivation/semantic tokens (additive, never replace the above):**
 
 | Token | Hex | Usage |
 |---|---|---|
-| `streak.ember` | `#FF7A18` → `#F5E400` gradient | streak flame icon, "N-day streak" chip |
+| `streak.ember` | `#FF7A18` → `#F5D90A` gradient | streak flame icon, "N-day streak" chip |
 | `success.emerald` | `#10B981` (Tailwind emerald-500, already used in web) | completed session check, positive progress delta |
 | `alert.red` | `#EF4444` (Tailwind red-500, already used) | cancellations, unread badges — unchanged |
-| `glow.yellow` | `rgba(245,228,0,0.25–0.4)` | soft glow behind rings/CTA on dark surfaces (already exists as `shadow-glow`, now used more deliberately for celebration moments) |
+| `glow.yellow` | `rgba(245,217,10,0.25–0.4)` | soft glow behind rings/CTA on dark surfaces (already exists as `shadow-glow`, now used more deliberately for celebration moments) |
 
-**Dark mode is the primary mode**, not an afterthought — the brand is black-first (`brand.black` as the base surface is literally token #1 in the existing system). Light mode (`#FAFAFA`/white cards) is the secondary, "daytime/legibility" mode. Both are fully supported; the app opens in the device's system theme, defaulting to dark on first install to match the existing web app's bold black hero sections and to feel more premium/energetic (in line with Technogym's dark, professional-grade feel).
+**Dark-only, no light mode.** The brand is black-first and stays that way on every screen — there is no `#FAFAFA`/white-card secondary mode to fall back to, and the mobile app must not branch on system light/dark theme; it always renders the dark palette above (matches the existing web app's hardcoded `color-scheme:dark`).
 
 ### 4.2 Typography — unchanged font pairing, clarified hierarchy for mobile
-- **Display / motivational numbers**: Oswald 600/700, **bold + italic**, used for: streak counts, headline stats ("12 sessions completed"), screen titles, celebration moments. This is LEANR's most distinctive visual signature — lean into it harder on mobile than the web app does (bigger, bolder, used for every "big number" moment).
-- **Body**: Manrope 400/500/600/700 — all UI copy, chat, form labels, list content.
+
+**Correction:** the display font is **Anton**, not Oswald — a single static 400 weight; bold + italic are CSS-synthesized on top of it (`fontWeight:'700'` + `fontStyle:'italic'`), same as production.
+
+- **Display / motivational numbers**: Anton, always **bold + italic** (synthesized), used for: streak counts, headline stats ("12 sessions completed"), screen titles, celebration moments. This is LEANR's most distinctive visual signature — lean into it harder on mobile than the web app does (bigger, bolder, used for every "big number" moment).
+- **Body**: Manrope 400/500/600/700/800 — all UI copy, chat, form labels, list content.
 - Minimum body size 15sp (up from typical 14px web) for mobile legibility; display numbers scale up to 40–56sp on hero cards.
 
 ### 4.3 Shape, motion, elevation
-- Radius unchanged: `16px` buttons, `20px` cards, full-round badges/avatars/rings.
+- Radius: **buttons are fully pill-shaped (`rounded-full`)** in every variant, not `16px` — matches `Button.tsx` in the web app. Inputs/cards use `16px`; modals/glass panels use `20px`; badges/avatars/rings stay full-round.
 - **New — motion principles** (the single biggest gap vs. Technogym/Future's "premium" feel): every state change gets a purposeful, short (150–300ms) animation — progress rings fill rather than snap, streak flames pulse, completed-session checkmarks draw themselves, plan-purchase success triggers a brief confetti burst in brand yellow. Motion is used to communicate *progress*, never as decoration.
 - Shadows: reuse `shadow-soft`/`shadow-card`/`shadow-glow` from the original system; `shadow-glow` gets **promoted** from a decorative hero touch to the standard treatment behind every ring/streak/celebration element — it's the brand's visual shorthand for "achievement."
 
 ### 4.4 Logo usage
-The `image.png` lockup (yellow "LEANR" wordmark, bold italic, on black, with the white "By Fitelo" sub-lockup and mark) is used exactly as supplied:
-- App icon: the mark alone (the small circular "By Fitelo" glyph) or a simplified single-letter/monogram treatment on a black tile — **OPEN QUESTION for design team**, same as flagged in the original PRD §23/§32, since no standalone icon-only asset exists yet. Recommend cropping/extracting the circular "F"-mark from `image.png` as the app-icon starting point rather than commissioning a new mark.
+
+**Correction:** a real logo file exists in the web repo — `public/01_LeanR_by_Fitelo_logo.png` (400×376), screen-blended onto black in production (see `LEANR_PT_MOBILE_PRD.md` §23 Assets). It has been pulled into the mobile project at `assets/images/leanr-by-fitelo-logo.png`. The mobile app currently renders the wordmark as styled Anton text (see `brand-launch-animation.tsx`, `login.tsx`, etc.) rather than this image — that is a deliberate, already-implemented choice (custom sweep/reveal animation on the text) and is fine to keep; the PNG asset is available for any screen that wants the static image treatment instead.
+
+- App icon: the mark alone (the small circular "By Fitelo" glyph) or a simplified single-letter/monogram treatment on a black tile — **OPEN QUESTION for design team**, same as flagged in the original PRD §23/§32, since no standalone icon-only asset exists yet. Recommend cropping/extracting the circular "F"-mark from the logo PNG as the app-icon starting point rather than commissioning a new mark. The PNG has a solid black background (screen-blend trick), so any non-dark placement (e.g. light OS chrome) needs an alpha-transparent export — none exists in the repo yet.
 - Splash screen: full lockup centered on black, per the existing brand.
 - In-app: full wordmark on auth/marketing screens only; a simplified icon-only mark in the app header elsewhere (standard mobile pattern — the full wordmark is a first-impression asset, not a persistent chrome element).
 
@@ -186,7 +195,7 @@ This is the connective tissue that turns "an app you open on session days" into 
 │  │  with Coach Riya  [Join]     │ │  ← coach avatar + PrimaryButton
 │  └─────────────────────────────┘ │
 │                                   │
-│  This month: ●●●○○ 3/5 sessions  │  ← StatCard, Oswald bold italic number
+│  This month: ●●●○○ 3/5 sessions  │  ← StatCard, Anton bold italic number
 │                                   │
 │  📝 Coach note from your last     │
 │     session: "Great form on..."  │  ← human-touch card
@@ -219,7 +228,7 @@ Step 1 intro (assessment badge if first session) → Step 2 slot chips (large, 2
 ```
 
 ### 9.4 Plans / Paywall — the highest-emotion screen in the funnel
-Card-carousel (swipeable) of packages, price in large Oswald bold-italic numerals, "Most Popular" badge in brand yellow. On successful `verifyPaymentAction` (original PRD §8g): full-screen brand-yellow confetti burst over a black background, coach-photo reveal if not yet assigned, single CTA "Set up my schedule →" leading straight into My Schedule setup — collapses the original's separate "Congratulations modal → dashboard → My Schedule" hop into one continuous celebratory motion.
+Card-carousel (swipeable) of packages, price in large Anton bold-italic numerals, "Most Popular" badge in brand yellow. On successful `verifyPaymentAction` (original PRD §8g): full-screen brand-yellow confetti burst over a black background, coach-photo reveal if not yet assigned, single CTA "Set up my schedule →" leading straight into My Schedule setup — collapses the original's separate "Congratulations modal → dashboard → My Schedule" hop into one continuous celebratory motion.
 
 ### 9.5 Coach tab (merged My Coach + Chats)
 Top: coach card (large photo, name, specialty tags, "message"/"request change" affordances). Below: chat thread, native-feeling bubbles, read receipts (already in original scope), image attachment via native picker (original §26). This single-screen merge is the most direct response to Future/Trainwell's "the coach is the whole product" strength.
@@ -258,7 +267,7 @@ The original PRD (§26) already flags real push notification dispatch as the sin
 
 ## 12. Accessibility & Performance
 
-- WCAG AA contrast: brand yellow (`#F5E400`) on black passes for large/bold text (which is how it's always used — Oswald bold italic); body text stays Manrope on white/charcoal for AA-safe body contrast.
+- WCAG AA contrast: brand yellow (`#F5D90A`) on black passes for large/bold text (which is how it's always used — Anton bold italic); body text stays Manrope white-on-dark for AA-safe body contrast (no white-on-charcoal light-mode case exists — see §4.1).
 - All touch targets ≥44×44pt (original PRD §26 requirement, reinforced here for every new motivational chip/badge, not just existing buttons).
 - Reduce-motion setting respected — ring fills/confetti degrade to instant-state changes when the OS accessibility setting is on.
 - Screen-reader labels on all icon-only nav items and progress rings (announce the underlying number, not just "ring").
@@ -296,11 +305,23 @@ To hit "both iOS and Android, mobile-friendly" with true parity (avoiding Trainw
 
 ## 16. Roadmap (maps onto original PRD §28 phasing — design/UX layer only)
 
-1. **Design system & component library** — tokens (§4), core components (§14), dark/light both fully built.
+1. **Design system & component library** — tokens (§4), core components (§14), **dark-only** (§4.1 correction — no light-mode variant exists or is planned).
 2. **Core client journey** — Home, Book, Sessions, Progress, Coach tab (§9) at full visual fidelity.
 3. **Motivation layer** — streaks, rings, celebrations, push notifications (§8, §11) wired to real data.
 4. **Coach app** — functional parity screens (§7 coach row), lighter design investment per Design Principle #5.
 5. **Admin** — deprioritized per original §26, revisit tablet-first design after phases 1–4 ship.
+
+### Build status (audited against `leanr-mobile-app`, 2026-08-28)
+
+A real build already exists and has worked through most of this list — see `LEANR_PT_MOBILE_PRD.md` §28 for the authoritative phase-by-phase status table (kept in one place to avoid the two documents drifting on the same fact). Summary as it maps to the phases above:
+
+1. **Design system** — ✅ done this session: `theme.ts` corrected to the dark-only palette/Anton+Manrope fonts in §4.1/§4.2 above (was previously built against the pre-correction values), real logo asset pulled in at `assets/images/leanr-by-fitelo-logo.png`. `BrandLaunchAnimation.tsx` (§18) is live and already renders the wordmark in Anton with the sweep/glow sequence described here — component inventory (`ProgressRing`, `StreakChip`, celebration overlay) is real, not just specced.
+2. **Core client journey** — ✅ done (Book, Schedule, Sessions, Progress, Coach/Chat, Plans all built and wired to real Supabase data).
+3. **Motivation layer** — ✅ streaks/rings/celebration overlay are real components; push notifications are live via a `pg_net` trigger + Edge Function (ahead of where §11 assumed this would start from).
+4. **Coach app** — ✅ done (Dashboard, Schedule, Clients, Session workflow, Availability, Escalations, Renewals, Performance, Search, Chats).
+5. **Admin** — ✅ built as the deliberately reduced "on-call ops" subset (Escalations, Leave, Shadow Coverage) this section anticipated, not full parity.
+
+**Still open against this document specifically:** auth is now email/password + email-OTP + password reset + Google OAuth (the "Continue with Google" affordance from original PRD §25 auth navigation is real, not a stub) — the only remaining piece is external, not code: Google sign-in needs the Google provider enabled in the Supabase dashboard with a real OAuth client before it will actually complete a sign-in. Testing (§29 of the original PRD) and store release are not started.
 
 ---
 

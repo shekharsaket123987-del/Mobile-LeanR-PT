@@ -4,28 +4,33 @@
  * (client)/(auth) layout redirects, not via separate /login/{role} routes
  * (those are a web-only artifact of the Next.js middleware pattern).
  *
- * "Continue with Google" is present but disabled — native Google OAuth
- * needs a Google Cloud OAuth client ID this project doesn't have yet
- * (see leanr-mobile-app/README.md "Open items"). "Sign in with a code
- * instead" links to the new email-OTP flow (otp.tsx) — a real,
- * no-domain-required alternative added alongside this screen, not a
- * replacement for it.
+ * "Continue with Google" uses Supabase's web-based OAuth pattern for
+ * Expo/RN (see auth-context.tsx::signInWithGoogle) — this app never holds
+ * a Google client ID itself; it just needs the Google provider turned on
+ * in the Supabase dashboard (Authentication -> Providers -> Google) with
+ * a Google Cloud OAuth client configured server-side. Until that's done,
+ * tapping it will fail with Supabase's "provider is not enabled" error,
+ * surfaced as a normal inline error the same as a bad password would be
+ * — not a broken/disabled control. "Sign in with a code instead" links
+ * to the email-OTP flow (otp.tsx) — a real, no-dashboard-config-required
+ * alternative added alongside this screen, not a replacement for it.
  */
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CtaButton } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function LoginScreen() {
-  const { signInWithPassword } = useAuth();
+  const { signInWithPassword, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const onSubmit = async () => {
     setError(null);
@@ -39,6 +44,17 @@ export default function LoginScreen() {
     // No manual navigation here — (auth)/_layout.tsx redirects reactively
     // once the session + role resolve, routing by role (role-routing.ts)
     // instead of always assuming client.
+  };
+
+  const onGoogleSignIn = async () => {
+    setError(null);
+    setGoogleSubmitting(true);
+    const { error: googleError } = await signInWithGoogle();
+    setGoogleSubmitting(false);
+    if (googleError) setError(googleError);
+    // Cancelled-by-user returns {error: null} — nothing to show, nothing
+    // to navigate; a real success is picked up by the same reactive
+    // session redirect as password login.
   };
 
   return (
@@ -74,16 +90,31 @@ export default function LoginScreen() {
 
           {error && <Text style={styles.error}>{error}</Text>}
 
+          <Link href="/forgot-password" style={styles.forgotLink}>
+            <Text style={styles.forgotLinkText}>Forgot password?</Text>
+          </Link>
+
           <CtaButton onPress={onSubmit} loading={submitting} style={styles.ctaSpacing}>
             Log in
           </CtaButton>
 
-          <View
-            style={[styles.secondaryButton, styles.disabled]}
+          <Pressable
+            onPress={googleSubmitting ? undefined : onGoogleSignIn}
+            disabled={googleSubmitting}
             accessibilityRole="button"
-            accessibilityState={{ disabled: true }}>
-            <Text style={styles.secondaryButtonText}>Continue with Google (coming soon)</Text>
-          </View>
+            accessibilityLabel="Continue with Google"
+            accessibilityState={{ disabled: googleSubmitting, busy: googleSubmitting }}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              googleSubmitting && styles.disabled,
+              pressed && !googleSubmitting && styles.secondaryButtonPressed,
+            ]}>
+            {googleSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.secondaryButtonText}>Continue with Google</Text>
+            )}
+          </Pressable>
 
           <Link href="/otp" style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>Sign in with a code instead</Text>
@@ -103,7 +134,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
   wordmark: {
-    fontFamily: 'Oswald_700Bold',
+    fontFamily: DisplayFont,
+    fontWeight: '700',
     fontStyle: 'italic',
     fontSize: 40,
     color: Brand.yellow,
@@ -111,7 +143,8 @@ const styles = StyleSheet.create({
   },
   subLockup: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: '#FFFFFF', marginBottom: 24 },
   title: {
-    fontFamily: 'Oswald_600SemiBold',
+    fontFamily: DisplayFont,
+    fontWeight: '700',
     fontStyle: 'italic',
     fontSize: 24,
     color: '#FFFFFF',
@@ -127,6 +160,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  forgotLink: { alignSelf: 'flex-end' },
+  forgotLinkText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.yellow },
   ctaSpacing: { marginTop: 8 },
   secondaryButton: {
     borderRadius: 16,
@@ -136,6 +171,7 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
   },
   disabled: { opacity: 0.4 },
+  secondaryButtonPressed: { opacity: 0.7 },
   secondaryButtonText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: '#FFFFFF' },
   link: { marginTop: 20, alignSelf: 'center' },
   linkText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.yellow },

@@ -2,10 +2,12 @@
  * LEANR by Fitelo — "The Ignition Reveal" launch animation.
  * Spec: LEANR_PT_NEXTGEN_APP_PRD.md §18. Reference build: mobile-app-reference/launch-animation/.
  *
- * Renders the wordmark as styled text (Oswald 700 + synthetic italic),
- * matching how the existing web app implements the brand — never an image
- * asset — which sidesteps the open question in the PRD about exporting an
- * isolated wordmark asset entirely.
+ * Renders the wordmark as styled text (Anton, synthetic bold + italic).
+ * The web app itself renders the wordmark from a real logo image asset
+ * (public/01_LeanR_by_Fitelo_logo.png, screen-blended onto black — see
+ * LEANR_PT_MOBILE_PRD.md §23 Assets); that PNG is available at
+ * assets/images/leanr-by-fitelo-logo.png for any screen that wants the
+ * static image treatment instead of this animated text rendering.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,10 +24,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 
 const HAS_LAUNCHED_KEY = 'leanr.hasCompletedFirstLaunchAnimation';
-const WORDMARK_WIDTH = 210; // measured for Oswald 700 italic "LEANR" at fontSize 52
+const WORDMARK_WIDTH = 210; // measured for Anton bold italic "LEANR" at fontSize 52
 
 const FULL = {
   sweepStart: 150,
@@ -215,7 +217,8 @@ const styles = StyleSheet.create({
   },
   revealClip: { overflow: 'hidden', height: 64, justifyContent: 'center' },
   wordmark: {
-    fontFamily: 'Oswald_700Bold',
+    fontFamily: DisplayFont,
+    fontWeight: '700',
     fontStyle: 'italic',
     fontSize: 52,
     lineHeight: 60,

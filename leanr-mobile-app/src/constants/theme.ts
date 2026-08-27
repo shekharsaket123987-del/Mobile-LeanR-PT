@@ -7,43 +7,47 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-// LEANR by Fitelo brand tokens — source of truth: LEANR_PT_NEXTGEN_APP_PRD.md §4.
+// LEANR by Fitelo brand tokens — source of truth: LEANR_PT_MOBILE_PRD.md §23
+// (verified directly against the live web app's tailwind.config.ts /
+// globals.css — the product is dark-only, no light-mode variant).
 // Keep this object as the single place brand hex values live; never inline
 // a brand hex in a component.
 export const Brand = {
   black: '#000000',
   charcoal: '#111111',
   charcoal2: '#1A1A1A',
-  yellow: '#F5E400',
-  yellow2: '#FFE600',
-  pageBackground: '#FAFAFA',
-  card: '#FFFFFF',
+  bg: '#060606',
+  bgElevated: '#0c0c0c',
+  bgSoft: '#141414',
+  yellow: '#F5D90A',
+  yellow2: '#FFE94D',
+  yellowDim: '#B8A400',
+  pageBackground: '#060606',
+  card: '#0c0c0c',
   streakEmberStart: '#FF7A18',
-  streakEmberEnd: '#F5E400',
+  streakEmberEnd: '#F5D90A',
   successEmerald: '#10B981',
   alertRed: '#EF4444',
-  glowYellow: 'rgba(245, 228, 0, 0.35)',
+  glowYellow: 'rgba(245, 217, 10, 0.35)',
+} as const;
+
+// Dark-only product — `light` intentionally mirrors `dark` so any code still
+// branching on color scheme renders identically instead of falling back to
+// a stale light theme. Do not reintroduce a real light palette without a
+// separate product decision (see LEANR_PT_MOBILE_PRD.md §23).
+const darkTheme = {
+  text: '#ffffff',
+  background: Brand.bg,
+  backgroundElement: Brand.charcoal2,
+  backgroundSelected: '#2E3135',
+  textSecondary: 'rgba(255,255,255,0.6)',
+  tint: Brand.yellow,
+  tintText: Brand.black,
 } as const;
 
 export const Colors = {
-  light: {
-    text: Brand.charcoal,
-    background: Brand.pageBackground,
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-    tint: Brand.yellow,
-    tintText: Brand.black,
-  },
-  dark: {
-    text: '#ffffff',
-    background: Brand.black,
-    backgroundElement: Brand.charcoal2,
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    tint: Brand.yellow,
-    tintText: Brand.black,
-  },
+  light: darkTheme,
+  dark: darkTheme,
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
@@ -72,6 +76,12 @@ export const Fonts = Platform.select({
     mono: 'var(--font-mono)',
   },
 });
+
+// Brand display font — Anton (single 400 weight; bold/italic are always
+// applied together via fontStyle:'italic' + fontWeight:'700', synthesized
+// on top of the one loaded weight, same as the web app's CSS-synthesized
+// bold+italic. Loaded in app/_layout.tsx as `Anton_400Regular`.
+export const DisplayFont = 'Anton_400Regular';
 
 export const Spacing = {
   half: 2,

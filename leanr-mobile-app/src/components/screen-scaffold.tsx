@@ -1,6 +1,6 @@
 /**
  * Shared shell for Phase-0 placeholder screens: brand background, safe
- * area, scroll container, and a title in the Oswald bold-italic display
+ * area, scroll container, and a title in the Anton bold-italic display
  * style (LEANR_PT_NEXTGEN_APP_PRD.md §4.2). Screens in later phases
  * (§9 Key Screen Specs) replace the body content, not this shell.
  */
@@ -8,7 +8,7 @@ import { PropsWithChildren } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Brand, Colors } from '@/constants/theme';
+import { Brand, Colors, DisplayFont } from '@/constants/theme';
 
 type Props = PropsWithChildren<{ title: string; subtitle?: string }>;
 
@@ -76,7 +76,8 @@ export const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   scrollContent: { padding: 20, gap: 16, paddingBottom: 48 },
   title: {
-    fontFamily: 'Oswald_700Bold',
+    fontFamily: DisplayFont,
+    fontWeight: '700',
     fontStyle: 'italic',
     fontSize: 28,
     letterSpacing: -0.3,
@@ -97,7 +98,8 @@ export const styles = StyleSheet.create({
     opacity: 0.7,
   },
   bigStat: {
-    fontFamily: 'Oswald_700Bold',
+    fontFamily: DisplayFont,
+    fontWeight: '700',
     fontStyle: 'italic',
     fontSize: 40,
     color: Brand.yellow,

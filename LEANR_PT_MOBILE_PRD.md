@@ -1,5 +1,4 @@
 # LEANR PT — Web-to-Mobile Conversion PRD
-![alt text](image.png)   <-- brand name and logo , so use this to use logo and theme of app and ui 
 
 **Status:** Documentation only. Derived entirely from a read-only analysis of the existing LeanR PT web application in this repository. Nothing in the web app was modified to produce this document.
 
@@ -46,7 +45,6 @@ This is **not** a UX prototype despite some legacy scaffolding remnants (see §2
 - **No password-reset flow.** The "Forgot password?" link on the login form has no handler — it is visually present but non-functional.
 - **No session recording.** The Zoom integration explicitly does not enable recording.
 - **No cron/scheduled jobs.** All "sweep" operations (expiring holds, flagging overdue attendance/notes, marking missed sessions) run opportunistically as a side effect of other DB function calls or page loads — there is no timer-based backend job.
-- **No logo/icon image asset exists anywhere in the codebase.** The "LEANR" wordmark is rendered as styled text (Oswald font, bold italic), never an image or SVG. A mobile app icon will need to be created/sourced separately — **OPEN QUESTION** for brand/design team, not something derivable from code.
 - `src/lib/types.ts` and `src/lib/mock-data.ts` are **legacy prototype scaffolding** predating the real Supabase backend (used only by the landing page's testimonials section, which is still mock data). **Do not treat these as the source of truth** — the SQL migrations and services are authoritative.
 
 ---
@@ -1099,32 +1097,54 @@ Full per-table RLS policy summary is in §12. Full per-role screen/action access
 
 ## 23. Design System
 
-Source of truth: `tailwind.config.ts`, `src/components/ui/*`, `src/components/shared/PortalShell.tsx`. **The mobile app must use this as its design source, adapted for mobile layout conventions — not a new visual identity.**
+Source of truth: `tailwind.config.ts`, `src/app/globals.css`, `src/components/ui/*`, `src/components/shared/PortalShell.tsx`. **The mobile app must use this as its design source, adapted for mobile layout conventions — not a new visual identity.**
+
+**Correction (re-verified directly against current source):** everything in this section was rewritten after checking the live files — the values below replace an earlier pass of this document that assumed a light theme (`#FAFAFA` background, `#F5E400` yellow, Oswald display font). None of that matches the shipped app. The product is **dark-only, with no light-mode variant**: `html { background:#060606; color-scheme:dark; }` is hardcoded in `globals.css`, and there is no theme toggle or `prefers-color-scheme` branch anywhere in the codebase.
 
 ### Colors
 | Token | Hex | Usage |
 |---|---|---|
-| `brand.black` | `#000000` | primary dark bg/text |
-| `brand.charcoal` | `#111111` | body text |
-| `brand.charcoal2` | `#1A1A1A` | secondary button hover |
-| `brand.yellow` | `#F5E400` | primary accent — CTAs, active nav, highlights |
-| `brand.yellow2` | `#FFE600` | primary button hover, gradient end |
-| Page background | `#FAFAFA` | body/portal bg |
-| Card/white | `#FFFFFF` | cards, inputs |
+| `bg.DEFAULT` | `#060606` | app background — forced on `<body>` everywhere |
+| `bg.elevated` | `#0c0c0c` | slightly raised surfaces |
+| `bg.soft` | `#141414` | further-raised surfaces |
+| `brand.black` | `#000000` | pure black accents |
+| `brand.charcoal` | `#111111` | dark surface fill |
+| `brand.charcoal2` | `#1A1A1A` | secondary surface / native form-input background (see note below) |
+| `brand.yellow` / `yellow.DEFAULT` | `#F5D90A` | primary accent — CTAs, active nav, focus rings, glow effects |
+| `brand.yellow2` / `yellow.bright` | `#FFE94D` | primary button hover, gradient end |
+| `yellow.dim` | `#B8A400` | de-emphasized yellow (rarely used) |
+| `muted.DEFAULT` | `#9a9a95` | secondary text (config token; components mostly use `white/40–60` instead) |
+| `muted.2` | `#6f6f6b` | tertiary text |
 
-Semantic (Tailwind default, not tokenized): `emerald-*` (success), `red-*` (destructive/error), `black/[opacity]` (muted text, hairline borders — e.g. `black/60`, `black/[0.06]`).
+There is no white/light card surface anywhere. `Card` (`src/components/ui/Card.tsx`) renders either `.glass` (default) or `.glass-yellow` (`dark` prop — despite the name, this is the *accent* variant, not a light one). "Card (light/dark)" in an earlier pass of this document was wrong; both variants are translucent-dark, and text on cards is white/near-white throughout — there is no dark-text-on-light-card state to replicate on mobile.
+
+**Native `<input>`/`<textarea>`/`<select>` quirk worth preserving:** every real form field (not the hand-styled ones in auth/booking flows) gets a hard-coded `#1A1A1A` background with `#F5D90A` (yellow) text and yellow-tinted placeholders, set globally in `globals.css` — including autofill state, forced yellow-on-dark via `-webkit-text-fill-color`. This was a deliberate fix for illegible white-on-white native controls, not a stray override; mobile native inputs should default to this same dark/yellow treatment rather than the OS default.
+
+Semantic (Tailwind default, not tokenized): `emerald-*` (success), `red-*` (destructive/error), `white/[opacity]` (muted text, hairline borders — e.g. `white/60`, `white/[0.09]`). Note the flip from an earlier pass of this document: hairlines and muted text are white-on-dark (`white/...`) everywhere, never `black/...`.
 
 ### Typography
-- **Display**: Oswald, weights 500/600/700, always used **bold + italic together** for headings/titles/big numbers.
-- **Body**: Manrope, weights 400/500/600/700/800, applied globally.
+- **Display**: **Anton** — not Oswald — a single static weight (400), loaded via `next/font/google` as `--font-display`. Bold and italic are both **CSS-synthesized** on top of that one weight (`font-weight:700` + `font-style:italic` applied to a font with no matching bold/italic face) — the browser fakes both, which is also exactly how production actually renders it. Still always used bold + italic together for headings/titles/big numbers.
+- **Body**: Manrope, weights 400/500/600/700/800, loaded via `next/font/google` as `--font-body`, applied globally.
 - `.text-display` utility: `letter-spacing: -0.01em`.
+- `.text-glow` utility: `text-shadow: 0 0 30px rgba(245,217,10,.35)` — used on hero/emphasis yellow text.
+- `.brand-gradient-text` utility: yellow → bright-yellow gradient text-fill, used sparingly for emphasis words.
 
 ### Shape & elevation
-- Radius: buttons `rounded-xl` (16px), cards/modals `rounded-2xl` (20px), badges/avatars `rounded-full`.
-- Shadows: `shadow-soft` (`0 4px 24px rgba(0,0,0,0.06)`, buttons/hover), `shadow-card` (`0 2px 12px rgba(0,0,0,0.05)`, default card), `shadow-glow` (`0 0 40px rgba(245,228,0,0.25)`, yellow glow on hero/highlighted elements).
+- Radius: **buttons are `rounded-full` (pill-shaped) in every variant** — not `rounded-xl` as an earlier pass of this document claimed; see `Button.tsx`. Inputs/cards use `rounded-xl` (16px); modals and glass panels use `rounded-2xl` (20px). Badges/avatars `rounded-full`.
+- Shadows (`tailwind.config.ts`, calibrated for a dark ground — noticeably heavier than a light-theme shadow): `shadow-soft` (`0 4px 24px rgba(0,0,0,0.4)`), `shadow-card` (`0 2px 12px rgba(0,0,0,0.35)`), `shadow-glow` (`0 0 40px rgba(245,217,10,0.3)`). The primary `Button` additionally carries its own bespoke yellow glow rather than the `shadow-glow` token: `0 0 40px -8px rgba(245,217,10,0.6)`, brightening to `0 0 55px -6px rgba(245,217,10,0.85)` on hover.
+
+### Glassmorphism system (`globals.css`) — not covered in an earlier pass of this document
+Real, pervasive utility classes, not a one-off effect:
+- `.glass` — `linear-gradient(155deg, rgba(255,255,255,.07), rgba(255,255,255,.02))` + `backdrop-filter: blur(20px) saturate(140%)` + hairline border + layered inset/drop shadow. Default `Card` background.
+- `.glass-strong` — heavier blur/opacity variant, for modals and prominent panels.
+- `.glass-faint` — subtle variant for chips/rows nested inside an already-glass card.
+- `.glass-yellow` — yellow-tinted glass; `Card`'s `dark` (accent) variant.
+- `.glow-yellow` (ambient box-shadow glow) and `.noise` (a fixed, low-opacity SVG fractal-noise overlay used on hero/dark surfaces for texture).
+
+Mobile should reproduce blur+translucency (e.g. `UIVisualEffectView`/`BackdropFilter` equivalents), not flatten these to solid fills — glass is a core part of the brand's visual identity, on par with the yellow accent.
 
 ### Component inventory (`src/components/ui/*`)
-Button (variants: primary/secondary/outline/ghost/destructive/destructive-outline; sizes sm/md/lg), Card (light/dark), Badge (yellow/black/green/red/gray/outline-yellow + purpose-built `AssessmentBadge`/`SessionStatusBadge`), Modal, ConfirmDialog, Avatar (with optional yellow ring), EmptyState, ProgressRing (SVG circular stat), Skeleton (+ CardSkeleton/TableRowSkeleton), StatCard, TagEditor. **No dedicated Input/Select/Checkbox primitive** — forms hand-style inline inputs (`rounded-xl border border-white/15 bg-white/5 py-3 pl-10 pr-4 text-sm` with a leading icon).
+Button (variants: primary/secondary/outline/ghost/destructive/destructive-outline; sizes sm/md/lg — all pill-shaped), Card (`.glass`/`.glass-yellow` via `dark` prop), GlassCard, GlassSectionPanel, Badge (yellow/black/green/red/gray/outline-yellow + purpose-built `AssessmentBadge`/`SessionStatusBadge`), Modal, ConfirmDialog, Avatar (with optional yellow ring), EmptyState, ProgressRing (SVG circular stat), Skeleton (+ CardSkeleton/TableRowSkeleton), StatCard, TagEditor. **No dedicated Input/Select/Checkbox primitive** — forms hand-style inline inputs (`rounded-xl border border-white/15 bg-white/5 py-3 pl-10 pr-4 text-sm` with a leading icon).
 
 ### Navigation pattern (to inform §25 Mobile Navigation)
 Single `PortalShell` component parameterized by role. Desktop: fixed 288px sidebar, always visible. Mobile web: sticky top bar + off-canvas drawer. Nav item lists per role (exact order, reuse as the mobile bottom-nav/drawer source):
@@ -1138,7 +1158,24 @@ Red numeric badges appear on "My Chats"/"Coach Chats" (unread count) and "My Con
 Session status labels exactly as shown: Upcoming, Completed, Cancelled, Missed, Active, Inactive, Paused, Pending, Approved, Rejected, On Leave.
 
 ### Assets
-**No logo/icon image file exists in the codebase** — the wordmark is styled text only. A mobile app icon must be created/sourced separately (**OPEN QUESTION** for design/brand team, not derivable from code).
+**Correction:** a real logo file exists — `public/01_LeanR_by_Fitelo_logo.png` (400×376), rendered via `src/components/shared/Logo.tsx` with `mix-blend-mode: screen`. The PNG has a solid black background; screen-blending it onto the app's near-black (`#060606`) canvas makes that background disappear, leaving only the yellow "LEANR" wordmark and white "By Fitelo" sub-lockup visible — a deliberate technique in place of an alpha-transparent asset. Use this file as the mobile logo/icon source. It will show a visible black box on any non-dark background, so either keep it composited over dark surfaces via the same blend trick, or get an alpha-transparent export from design before using it anywhere light (native app icon on light OS chrome, light system UI, etc. — still an **OPEN QUESTION** for those specific placements, since no such export exists in the repo).
+
+**Repo link (logo):** https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/01_LeanR_by_Fitelo_logo.png
+
+**Real photography used on the landing page** — also not documented in an earlier pass of this section. These are the actual, currently-live image assets (not placeholders) and should be reused as-is in the mobile app rather than re-sourced:
+
+| File | Used in | Repo link |
+|---|---|---|
+| `ChatGPT Image Aug 22, 2026, 01_43_26 PM.png` | `Hero.tsx` — `HERO_PHOTO` | https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/ChatGPT%20Image%20Aug%2022%2C%202026%2C%2001_43_26%20PM.png |
+| `ChatGPT Image Aug 22, 2026, 02_04_47 PM.png` | `Hero.tsx` — `COACH_PHOTO` | https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/ChatGPT%20Image%20Aug%2022%2C%202026%2C%2002_04_47%20PM.png |
+| `ChatGPT Image Aug 22, 2026, 02_18_13 PM.png` | `CoachingShowsUp.tsx` | https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/ChatGPT%20Image%20Aug%2022%2C%202026%2C%2002_18_13%20PM.png |
+| `ChatGPT Image Aug 22, 2026, 03_57_24 PM.png` | `CoachingShowsUp.tsx` | https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/ChatGPT%20Image%20Aug%2022%2C%202026%2C%2003_57_24%20PM.png |
+| `ChatGPT Image Aug 22, 2026, 04_02_06 PM.png` | `CoachingShowsUp.tsx` | https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/ChatGPT%20Image%20Aug%2022%2C%202026%2C%2004_02_06%20PM.png |
+| `ChatGPT Image Aug 22, 2026, 04_11_22 PM.png` | `Coaches.tsx` **and** `ReadyWhenYouAre.tsx` (`COACH_PHOTO`, reused in both) | https://github.com/shekharsaket123987-del/LeanR-PT/blob/master/public/ChatGPT%20Image%20Aug%2022%2C%202026%2C%2004_11_22%20PM.png |
+
+All six are AI-generated (filenames are literally ChatGPT export timestamps), not a licensed stock/photo-shoot source — worth knowing if a real photo shoot ever needs to replace them, but they are the genuine current production assets and should be treated as such, not as placeholders. Contrast with `AuthLayout.tsx`'s login-page photo panel, which is **not** a real asset — it calls `picsum.photos/seed/${imageSeed}/1200/1400`, a placeholder image service, live at request time. That one specific spot has no real asset to copy; everywhere else in the table above does.
+
+**Repository:** https://github.com/shekharsaket123987-del/LeanR-PT (branch `master`) — clone or browse this directly to pull the logo and photo files above byte-for-byte rather than re-generating or re-sourcing them.
 
 ---
 
@@ -1280,6 +1317,29 @@ Reasoning, based on this specific codebase:
 
 Phased by actual dependency order derived from §9's Feature Dependency Map. Each phase lists what must exist before the next can be meaningfully tested.
 
+### Build status (audited against the `leanr-mobile-app` repo + git history, 2026-08-28)
+
+This PRD is written as a fixed spec, but the phases below are no longer purely aspirational — a real Expo/React Native build already exists in this repository (`leanr-mobile-app/`) and has worked through most of this roadmap. Status per phase, derived from the actual route tree (`src/app/(auth|client|coach|admin)/**`), data layer (`src/lib/data/*.ts`), and commit history — not re-derived from scratch each time this doc is read:
+
+| Phase | Status | Notes |
+|---|---|---|
+| 1 — Foundation | ✅ Done | Expo Router app, Supabase SDK, AES-encrypted session storage (`large-secure-store.ts`). Theme tokens were built against a stale pre-correction palette until this pass — now fixed to match §23 (dark-only `#060606`/`#F5D90A`, Anton + Manrope, real logo asset at `assets/images/leanr-by-fitelo-logo.png`). |
+| 2 — Authentication | ✅ Done | Email/password login, an email-OTP flow (`(auth)/otp.tsx`), password reset (`forgot-password.tsx`/`reset-password.tsx`, deep-link-driven recovery session per `auth-context.tsx`), and Google OAuth (`signInWithGoogle`, Supabase's web-based OAuth pattern via `expo-web-browser` — no client-side Google credential needed, GoTrue holds it) are all implemented, plus role-based routing (`lib/auth/role-routing.ts`). **One external dependency remains**: Google sign-in's code path is complete, but it only functions once the Google provider is turned on in the Supabase dashboard (Authentication → Providers → Google) with a Google Cloud OAuth client configured there — a credential/config step outside this repo, not missing code. |
+| 3 — Navigation Shell | ✅ Done | Route groups `(client)/(coach)/(admin)` with per-role `_layout.tsx` and "More" screens, matching §25. |
+| 4 — Availability (read-only) | ✅ Done | `coach-availability.ts` + `(coach)/availability.tsx`. |
+| 5 — Booking Engine | ✅ Done | Ad-hoc wizard, recurring schedule setup, demo booking — each built and commit-verified against the live RPC bodies (`create_temporary_booking`/`confirm_booking`), per §15. |
+| 6 — Session Management | ✅ Done | `(coach)/session/[id].tsx`, `zoom.ts` — real Zoom meeting join. |
+| 7 — Reschedule & Cancellation | ✅ Done | `(client)/reschedule/[id].tsx`, schema-verified against live RPC bodies. |
+| 8 — Payments & Subscriptions | ✅ Done | Real Razorpay checkout (`react-native-razorpay`) + `payments.ts`, `plans.tsx`. |
+| 9 — Coach Change, Escalations, Chat | ✅ Done | `coach-change.ts`, `concerns.tsx`, realtime chat (`chat.ts`/`coach-chat.ts`) with image attachments. |
+| 10 — Push Notifications | ✅ Done, and ahead of spec | Implemented as a `pg_net` DB trigger + `send-push` Supabase Edge Function (`supabase/functions/send-push`, `supabase/migrations/20260819120000_push_tokens_and_send_trigger.sql`) — a real scheduled-dispatch path, not just the client-side registration scaffold §26 anticipated. |
+| 11 — Coach Portal Completion | ✅ Done | Performance, Renewals, Search, Chats all built. |
+| 12 — Admin Portal | ✅ Done, scoped as recommended | Deliberately built as the reduced "on-call ops" subset this section itself suggests — Escalations, Leave Requests, Shadow Coverage (`(admin)/escalation/[id].tsx`, `leave.tsx`, `shadow.tsx`) — not full 18-screen parity. Matches the scope decision this document asked to have flagged before starting. |
+| 13 — Testing | ❌ Not started | No automated test suite found in the repo. |
+| 14 — Store Release | 🟡 Scaffolding only | ESLint + EAS/store config scaffolding exists (per commit history); no evidence of an actual TestFlight/Play internal build yet. |
+
+**Net effect:** the roadmap in this section is ~90% executed for client + coach portals, auth, and push infra; the one item worth carrying forward is that Google OAuth's code path is done but inert until the Supabase dashboard's Google provider is configured with a real Google Cloud OAuth client — and admin parity was intentionally capped (§Phase 12), not deferred by accident.
+
 ### PHASE 1 — Project Foundation
 - New React Native project (Expo recommended for push-notification/OTA convenience, or bare RN if native Zoom SDK integration demands it).
 - Supabase client SDK wired to the **same Supabase project** as the web app (do not create a new schema — reuse it as-is).
@@ -1387,7 +1447,7 @@ Carried forward from the existing web app — these are **existing product limit
 - No cron/scheduled jobs — all sweeps are opportunistic, triggered by other operations.
 - No admin-provisioning flow in the codebase (admin accounts are created out-of-band).
 - Testimonials on the landing page are mock/placeholder data, not backed by a real reviews table.
-- No logo/icon asset exists — needed for app store submission.
+- The login page's photo panel (`AuthLayout.tsx`) calls a placeholder image service (`picsum.photos`) at request time rather than using a real asset — see §23 Assets for the real assets that exist elsewhere (logo, landing-page photography) and should be reused instead of re-sourced.
 - Inconsistent confirmation-dialog usage on some destructive admin actions (e.g., Sessions list's Cancel has no confirm dialog while other destructive actions do) — worth normalizing in the new build rather than copying the inconsistency, but flag this decision rather than silently picking one.
 - `temporary_booking_status = 'released'` enum value exists but is never set by any function — dead/reserved, do not build UI around it without confirming intent.
 
@@ -1414,8 +1474,7 @@ Consolidated from all source analyses. These require either a source-code deep-d
 15. **Which action file exposes generic `listMyNotifications`/`markNotificationRead`** per role — inferred but not confirmed file-by-file (likely `client-notifications.actions.ts`-equivalent per portal).
 16. **Exact SQL thresholds inside `flag_overdue_attendance`/`flag_overdue_notes`** — code comments say "2 hours post-session-end"; should be confirmed directly against migrations 0032/0048 if the mobile app needs to display a countdown to this threshold.
 17. **`font-script` Tailwind class** referenced in `Logo.tsx` has no matching font-family definition in `tailwind.config.ts` — likely an unfinished/unintentional style; do not port as-is without checking whether a script font was actually intended for the "By Fitelo" sub-lockup.
-18. **No logo/icon asset exists anywhere in the codebase** — required for app-store submission; must be sourced/created outside this analysis.
-19. **RN vs. thin-API-layer build sequencing** (§27, Option B): adding an HTTP API layer touches the existing web project's `src/app/api/` — this documentation task was scoped as read-only, so the actual decision of *where* that layer lives (fork this repo vs. a new project importing shared services) is explicitly left as a stakeholder decision, not resolved here.
+18. **RN vs. thin-API-layer build sequencing** (§27, Option B): adding an HTTP API layer touches the existing web project's `src/app/api/` — this documentation task was scoped as read-only, so the actual decision of *where* that layer lives (fork this repo vs. a new project importing shared services) is explicitly left as a stakeholder decision, not resolved here.
 
 ---
 

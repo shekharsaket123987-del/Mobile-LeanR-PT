@@ -9,7 +9,7 @@
 import { Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function UnsupportedRoleScreen() {
@@ -17,7 +17,15 @@ export default function UnsupportedRoleScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Brand.black, justifyContent: 'center', padding: 24, gap: 16 }}>
-      <Text style={{ fontFamily: 'Oswald_700Bold', fontStyle: 'italic', fontSize: 24, color: Brand.yellow }}>
+      <Text
+        style={{
+          fontFamily: DisplayFont,
+          fontWeight: '700',
+          fontStyle: 'italic',
+          fontSize: 24,
+          color: Brand.yellow,
+        }}
+      >
         Not available yet
       </Text>
       <Text style={{ fontFamily: 'Manrope_500Medium', fontSize: 15, color: '#FFFFFF' }}>

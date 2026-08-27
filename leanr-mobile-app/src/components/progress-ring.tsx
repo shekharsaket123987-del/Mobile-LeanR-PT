@@ -10,7 +10,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedProps, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
-import { Brand } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -87,6 +87,6 @@ export function ProgressRing({ progress, size = 160, strokeWidth = 14, label, va
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center' },
   center: { position: 'absolute', alignItems: 'center' },
-  value: { fontFamily: 'Oswald_700Bold', fontStyle: 'italic', fontSize: 28, color: Brand.yellow },
+  value: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 28, color: Brand.yellow },
   label: { fontFamily: 'Manrope_500Medium', fontSize: 12, opacity: 0.7 },
 });

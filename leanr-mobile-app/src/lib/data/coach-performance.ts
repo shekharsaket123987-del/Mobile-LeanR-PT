@@ -20,6 +20,11 @@ export type CoachPerformance = {
   ratingCount: number;
 };
 
+/** Pure core of the §13 rule 21 "recomputed live" average — split out for unit testing without a Supabase round-trip. */
+export function computeAverageRating(values: number[]): number | null {
+  return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+}
+
 export async function getMyPerformance(): Promise<CoachPerformance> {
   const coachId = await getMyCoachProfileId();
   if (!coachId) {
@@ -43,13 +48,12 @@ export async function getMyPerformance(): Promise<CoachPerformance> {
   if (ratingsError) throw ratingsError;
 
   const values = (ratings ?? []).map((r) => r.trainer_rating as number);
-  const averageTrainerRating = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
 
   return {
     completedSessions: completedRes.count ?? 0,
     upcomingSessions: upcomingRes.count ?? 0,
     missedSessions: missedRes.count ?? 0,
-    averageTrainerRating,
+    averageTrainerRating: computeAverageRating(values),
     ratingCount: values.length,
   };
 }

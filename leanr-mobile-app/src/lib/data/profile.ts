@@ -7,12 +7,12 @@
  * `profiles` itself) — real, direct write access, not a boundary like
  * coach-change stage 2 or payments.
  *
- * Deliberately scoped to the common `profiles` fields (name/phone/
- * emergency contact/photo) plus a small role-specific subset — client
- * goals/equipment, coach bio/specialization — rather than every column
- * on `client_profiles`/`coach_profiles` (e.g. `medical_notes`,
- * `certifications`, `languages`, `skills`). Those are real, writable,
- * and not built here — a reasonable first-pass cut, not a schema gap.
+ * Field scope: `profiles` (name/phone/emergency contact/photo), client
+ * `goals`/`equipment`/`medical_notes`, coach `bio`/`specialization`/
+ * `certifications`/`languages`/`skills` (the latter three are
+ * `text[]` columns, edited as comma-separated text same as
+ * goals/equipment — same `_update_own` RLS as everything else here,
+ * confirmed live).
  *
  * Photo upload (`uploadAvatarImage`) — confirmed live (2026-08-28) via
  * direct `pg_policies` introspection of the `avatars` bucket:
@@ -74,7 +74,7 @@ export async function uploadAvatarImage(localUri: string, mimeType: string | und
   return data.publicUrl;
 }
 
-export type MyClientDetails = { goals: string[]; equipment: string[] };
+export type MyClientDetails = { goals: string[]; equipment: string[]; medical_notes: string | null };
 
 export async function getMyClientDetails(): Promise<MyClientDetails | null> {
   const { data: userData } = await supabase.auth.getUser();
@@ -82,14 +82,18 @@ export async function getMyClientDetails(): Promise<MyClientDetails | null> {
 
   const { data, error } = await supabase
     .from('client_profiles')
-    .select('goals, equipment')
+    .select('goals, equipment, medical_notes')
     .eq('profile_id', userData.user.id)
     .single();
   if (error) throw error;
   return data as MyClientDetails;
 }
 
-export async function updateMyClientDetails(updates: { goals?: string[]; equipment?: string[] }): Promise<void> {
+export async function updateMyClientDetails(updates: {
+  goals?: string[];
+  equipment?: string[];
+  medical_notes?: string | null;
+}): Promise<void> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Not signed in.');
 
@@ -97,7 +101,13 @@ export async function updateMyClientDetails(updates: { goals?: string[]; equipme
   if (error) throw error;
 }
 
-export type MyCoachDetails = { bio: string | null; specialization: string | null };
+export type MyCoachDetails = {
+  bio: string | null;
+  specialization: string | null;
+  certifications: string[];
+  languages: string[];
+  skills: string[];
+};
 
 export async function getMyCoachDetails(): Promise<MyCoachDetails | null> {
   const { data: userData } = await supabase.auth.getUser();
@@ -105,14 +115,20 @@ export async function getMyCoachDetails(): Promise<MyCoachDetails | null> {
 
   const { data, error } = await supabase
     .from('coach_profiles')
-    .select('bio, specialization')
+    .select('bio, specialization, certifications, languages, skills')
     .eq('profile_id', userData.user.id)
     .single();
   if (error) throw error;
   return data as MyCoachDetails;
 }
 
-export async function updateMyCoachDetails(updates: { bio?: string | null; specialization?: string | null }): Promise<void> {
+export async function updateMyCoachDetails(updates: {
+  bio?: string | null;
+  specialization?: string | null;
+  certifications?: string[];
+  languages?: string[];
+  skills?: string[];
+}): Promise<void> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Not signed in.');
 

@@ -13,6 +13,16 @@ import { Brand } from '@/constants/theme';
 import { changeMyPassword, getMyCoachDetails, getMyProfile, updateMyCoachDetails, updateMyProfile } from '@/lib/data/profile';
 import { useAsync } from '@/lib/data/use-async';
 
+function joinList(values: string[]) {
+  return values.join(', ');
+}
+function splitList(text: string) {
+  return text
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 export default function CoachProfileScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const [profile, details] = await Promise.all([getMyProfile(), getMyCoachDetails()]);
@@ -31,6 +41,9 @@ export default function CoachProfileScreen() {
 
   const [bio, setBio] = useState<string | null>(null);
   const [specialization, setSpecialization] = useState<string | null>(null);
+  const [certifications, setCertifications] = useState<string | null>(null);
+  const [languages, setLanguages] = useState<string | null>(null);
+  const [skills, setSkills] = useState<string | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [detailsSaved, setDetailsSaved] = useState(false);
@@ -47,6 +60,9 @@ export default function CoachProfileScreen() {
   const displayEmergency = emergencyContact ?? data?.profile?.emergency_contact ?? '';
   const displayBio = bio ?? data?.details?.bio ?? '';
   const displaySpecialization = specialization ?? data?.details?.specialization ?? '';
+  const displayCertifications = certifications ?? (data?.details ? joinList(data.details.certifications) : '');
+  const displayLanguages = languages ?? (data?.details ? joinList(data.details.languages) : '');
+  const displaySkills = skills ?? (data?.details ? joinList(data.details.skills) : '');
 
   const onAvatarUploaded = async (url: string) => {
     setPhotoUrl(url);
@@ -77,7 +93,13 @@ export default function CoachProfileScreen() {
     setDetailsError(null);
     setDetailsSaved(false);
     try {
-      await updateMyCoachDetails({ bio: displayBio || null, specialization: displaySpecialization || null });
+      await updateMyCoachDetails({
+        bio: displayBio || null,
+        specialization: displaySpecialization || null,
+        certifications: splitList(displayCertifications),
+        languages: splitList(displayLanguages),
+        skills: splitList(displaySkills),
+      });
       setDetailsSaved(true);
     } catch (err) {
       setDetailsError(err instanceof Error ? err.message : String(err));
@@ -169,6 +191,12 @@ export default function CoachProfileScreen() {
         <TextInput style={styles.input} value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
         <Text style={shared.cardLabel}>BIO</Text>
         <TextInput style={[styles.input, styles.multiline]} value={displayBio} onChangeText={setBio} multiline accessibilityLabel="Bio" />
+        <Text style={shared.cardLabel}>CERTIFICATIONS (COMMA-SEPARATED)</Text>
+        <TextInput style={styles.input} value={displayCertifications} onChangeText={setCertifications} accessibilityLabel="Certifications" />
+        <Text style={shared.cardLabel}>LANGUAGES (COMMA-SEPARATED)</Text>
+        <TextInput style={styles.input} value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
+        <Text style={shared.cardLabel}>SKILLS (COMMA-SEPARATED)</Text>
+        <TextInput style={styles.input} value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
         {detailsError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {detailsError}

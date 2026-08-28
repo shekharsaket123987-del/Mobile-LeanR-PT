@@ -8,20 +8,21 @@
  * src/lib/data/chat.ts header for exactly what was confirmed on
  * 2026-08-18).
  *
- * Text + image messages. Attachments upload to the `chat-attachments`
- * bucket via `expo-image-picker` (device photo library only — no camera
- * capture, no captions alongside an image, both reasonable first-pass
- * cuts) — see src/lib/data/chat.ts header for the confirmed upload-path/
- * RLS shape. Layout is the same single-ScrollView shell every other
- * screen uses (Design Principle #5) rather than a pinned keyboard-
- * avoiding input bar — a reasonable first pass for a low-volume PT
- * coaching chat, not a high-frequency messaging app; a docked input bar
- * is a fair polish-pass upgrade later.
+ * Text + image messages, with an optional caption alongside an image
+ * (single message row, both `body` and `attachment_url` set — the
+ * schema always supported this, it just wasn't wired). Camera capture
+ * is now a real second option alongside the photo library (see
+ * src/lib/media/pick-chat-image.ts) — both were previously documented
+ * as first-pass cuts. See src/lib/data/chat.ts header for the confirmed
+ * upload-path/RLS shape. Layout is the same single-ScrollView shell
+ * every other screen uses (Design Principle #5) rather than a pinned
+ * keyboard-avoiding input bar — a reasonable first pass for a
+ * low-volume PT coaching chat, not a high-frequency messaging app; a
+ * docked input bar is a fair polish-pass upgrade later.
  */
-import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
 
 import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { CtaButton } from '@/components/tappable';
@@ -43,6 +44,7 @@ import {
 } from '@/lib/data/coach-change';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
+import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
 
 function formatMessageTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -71,6 +73,7 @@ export default function CoachScreen() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [attaching, setAttaching] = useState(false);
+  const [pendingImage, setPendingImage] = useState<PickedImage | null>(null);
 
   useEffect(() => {
     if (!conversation) return;
@@ -105,49 +108,31 @@ export default function CoachScreen() {
   }, [conversation]);
 
   const onSend = async () => {
-    if (!conversation || !draft.trim()) return;
+    if (!conversation || (!draft.trim() && !pendingImage)) return;
     const body = draft.trim();
+    const image = pendingImage;
     setDraft('');
+    setPendingImage(null);
     setMessagesError(null);
     setSending(true);
+    if (image) setAttaching(true);
     try {
-      const sent = await sendMessage(conversation.id, { body });
+      const attachmentUrl = image ? await uploadChatImage(conversation.id, image.uri, image.mimeType) : null;
+      const sent = await sendMessage(conversation.id, { body: body || null, attachmentUrl });
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     } catch (err) {
       setMessagesError(err instanceof Error ? err.message : String(err));
       setDraft(body);
+      setPendingImage(image);
     } finally {
       setSending(false);
+      setAttaching(false);
     }
   };
 
-  const onAttachImage = async () => {
-    if (!conversation) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Enable photo library access in Settings to send images.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.7,
-      allowsEditing: false,
-    });
-    if (result.canceled || result.assets.length === 0) return;
-
-    const asset = result.assets[0];
-    setMessagesError(null);
-    setAttaching(true);
-    try {
-      const attachmentUrl = await uploadChatImage(conversation.id, asset.uri, asset.mimeType);
-      const sent = await sendMessage(conversation.id, { attachmentUrl });
-      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
-    } catch (err) {
-      setMessagesError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setAttaching(false);
-    }
+  const onPickImage = async () => {
+    const picked = await pickChatImage();
+    if (picked) setPendingImage(picked);
   };
 
   return (
@@ -191,8 +176,10 @@ export default function CoachScreen() {
             onChangeText={setDraft}
             onSend={onSend}
             sending={sending}
-            onAttach={onAttachImage}
+            onAttach={onPickImage}
             attaching={attaching}
+            pendingImage={pendingImage}
+            onRemovePendingImage={() => setPendingImage(null)}
           />
         </>
       )}
@@ -339,6 +326,8 @@ function MessageInput({
   sending,
   onAttach,
   attaching,
+  pendingImage,
+  onRemovePendingImage,
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -346,42 +335,60 @@ function MessageInput({
   sending: boolean;
   onAttach: () => void;
   attaching: boolean;
+  pendingImage: PickedImage | null;
+  onRemovePendingImage: () => void;
 }) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  const canSend = value.trim().length > 0 && !sending;
+  const canSend = (value.trim().length > 0 || pendingImage !== null) && !sending;
 
   return (
-    <View style={[styles.inputRow, { backgroundColor: colors.backgroundElement }]}>
-      <Pressable
-        onPress={onAttach}
-        disabled={attaching}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel="Attach a photo"
-        accessibilityState={{ disabled: attaching, busy: attaching }}
-        style={[styles.attachButton, attaching && styles.sendButtonDisabled]}>
-        <Text style={styles.attachButtonText}>{attaching ? '…' : '📷'}</Text>
-      </Pressable>
-      <TextInput
-        style={[styles.input, { color: colors.text }]}
-        placeholder="Message your coach…"
-        placeholderTextColor={colors.textSecondary}
-        value={value}
-        onChangeText={onChangeText}
-        multiline
-        accessibilityLabel="Message your coach"
-      />
-      <Pressable
-        onPress={onSend}
-        disabled={!canSend}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel="Send message"
-        accessibilityState={{ disabled: !canSend }}
-        style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}>
-        <Text style={styles.sendButtonText}>Send</Text>
-      </Pressable>
+    <View>
+      {pendingImage && (
+        <View style={styles.pendingImageRow}>
+          <Image source={{ uri: pendingImage.uri }} style={styles.pendingImageThumb} contentFit="cover" />
+          <Pressable
+            onPress={onRemovePendingImage}
+            disabled={attaching}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Remove photo"
+            style={styles.pendingImageRemove}>
+            <Text style={styles.pendingImageRemoveText}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+      <View style={[styles.inputRow, { backgroundColor: colors.backgroundElement }]}>
+        <Pressable
+          onPress={onAttach}
+          disabled={attaching}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Attach a photo"
+          accessibilityState={{ disabled: attaching, busy: attaching }}
+          style={[styles.attachButton, attaching && styles.sendButtonDisabled]}>
+          <Text style={styles.attachButtonText}>{attaching ? '…' : '📷'}</Text>
+        </Pressable>
+        <TextInput
+          style={[styles.input, { color: colors.text }]}
+          placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your coach…'}
+          placeholderTextColor={colors.textSecondary}
+          value={value}
+          onChangeText={onChangeText}
+          multiline
+          accessibilityLabel="Message your coach"
+        />
+        <Pressable
+          onPress={onSend}
+          disabled={!canSend}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
+          accessibilityState={{ disabled: !canSend }}
+          style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}>
+          <Text style={styles.sendButtonText}>Send</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -433,6 +440,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(128,128,128,0.15)',
   },
   attachButtonText: { fontSize: 18 },
+  pendingImageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
+  pendingImageThumb: { width: 56, height: 56, borderRadius: 10 },
+  pendingImageRemove: {
+    marginLeft: -12,
+    marginTop: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Brand.alertRed,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingImageRemoveText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Manrope_700Bold' },
   sendButton: { backgroundColor: Brand.yellow, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
   sendButtonDisabled: { opacity: 0.5 },
   sendButtonText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.black },

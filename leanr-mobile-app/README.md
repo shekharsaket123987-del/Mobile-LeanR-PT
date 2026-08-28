@@ -506,6 +506,17 @@ without a live device, simulator, or Supabase project:
   pass, and the highest-value thing to regression-test.
 - `src/lib/auth/__tests__/role-routing.test.ts` — `getHomeRouteForRole`
   for all three roles + the unresolved-role fallback.
+- `src/lib/data/__tests__/milestones.test.ts` — streak/milestone
+  arithmetic (`computeWeekStreak`, `milestoneHitAt`); uses Jest fake
+  timers to pin "now" since `computeWeekStreak` reads `new Date()`
+  internally, not `Date.now()`.
+- `src/lib/data/__tests__/coach-performance.test.ts` — `computeAverageRating`,
+  extracted from `getMyPerformance` (§13 rule 21's "recomputed live"
+  average) so it's testable without a Supabase round-trip.
+- `src/lib/data/__tests__/coach-chat.test.ts` — `summarizeConversations`,
+  extracted from `getMyConversations`: last-message preview (text vs.
+  photo-only fallback), unread counting (client-sent + unread only),
+  and the most-recent-activity sort (empty conversations last).
 
 Run with `npm test` (or `npm run test:watch`). Any test file that
 imports a module which transitively imports `@/lib/supabase/client`
@@ -622,7 +633,23 @@ Supabase project to run against and hasn't been attempted here either.
    text-heavy for how small home-screen icons actually render — legible
    at 1024px, less so at 60px. Recommend a proper monogram/icon-only
    export from design before shipping to the stores, but this is no
-   longer a hard blocker. Also removed the unused default Expo
+   longer a hard blocker.
+   **Attempted and deliberately not shipped (2026-08-28)**: cropping the
+   small circular "F"/leaf glyph out of the composite lockup (next to
+   "By Fitelo") was tried — pixel-scanned its exact bounds in the source
+   (`x:233-260, y:221-250`, confirmed via column/row content scans, not
+   guessed) — but that glyph is only ~28×30px in the 400×400 source
+   image. Upscaled to any real icon size the edges are visibly soft/
+   blurry (verified by rendering the upscale, not assumed), a real
+   quality regression versus the current full-wordmark icon, which is
+   sharp because it's a much smaller upscale factor from the same
+   source. Redrawing the shape as clean vectors was considered and
+   rejected — that would mean inventing/reconstructing a brand mark
+   rather than extracting the real one, which isn't this repo's call to
+   make. The full-wordmark icon stays as the current best asset; a
+   crisp icon-only mark genuinely needs a fresh vector export from
+   design, not more image processing against this source file.
+   Also removed the unused default Expo
    Icon-Composer bundle (`assets/expo.icon/`, referenced via `ios.icon`
    in `app.json`) rather than hand-rolling a branded version of that
    newer iOS-18-only layered format — iOS now falls back to the same

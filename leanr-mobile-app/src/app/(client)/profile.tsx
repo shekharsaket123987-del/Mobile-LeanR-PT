@@ -51,6 +51,7 @@ export default function ClientProfileScreen() {
 
   const [goals, setGoals] = useState<string | null>(null);
   const [equipment, setEquipment] = useState<string | null>(null);
+  const [medicalNotes, setMedicalNotes] = useState<string | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [detailsSaved, setDetailsSaved] = useState(false);
@@ -67,6 +68,7 @@ export default function ClientProfileScreen() {
   const displayEmergency = emergencyContact ?? data?.profile?.emergency_contact ?? '';
   const displayGoals = goals ?? (data?.details ? joinList(data.details.goals) : '');
   const displayEquipment = equipment ?? (data?.details ? joinList(data.details.equipment) : '');
+  const displayMedicalNotes = medicalNotes ?? data?.details?.medical_notes ?? '';
 
   const onAvatarUploaded = async (url: string) => {
     setPhotoUrl(url);
@@ -97,7 +99,11 @@ export default function ClientProfileScreen() {
     setDetailsError(null);
     setDetailsSaved(false);
     try {
-      await updateMyClientDetails({ goals: splitList(displayGoals), equipment: splitList(displayEquipment) });
+      await updateMyClientDetails({
+        goals: splitList(displayGoals),
+        equipment: splitList(displayEquipment),
+        medical_notes: displayMedicalNotes || null,
+      });
       setDetailsSaved(true);
     } catch (err) {
       setDetailsError(err instanceof Error ? err.message : String(err));
@@ -189,6 +195,14 @@ export default function ClientProfileScreen() {
         <TextInput style={styles.input} value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
         <Text style={shared.cardLabel}>EQUIPMENT (COMMA-SEPARATED)</Text>
         <TextInput style={styles.input} value={displayEquipment} onChangeText={setEquipment} accessibilityLabel="Equipment" />
+        <Text style={shared.cardLabel}>MEDICAL NOTES</Text>
+        <TextInput
+          style={[styles.input, styles.multiline]}
+          value={displayMedicalNotes}
+          onChangeText={setMedicalNotes}
+          multiline
+          accessibilityLabel="Medical notes"
+        />
         {detailsError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {detailsError}
@@ -234,6 +248,7 @@ export default function ClientProfileScreen() {
 
 const styles = StyleSheet.create({
   input: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2 },
+  multiline: { minHeight: 80 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
   savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 12 },

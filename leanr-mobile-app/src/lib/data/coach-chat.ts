@@ -25,6 +25,48 @@ export type CoachConversation = {
   unreadCount: number;
 };
 
+type RawConversation = { id: string; client_id: string; clientName: string };
+type RawMessage = { conversation_id: string; body: string | null; attachment_url: string | null; created_at: string; sender_role: string; read_at: string | null };
+
+/**
+ * Pure core of `getMyConversations` — builds each conversation's preview
+ * (last message text, falling back to a photo indicator for an
+ * image-only message), unread count (client-sent, unread messages
+ * only), and sorts by most recent activity (conversations with no
+ * messages yet sort last). Split out for unit testing without a
+ * Supabase round-trip.
+ */
+export function summarizeConversations(conversations: RawConversation[], messages: RawMessage[]): CoachConversation[] {
+  const lastByConversation = new Map<string, RawMessage>();
+  const unreadByConversation = new Map<string, number>();
+  for (const m of messages) {
+    if (!lastByConversation.has(m.conversation_id)) {
+      lastByConversation.set(m.conversation_id, m);
+    }
+    if (m.sender_role === 'client' && !m.read_at) {
+      unreadByConversation.set(m.conversation_id, (unreadByConversation.get(m.conversation_id) ?? 0) + 1);
+    }
+  }
+
+  return conversations
+    .map((c) => {
+      const last = lastByConversation.get(c.id);
+      return {
+        id: c.id,
+        clientId: c.client_id,
+        clientName: c.clientName,
+        lastMessage: last?.body ?? (last?.attachment_url ? '📷 Photo' : null),
+        lastMessageAt: last?.created_at ?? null,
+        unreadCount: unreadByConversation.get(c.id) ?? 0,
+      };
+    })
+    .sort((a, b) => {
+      if (!a.lastMessageAt) return 1;
+      if (!b.lastMessageAt) return -1;
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+    });
+}
+
 export async function getMyConversations(): Promise<CoachConversation[]> {
   const coachId = await getMyCoachProfileId();
   if (!coachId) return [];
@@ -45,38 +87,15 @@ export async function getMyConversations(): Promise<CoachConversation[]> {
     .order('created_at', { ascending: false });
   if (messagesError) throw messagesError;
 
-  const lastByConversation = new Map<string, { body: string | null; attachment_url: string | null; created_at: string }>();
-  const unreadByConversation = new Map<string, number>();
-  for (const m of messages ?? []) {
-    if (!lastByConversation.has(m.conversation_id)) {
-      lastByConversation.set(m.conversation_id, m);
-    }
-    if (m.sender_role === 'client' && !m.read_at) {
-      unreadByConversation.set(m.conversation_id, (unreadByConversation.get(m.conversation_id) ?? 0) + 1);
-    }
-  }
+  const rawConversations: RawConversation[] = conversations.map((c) => {
+    const clientProfile = Array.isArray(c.client_profiles) ? c.client_profiles[0] : c.client_profiles;
+    const profile = clientProfile
+      ? Array.isArray(clientProfile.profiles)
+        ? clientProfile.profiles[0]
+        : clientProfile.profiles
+      : null;
+    return { id: c.id as string, client_id: c.client_id as string, clientName: profile?.full_name ?? 'Client' };
+  });
 
-  return conversations
-    .map((c) => {
-      const clientProfile = Array.isArray(c.client_profiles) ? c.client_profiles[0] : c.client_profiles;
-      const profile = clientProfile
-        ? Array.isArray(clientProfile.profiles)
-          ? clientProfile.profiles[0]
-          : clientProfile.profiles
-        : null;
-      const last = lastByConversation.get(c.id);
-      return {
-        id: c.id as string,
-        clientId: c.client_id as string,
-        clientName: profile?.full_name ?? 'Client',
-        lastMessage: last?.body ?? (last?.attachment_url ? '📷 Photo' : null),
-        lastMessageAt: last?.created_at ?? null,
-        unreadCount: unreadByConversation.get(c.id) ?? 0,
-      };
-    })
-    .sort((a, b) => {
-      if (!a.lastMessageAt) return 1;
-      if (!b.lastMessageAt) return -1;
-      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
-    });
+  return summarizeConversations(rawConversations, (messages ?? []) as RawMessage[]);
 }

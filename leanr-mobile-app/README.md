@@ -581,10 +581,23 @@ Supabase project to run against and hasn't been attempted here either.
    image — this was a deliberate simplification, not a gap. The real
    logo PNG is available at `assets/images/leanr-by-fitelo-logo.png` for
    any screen that wants the static-image treatment instead.
-8. **App icon** — still just the default Expo icon; a real LEANR icon
-   asset needs to be designed/exported outside this repo (same open
-   question the functional PRD itself flags — no icon-only asset exists
-   anywhere, only the full logo lockup).
+8. **App icon — now built from the real logo, still not the ideal final asset.**
+   `icon.png` (1024×1024), the Android adaptive-icon layers
+   (`android-icon-foreground/-background.png`) and themed-icon monochrome
+   silhouette (`android-icon-monochrome.png`), and `favicon.png` are all
+   generated from the real square lockup (`LeanR_by_Fitelo_logo_square.png`,
+   full "LEANR / By Fitelo" wordmark on black) instead of the default Expo
+   icon — a real, usable icon, not a placeholder. What's still open,
+   same root cause the functional PRD flags in §23/§32: no icon-**only**
+   mark (just the "F" glyph, no wordmark) exists yet, so this icon is
+   text-heavy for how small home-screen icons actually render — legible
+   at 1024px, less so at 60px. Recommend a proper monogram/icon-only
+   export from design before shipping to the stores, but this is no
+   longer a hard blocker. Also removed the unused default Expo
+   Icon-Composer bundle (`assets/expo.icon/`, referenced via `ios.icon`
+   in `app.json`) rather than hand-rolling a branded version of that
+   newer iOS-18-only layered format — iOS now falls back to the same
+   flat `icon.png` as Android, which is simpler and universally supported.
 9. **Store submission** — `eas.json` has build profiles and `app.json`
    has placeholder bundle identifiers (`com.fitelo.leanr` — confirm or
    change to whatever you actually register), but `eas build`/

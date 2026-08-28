@@ -3,13 +3,13 @@
     "name": "LEANR",
     "slug": "leanr-mobile-app",
     "version": "1.0.0",
+    "description": "LEANR by Fitelo — live, online 1:1 personal training. Book sessions, train over video with your coach, and track your progress.",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "leanrmobileapp",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#000000",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.fitelo.leanr",
       "infoPlist": {
         "LSApplicationQueriesSchemes": ["tez", "phonepe", "paytmmp"]
@@ -42,7 +42,7 @@
       [
         "expo-notifications",
         {
-          "color": "#F5E400"
+          "color": "#F5D90A"
         }
       ],
       [

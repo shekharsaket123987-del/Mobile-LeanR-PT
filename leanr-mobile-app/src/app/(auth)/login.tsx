@@ -123,6 +123,10 @@ export default function LoginScreen() {
           <Link href="/signup" style={styles.link}>
             <Text style={styles.linkText}>New to LEANR? Create an account</Text>
           </Link>
+
+          <Link href="/book-free-demo" style={styles.link}>
+            <Text style={styles.linkText}>Just want to try it? Book a free demo — no account needed</Text>
+          </Link>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

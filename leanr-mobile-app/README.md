@@ -560,22 +560,35 @@ Supabase project to run against and hasn't been attempted here either.
 4. **Chat image attachments — now built.** See "Image attachments (chat)"
    above. No camera capture (library only) and no captions alongside an
    image — reasonable first-pass cuts if you want them extended later.
-5. **Anonymous demo booking — not built.** The authenticated-client demo
-   booking flow is now built (see "Phase 5" above). The separate
-   anonymous entry point (`createAssessmentBooking()`, no account
-   required, writes to `assessment_sessions` not `bookings`) is a
-   structurally different, ungated route tree — its own scoped build,
-   not a schema-risk blocker.
-6. **Web dev target crashes on boot** (`expo start --web` /
-   `npx expo export --platform web`) — `ReferenceError: window is not
-   defined` in `LargeSecureStore.getItem` (`src/lib/supabase/large-secure-store.ts`)
-   during the SSR pass `web.output: "static"` triggers. Pre-existing, not
-   introduced by this pass — found while trying to browser-test the
-   booking wizard, which is untestable in this environment without it
-   (no mobile simulator available either — see Phase 5 above). Likely fix:
-   guard the AsyncStorage-backed calls with a `typeof window !==
-   'undefined'` check, but that's a product decision (do you want a web
-   build at all?) more than a one-line patch, so left unfixed here.
+5. **Anonymous demo booking — now built.** `assessment_sessions` RLS was
+   confirmed live (2026-08-28) to have no INSERT policy for the
+   `anon`/unauthenticated role at all — only `assessment_sessions_admin_all`
+   and `assessment_sessions_select_assigned_coach` exist — so this needed
+   a privileged backend, not a direct client insert. Built as a new
+   `create-assessment-booking` Edge Function (`verify_jwt: false`, no
+   Authorization header required or read), deployed and live-tested
+   end-to-end against the real project: coach-matching by lowest
+   utilization, whole-hour slot generation respecting
+   `coach_availability`/`coach_shifts`/`coach_leave` (correctly excluded
+   a coach on an approved full-day leave in testing), a conflict
+   re-check against both `bookings` and other `assessment_sessions`
+   at confirm time (correctly rejected a double-booked slot with 409 in
+   testing), and a best-effort `admin_alert` notification to every admin
+   on success. Mobile side: `src/lib/data/anonymous-demo-booking.ts` +
+   `(auth)/book-free-demo.tsx`, reached from the login screen ("Just
+   want to try it? Book a free demo — no account needed"). All test
+   rows were deleted from the live project after verification.
+6. **Web dev target crash — now fixed.** `expo start --web` /
+   `npx expo export --platform web` used to crash on boot
+   (`ReferenceError: window is not defined` in `LargeSecureStore`, since
+   `GoTrueClient`'s constructor reads a persisted session immediately, at
+   module-load time, before the SSR pass has a `window` to check).
+   `large-secure-store.ts` now guards every method with `typeof window
+   === 'undefined'` (no-op during SSR, real behavior once hydrated
+   client-side) and branches web to plain `AsyncStorage` (no
+   Keychain/Keystore equivalent exists on web anyway). Verified live:
+   `npx expo export --platform web` now completes cleanly and produces
+   all 58 routes.
 7. **Wordmark asset** — the launch animation renders "LEANR" as real
    Anton-italic text (matches how the web app does it), not an exported
    image — this was a deliberate simplification, not a gap. The real

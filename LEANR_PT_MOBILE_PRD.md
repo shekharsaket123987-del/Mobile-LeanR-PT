@@ -1470,7 +1470,7 @@ Consolidated from all source analyses. These require either a source-code deep-d
 11. **Leave request partial approval**: code only supports whole-request approve/reject — confirmed no per-day partial approval exists.
 12. **Sessions list Cancel button** (admin) has no confirmation dialog, inconsistent with other destructive admin actions — flag for the new build to decide whether to normalize.
 13. **`getRevenueTrendRaw()` internals** (`adminDashboard.service.ts`) — not confirmed whether raw SQL, RPC, or view-based.
-14. **`notification_type` enum's complete value set** — only `booking`, `reminder`, `system` observed in template inserts; the authoritative enum definition (`0001_enums.sql`) should be double-checked for a 4th value or more.
+14. ~~**`notification_type` enum's complete value set**~~ — **Resolved 2026-08-28**, confirmed live via direct `pg_enum` introspection of the "LeanR PT" Supabase project: `booking`, `reminder`, `feedback`, `system` (4 values — the previously-unconfirmed 4th is `feedback`).
 15. **Which action file exposes generic `listMyNotifications`/`markNotificationRead`** per role — inferred but not confirmed file-by-file (likely `client-notifications.actions.ts`-equivalent per portal).
 16. **Exact SQL thresholds inside `flag_overdue_attendance`/`flag_overdue_notes`** — code comments say "2 hours post-session-end"; should be confirmed directly against migrations 0032/0048 if the mobile app needs to display a countdown to this threshold.
 17. **`font-script` Tailwind class** referenced in `Logo.tsx` has no matching font-family definition in `tailwind.config.ts` — likely an unfinished/unintentional style; do not port as-is without checking whether a script font was actually intended for the "By Fitelo" sub-lockup.

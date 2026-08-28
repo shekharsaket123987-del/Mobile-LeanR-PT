@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 
+import { AvatarEditor } from '@/components/avatar-editor';
 import { Card, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
 import { CtaButton } from '@/components/tappable';
 import { Brand } from '@/constants/theme';
@@ -25,6 +26,9 @@ export default function CoachProfileScreen() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
 
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
   const [bio, setBio] = useState<string | null>(null);
   const [specialization, setSpecialization] = useState<string | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -37,11 +41,22 @@ export default function CoachProfileScreen() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordChanged, setPasswordChanged] = useState(false);
 
+  const displayPhotoUrl = photoUrl ?? data?.profile?.photo_url ?? null;
   const displayName = fullName ?? data?.profile?.full_name ?? '';
   const displayPhone = phone ?? data?.profile?.phone ?? '';
   const displayEmergency = emergencyContact ?? data?.profile?.emergency_contact ?? '';
   const displayBio = bio ?? data?.details?.bio ?? '';
   const displaySpecialization = specialization ?? data?.details?.specialization ?? '';
+
+  const onAvatarUploaded = async (url: string) => {
+    setPhotoUrl(url);
+    setAvatarError(null);
+    try {
+      await updateMyProfile({ photo_url: url });
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const onSaveProfile = async () => {
     setSavingProfile(true);
@@ -113,6 +128,13 @@ export default function CoachProfileScreen() {
 
   return (
     <ScreenScaffold title="Profile">
+      <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
+      {avatarError && (
+        <Text style={styles.errorText} accessibilityRole="alert">
+          {avatarError}
+        </Text>
+      )}
+
       <Card>
         <Text style={shared.cardLabel}>NAME</Text>
         <TextInput style={styles.input} value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />

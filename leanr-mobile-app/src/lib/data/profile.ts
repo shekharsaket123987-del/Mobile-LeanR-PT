@@ -8,13 +8,20 @@
  * coach-change stage 2 or payments.
  *
  * Deliberately scoped to the common `profiles` fields (name/phone/
- * emergency contact) plus a small role-specific subset — client
+ * emergency contact/photo) plus a small role-specific subset — client
  * goals/equipment, coach bio/specialization — rather than every column
  * on `client_profiles`/`coach_profiles` (e.g. `medical_notes`,
  * `certifications`, `languages`, `skills`). Those are real, writable,
  * and not built here — a reasonable first-pass cut, not a schema gap.
- * Photo upload isn't wired either (same class of work as the chat image
- * picker, not repeated here for a single avatar field).
+ *
+ * Photo upload (`uploadAvatarImage`) — confirmed live (2026-08-28) via
+ * direct `pg_policies` introspection of the `avatars` bucket:
+ * `avatars_owner_write`/`_update`/`_delete` all require the object
+ * path's first folder segment to equal `auth.uid()`, `avatars_public_read`
+ * allows anyone to read — matches PRD §12 exactly ("Owner (path segment
+ * 1 = auth.uid()) writes"). Uploaded as an ArrayBuffer, same pattern as
+ * `uploadChatImage` (chat.ts) for the same React-Native-Blob-support
+ * reason documented there.
  */
 import { supabase } from '@/lib/supabase/client';
 
@@ -38,12 +45,33 @@ export async function getMyProfile(): Promise<MyProfile | null> {
   return data as MyProfile;
 }
 
-export async function updateMyProfile(updates: { full_name?: string; phone?: string | null; emergency_contact?: string | null }): Promise<void> {
+export async function updateMyProfile(updates: {
+  full_name?: string;
+  phone?: string | null;
+  emergency_contact?: string | null;
+  photo_url?: string | null;
+}): Promise<void> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error('Not signed in.');
 
   const { error } = await supabase.from('profiles').update(updates).eq('id', userData.user.id);
   if (error) throw error;
+}
+
+/** Uploads to the `avatars` bucket at `${auth.uid()}/...` (required by RLS) and returns the public URL. Does not save it to `profiles.photo_url` — call `updateMyProfile({photo_url})` with the result. */
+export async function uploadAvatarImage(localUri: string, mimeType: string | undefined): Promise<string> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error('Not signed in.');
+
+  const arrayBuffer = await fetch(localUri).then((res) => res.arrayBuffer());
+  const ext = mimeType?.split('/')[1] ?? 'jpg';
+  const path = `${userData.user.id}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage.from('avatars').upload(path, arrayBuffer, { contentType: mimeType ?? 'image/jpeg' });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 export type MyClientDetails = { goals: string[]; equipment: string[] };

@@ -466,6 +466,22 @@ a dev build (`npx expo prebuild` + `expo run:ios`/`run:android` — Expo
 Go doesn't support remote push since SDK 53) with a user who's completed
 `registerPushToken()`.
 
+### Profile photo upload is now real (2026-08-28)
+
+The Phase 2 note above ("no photo upload... same class of work as the
+chat image picker, not repeated for one avatar field") is now out of
+date. `avatars` bucket RLS was confirmed live via `pg_policies`
+introspection — `avatars_owner_write`/`_update`/`_delete` require the
+object path's first folder segment to equal `auth.uid()`,
+`avatars_public_read` allows anyone to read, exactly matching PRD §12.
+`uploadAvatarImage` (`src/lib/data/profile.ts`) uploads at
+`${auth.uid()}/${timestamp}.${ext}` and `updateMyProfile` now accepts
+`photo_url`; a new shared `AvatarEditor` component (image picker +
+upload + error state, same pattern as the chat attachment flow) is
+wired into both `(client)/profile.tsx` and `(coach)/profile.tsx` —
+extracted as a shared component rather than duplicated per-screen since
+this is real async logic, not a trivial field binding.
+
 ## Testing (LEANR_PT_MOBILE_PRD.md §28 Phase 13 / §29)
 
 A real Jest suite now exists (`jest-expo` preset) covering the app's

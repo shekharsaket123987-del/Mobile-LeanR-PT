@@ -466,6 +466,54 @@ a dev build (`npx expo prebuild` + `expo run:ios`/`run:android` — Expo
 Go doesn't support remote push since SDK 53) with a user who's completed
 `registerPushToken()`.
 
+## Testing (LEANR_PT_MOBILE_PRD.md §28 Phase 13 / §29)
+
+A real Jest suite now exists (`jest-expo` preset) covering the app's
+pure business-rule logic — the "business rule regression suite" and
+"timezone correctness tests" §29 calls for, scoped to what's testable
+without a live device, simulator, or Supabase project:
+
+- `src/lib/data/__tests__/booking-wizard.test.ts` — IST calendar-date
+  math (`todayIst`, `addIstDays`, `istDateKey`), IST label formatting
+  (`formatIstDateLabel`, `formatIstTimeLabel`, including a test that it's
+  unaffected by the test runner's own `TZ` env var), and the reschedule
+  cutoff rule (`isAfterRescheduleCutoff`, §13 rule 6).
+- `src/lib/data/__tests__/recurring-schedule.test.ts` — the pure
+  hour-matching core of recurring schedule setup (`computeCommonHours`,
+  extracted from `getCommonAvailableHours` specifically so it's testable
+  without a Supabase round-trip), covering §13 rules 18-19 including the
+  "leave-agnostic" behavior and disjoint-availability-window edge cases.
+- `src/lib/auth/__tests__/auth-callback-parsing.test.ts` — the deep-link
+  token/PKCE-code parser (`parseAuthCallback`/`parseRecoveryLink` in
+  `auth-context.tsx`) that both password recovery and Google OAuth
+  depend on — the least-obviously-correct hand-rolled logic added this
+  pass, and the highest-value thing to regression-test.
+- `src/lib/auth/__tests__/role-routing.test.ts` — `getHomeRouteForRole`
+  for all three roles + the unresolved-role fallback.
+
+Run with `npm test` (or `npm run test:watch`). Any test file that
+imports a module which transitively imports `@/lib/supabase/client`
+needs that resolved to the mock at
+`src/test/mocks/supabase-client.ts` (wired via `moduleNameMapper` in
+`package.json`'s `"jest"` config) — the real client's `GoTrueClient`
+tries to read a persisted session from `expo-secure-store` at
+construction time, which has no native module in the Jest/Node
+environment and crashes the whole worker process, not just the test.
+Test files use explicit `import {...} from '@jest/globals'` rather than
+the ambient `describe`/`it`/`expect` globals — this project's `@types/jest`
+(29.5.14) and its pinned TypeScript (6.0.3, from Expo SDK 57) don't
+resolve those ambient declarations cleanly; explicit imports sidestep it
+and are the more modern pattern anyway.
+
+**Not built** (need a live device/simulator or real backend, per §29 —
+genuinely out of reach in this environment, not skipped by choice):
+payment integration tests (Razorpay test-mode), Zoom integration tests,
+Realtime/chat tests under flaky network conditions, push notification
+delivery tests, role/permission boundary tests against live RLS, and
+all manual device testing. Cross-platform data-integrity testing (same
+write producing identical DB state from mobile vs. web) needs a real
+Supabase project to run against and hasn't been attempted here either.
+
 ## Open items (need a decision or a credential, not more code)
 
 1. **Google OAuth — now built, needs a dashboard credential to actually work.**
@@ -550,6 +598,7 @@ Go doesn't support remote push since SDK 53) with a user who's completed
 npx expo start        # dev server
 npx tsc --noEmit       # type-check
 npx expo lint          # lint (first run installs eslint-config-expo)
+npm test               # run the Jest suite (see "Testing" below)
 npx expo export --platform ios      # verify the JS bundle compiles (no simulator needed)
 npx expo export --platform android
 ```

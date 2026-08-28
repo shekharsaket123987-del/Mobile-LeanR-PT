@@ -97,12 +97,12 @@ function parseParams(paramsString: string): Record<string, string> {
   return result;
 }
 
-type AuthCallbackLink =
+export type AuthCallbackLink =
   | { kind: 'tokens'; accessToken: string; refreshToken: string; type?: string }
   | { kind: 'code'; code: string };
 
 /** Extracts session tokens/PKCE code from any Supabase auth redirect URL (recovery or OAuth), regardless of whether they landed after `#` or `?`. */
-function parseAuthCallback(url: string): AuthCallbackLink | null {
+export function parseAuthCallback(url: string): AuthCallbackLink | null {
   const hashIndex = url.indexOf('#');
   const queryIndex = url.indexOf('?');
   const hashParams = hashIndex >= 0 ? parseParams(url.slice(hashIndex + 1)) : {};
@@ -121,7 +121,7 @@ function parseAuthCallback(url: string): AuthCallbackLink | null {
 }
 
 /** Same extraction, but only accepted when explicitly marked `type=recovery` — a stray/other deep link must never be mistaken for a password-recovery session. */
-function parseRecoveryLink(url: string | null): AuthCallbackLink | null {
+export function parseRecoveryLink(url: string | null): AuthCallbackLink | null {
   if (!url) return null;
   const link = parseAuthCallback(url);
   if (link?.kind === 'tokens' && link.type !== 'recovery') return null;

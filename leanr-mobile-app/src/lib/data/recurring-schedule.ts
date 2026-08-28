@@ -95,6 +95,44 @@ export async function getMyActiveRecurringSlots(): Promise<RecurringSlot[]> {
   return (data ?? []) as RecurringSlot[];
 }
 
+type AvailabilityRow = { day_of_week: number; start_time: string; end_time: string };
+
+/**
+ * Pure business-rule core of `getCommonAvailableHours` below, split out
+ * so it's unit-testable without a Supabase round-trip (LEANR_PT_MOBILE_PRD.md
+ * §29 "business rule regression suite"). §13 rule 18: only whole-hour
+ * slots within `window` are ever considered; §13 rule 19 (leave-agnostic
+ * collision check) is honored by construction — this only ever looks at
+ * `coach_availability` rows, never `coach_leave`.
+ */
+export function computeCommonHours(
+  availabilityRows: AvailabilityRow[],
+  daysOfWeek: number[],
+  durationMinutes: number,
+  window: { startHour: number; endHour: number }
+): number[] {
+  if (daysOfWeek.length === 0) return [];
+
+  const byDay = new Map<number, { start_time: string; end_time: string }[]>();
+  for (const row of availabilityRows) {
+    const list = byDay.get(row.day_of_week) ?? [];
+    list.push(row);
+    byDay.set(row.day_of_week, list);
+  }
+
+  const hours: number[] = [];
+  for (let hour = window.startHour; hour < window.endHour; hour++) {
+    const slotStart = `${pad(hour)}:00:00`;
+    const endTotal = hour * 60 + durationMinutes;
+    const slotEnd = `${pad(Math.floor(endTotal / 60))}:${pad(endTotal % 60)}:00`;
+    const worksEveryDay = daysOfWeek.every((dow) =>
+      (byDay.get(dow) ?? []).some((w) => w.start_time <= slotStart && w.end_time >= slotEnd)
+    );
+    if (worksEveryDay) hours.push(hour);
+  }
+  return hours;
+}
+
 /** Whole hours where the coach's weekly template covers the full session on EVERY given weekday. */
 export async function getCommonAvailableHours(
   coachId: string,
@@ -112,24 +150,7 @@ export async function getCommonAvailableHours(
     .in('day_of_week', daysOfWeek);
   if (error) throw error;
 
-  const byDay = new Map<number, { start_time: string; end_time: string }[]>();
-  for (const row of data ?? []) {
-    const list = byDay.get(row.day_of_week) ?? [];
-    list.push(row);
-    byDay.set(row.day_of_week, list);
-  }
-
-  const hours: number[] = [];
-  for (let hour = window.startHour; hour < window.endHour; hour++) {
-    const slotStart = `${pad(hour)}:00:00`;
-    const endTotal = hour * 60 + durationMinutes;
-    const slotEnd = `${pad(Math.floor(endTotal / 60))}:${pad(endTotal % 60)}:00`;
-    const worksEveryDay = daysOfWeek.every((dow) =>
-      (byDay.get(dow) ?? []).some((w) => w.start_time <= slotStart && w.end_time >= slotEnd)
-    );
-    if (worksEveryDay) hours.push(hour);
-  }
-  return hours;
+  return computeCommonHours((data ?? []) as AvailabilityRow[], daysOfWeek, durationMinutes, window);
 }
 
 export type SetupResult = { dayOfWeek: number; requested: number; confirmed: number };

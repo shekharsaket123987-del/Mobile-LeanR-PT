@@ -321,7 +321,7 @@ A real build already exists and has worked through most of this list — see `LE
 4. **Coach app** — ✅ done (Dashboard, Schedule, Clients, Session workflow, Availability, Escalations, Renewals, Performance, Search, Chats).
 5. **Admin** — ✅ built as the deliberately reduced "on-call ops" subset (Escalations, Leave, Shadow Coverage) this section anticipated, not full parity.
 
-**Still open against this document specifically:** auth is now email/password + email-OTP + password reset + Google OAuth (the "Continue with Google" affordance from original PRD §25 auth navigation is real, not a stub) — the only remaining piece is external, not code: Google sign-in needs the Google provider enabled in the Supabase dashboard with a real OAuth client before it will actually complete a sign-in. Testing (§29 of the original PRD) and store release are not started.
+**Still open against this document specifically:** auth is now email/password + email-OTP + password reset + Google OAuth (the "Continue with Google" affordance from original PRD §25 auth navigation is real, not a stub) — the only remaining piece is external, not code: Google sign-in needs the Google provider enabled in the Supabase dashboard with a real OAuth client before it will actually complete a sign-in. Testing (§29 of the original PRD) has a real but partial start — a Jest suite covers pure business-rule logic (IST/timezone math, reschedule cutoff, recurring-schedule hour-matching, the auth deep-link parser); everything needing a live device, simulator, or backend (payments, Zoom, Realtime, push delivery, RLS boundaries) is still open. Store release is not started.
 
 ---
 

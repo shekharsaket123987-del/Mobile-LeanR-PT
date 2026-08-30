@@ -523,10 +523,13 @@ execute cleanly.
   hard exclusion constraint that prevents double-booking a coach;
   relocating it is generally safe in Postgres but not something to risk
   against production booking data without a way to test first.
-- **Leaked password protection is disabled** (HaveIBeenPwned check on
-  new passwords) — this is an Auth config setting, not reachable via SQL
-  from this pass; needs a dashboard toggle (Authentication → Policies)
-  the same way Google OAuth did.
+- **Leaked password protection — plan-gated, not fixable here.**
+  Attempted to enable it (2026-08-30): Supabase's dashboard rejected it
+  with "Configuring leaked password protection via HaveIBeenPwned.org is
+  available on Pro Plans and up." This project is below that tier —
+  there is no config workaround; it's a server-side feature gate on
+  Supabase's end, not a code or SQL fix. Leave this warning as a known,
+  accepted limitation unless/until the project is upgraded to Pro.
 
 ## Testing (LEANR_PT_MOBILE_PRD.md §28 Phase 13 / §29)
 

@@ -26,41 +26,48 @@ import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase/client';
 
 export async function registerPushToken(): Promise<{ token: string | null; error: string | null }> {
-  if (!Device.isDevice) {
-    return { token: null, error: 'Push notifications require a physical device.' };
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== 'granted') {
-    return { token: null, error: 'Notification permission was not granted.' };
-  }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
-
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-  const tokenResponse = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-  const token = tokenResponse.data;
-
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-  if (userId) {
-    const { error: upsertError } = await supabase
-      .from('push_tokens')
-      .upsert({ user_id: userId, expo_push_token: token, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-    if (upsertError) {
-      console.warn('[push] token retrieved but could not be stored:', upsertError.message);
+  try {
+    if (!Device.isDevice) {
+      return { token: null, error: 'Push notifications require a physical device.' };
     }
-  }
 
-  return { token, error: null };
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      return { token: null, error: 'Notification permission was not granted.' };
+    }
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenResponse = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    const token = tokenResponse.data;
+
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (userId) {
+      const { error: upsertError } = await supabase
+        .from('push_tokens')
+        .upsert({ user_id: userId, expo_push_token: token, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (upsertError) {
+        console.warn('[push] token retrieved but could not be stored:', upsertError.message);
+      }
+    }
+
+    return { token, error: null };
+  } catch (err) {
+    // Push registration must never block the app — e.g. Android push requires Firebase
+    // (FCM) to be configured, which this project doesn't have set up yet.
+    console.warn('[push] registration failed:', err instanceof Error ? err.message : err);
+    return { token: null, error: err instanceof Error ? err.message : 'Push registration failed.' };
+  }
 }

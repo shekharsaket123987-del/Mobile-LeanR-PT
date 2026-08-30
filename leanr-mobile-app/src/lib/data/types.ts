@@ -27,6 +27,7 @@ export type Booking = {
   coach_joined_at: string | null;
   zoom_join_url: string | null;
   zoom_start_url: string | null;
+  coach_name?: string | null; // present when joined via coach_profiles(profiles(full_name))
 };
 
 /** `client_profiles` row, generally selected joined with `profiles(full_name, photo_url)`. */

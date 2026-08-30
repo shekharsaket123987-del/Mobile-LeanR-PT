@@ -54,6 +54,7 @@ function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: 
   return (
     <Card>
       <Text style={shared.cardLabel}>{formatSessionTime(booking.scheduled_start)}</Text>
+      {booking.coach_name && <Text style={shared.cardLabel}>with {booking.coach_name}</Text>}
       {booking.was_rescheduled && <Text style={shared.cardLabel}>Rescheduled</Text>}
       {booking.status === 'upcoming' && (
         <View style={styles.actionRow}>

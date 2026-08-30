@@ -78,7 +78,9 @@ export default function HomeScreen() {
             <Card>
               <Text style={shared.cardLabel}>NEXT SESSION</Text>
               <Text style={shared.bigStat}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
-              {coach && <Text style={shared.cardLabel}>with {coach.full_name}</Text>}
+              {(nextBooking.coach_name ?? coach?.full_name) && (
+                <Text style={shared.cardLabel}>with {nextBooking.coach_name ?? coach?.full_name}</Text>
+              )}
               <JoinRow booking={nextBooking} />
             </Card>
           ) : (

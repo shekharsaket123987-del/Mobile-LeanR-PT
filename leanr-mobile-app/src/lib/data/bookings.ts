@@ -10,19 +10,29 @@ import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking, BookingStatus } from './types';
 
+const BOOKING_SELECT_WITH_COACH = '*, coach_profiles(profiles(full_name))';
+
+/** Flattens the nested `coach_profiles.profiles.full_name` join onto `coach_name`. */
+function withCoachName(row: Record<string, unknown>): Booking {
+  const coachProfile = row.coach_profiles as { profiles?: { full_name?: string } | { full_name?: string }[] } | null;
+  const profile = coachProfile ? (Array.isArray(coachProfile.profiles) ? coachProfile.profiles[0] : coachProfile.profiles) : null;
+  const { coach_profiles: _coachProfiles, ...rest } = row;
+  return { ...rest, coach_name: profile?.full_name ?? null } as Booking;
+}
+
 export async function getUpcomingBookings(limit = 5) {
   const clientId = await getMyClientProfileId();
   if (!clientId) return [];
 
   const { data, error } = await supabase
     .from('bookings')
-    .select('*')
+    .select(BOOKING_SELECT_WITH_COACH)
     .eq('client_id', clientId)
     .eq('status', 'upcoming')
     .order('scheduled_start', { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as Booking[];
+  return (data ?? []).map(withCoachName);
 }
 
 export async function getSessionsByStatus(status: BookingStatus) {
@@ -31,12 +41,12 @@ export async function getSessionsByStatus(status: BookingStatus) {
 
   const { data, error } = await supabase
     .from('bookings')
-    .select('*')
+    .select(BOOKING_SELECT_WITH_COACH)
     .eq('client_id', clientId)
     .eq('status', status)
     .order('scheduled_start', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as Booking[];
+  return (data ?? []).map(withCoachName);
 }
 
 export async function getClientBookingById(bookingId: string): Promise<Booking | null> {
@@ -45,12 +55,12 @@ export async function getClientBookingById(bookingId: string): Promise<Booking |
 
   const { data, error } = await supabase
     .from('bookings')
-    .select('*')
+    .select(BOOKING_SELECT_WITH_COACH)
     .eq('id', bookingId)
     .eq('client_id', clientId)
     .maybeSingle();
   if (error) throw error;
-  return data as Booking | null;
+  return data ? withCoachName(data) : null;
 }
 
 /** §8f: RPC cancel_booking(p_booking_id, p_cancelled_by, p_reason, p_enforce_cutoff). */

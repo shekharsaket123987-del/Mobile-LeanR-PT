@@ -38,6 +38,15 @@ async function hmacSha256Hex(key: string, message: string): Promise<string> {
 }
 
 Deno.serve(async (req: Request) => {
+  try {
+    return await handleRequest(req);
+  } catch (err) {
+    console.error("[razorpay] unhandled error:", err);
+    return jsonResponse({ error: err instanceof Error ? err.message : "Unexpected server error." }, 500);
+  }
+});
+
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
   if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
     return jsonResponse(
@@ -199,4 +208,4 @@ Deno.serve(async (req: Request) => {
   }
 
   return jsonResponse({ error: "Unknown action." }, 400);
-});
+}

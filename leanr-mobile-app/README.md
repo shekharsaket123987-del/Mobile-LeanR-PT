@@ -482,6 +482,38 @@ wired into both `(client)/profile.tsx` and `(coach)/profile.tsx` —
 extracted as a shared component rather than duplicated per-screen since
 this is real async logic, not a trivial field binding.
 
+## Database performance hardening (2026-08-30)
+
+Ran Supabase's performance advisor against the live project (335
+findings) and fixed the one clean, safe-to-fix category:
+**26 unindexed foreign keys** across the app's hot-path tables
+(`bookings`, `payments`, `escalations`, `coach_change_requests`,
+`shadow_coach_assignments`, `temporary_bookings`, etc.) — several on
+`ON DELETE CASCADE`/`SET NULL` columns (`shadow_coach_assignments.
+primary_coach_id`/`shadow_coach_id`, `coach_change_requests.
+current_coach_id`, `temporary_bookings.client_id`), where a delete on
+the referenced row would otherwise force a full table scan. Applied via
+a tracked migration (`add_missing_foreign_key_indexes`) — plain
+`CREATE INDEX IF NOT EXISTS`, purely additive, no behavior change.
+Verified: re-ran the advisor (all 26 `unindexed_foreign_keys` warnings
+gone), confirmed all 26 indexes exist via `pg_indexes`, and ran a
+functional read against a newly-indexed column to confirm nothing broke.
+
+**Not touched, on purpose:**
+- **290 `multiple_permissive_policies`** — expected/by-design (e.g. an
+  "admin can do everything" policy plus a "user reads their own" policy
+  both legitimately applying to the same role/table). Not a bug.
+- **15 `auth_rls_initplan`** — RLS policies where `auth.uid()` isn't
+  wrapped in a subquery, so it re-evaluates per-row instead of once per
+  query. Real and fixable, but means rewriting actual policy
+  definitions (security logic, not just an index) — bigger, more
+  delicate than this pass, and this project's tables are tiny right now
+  (single-digit to dozens of rows) so the performance win is currently
+  theoretical, not measured.
+- **`unused_index`** (4 pre-existing + the 26 new FK indexes above) —
+  expected for brand-new indexes with no query history yet; not a
+  concern, will clear naturally with real traffic.
+
 ## Database security hardening (2026-08-30)
 
 Ran Supabase's security advisor against the live project for the first

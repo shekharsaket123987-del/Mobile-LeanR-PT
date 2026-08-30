@@ -499,17 +499,37 @@ Verified: re-ran the advisor (all 26 `unindexed_foreign_keys` warnings
 gone), confirmed all 26 indexes exist via `pg_indexes`, and ran a
 functional read against a newly-indexed column to confirm nothing broke.
 
-**Not touched, on purpose:**
+**15 `auth_rls_initplan` — also fixed (2026-08-30, second pass).**
+Rewrote all 15 flagged RLS policies (`profiles_select_own`,
+`profiles_update_own`, `coach_profiles_select_authenticated`,
+`coach_profiles_update_own`, `client_profiles_select_own`,
+`client_profiles_update_own`, `coach_availability_select_authenticated`,
+`coach_shifts_select_authenticated`, `coach_leave_select_authenticated`,
+`bookings_select_authenticated`, `notifications_select_own`,
+`notifications_update_own`, `system_settings_select_authenticated`,
+`messages_insert_participant`, `push_tokens_manage_own`) via a tracked
+migration (`optimize_rls_auth_function_calls`), wrapping every
+`auth.uid()`/`auth.role()` call in `(select ...)` per Supabase's
+documented fix — both are `STABLE` functions, so this only changes the
+query plan (evaluated once via InitPlan instead of re-evaluated per
+row), not the logical result. **Verified, not just trusted**: pulled
+every policy's exact `qual`/`with_check` before and after via
+`pg_policies` to confirm the rewrite; then simulated real authenticated
+sessions (`SET LOCAL role authenticated` + `request.jwt.claims`) as
+both an admin and a non-admin coach and directly evaluated the
+rewritten expression per-row (`id = (select auth.uid())` correctly
+returned `true` only for that user's own profile row, `false` for
+others) — not just re-running the advisor, actual row-level behavior
+confirmed unchanged. Advisor re-scan: all 15 `auth_rls_initplan`
+warnings gone, nothing new introduced.
+
+**Still not touched, on purpose:**
 - **290 `multiple_permissive_policies`** — expected/by-design (e.g. an
   "admin can do everything" policy plus a "user reads their own" policy
-  both legitimately applying to the same role/table). Not a bug.
-- **15 `auth_rls_initplan`** — RLS policies where `auth.uid()` isn't
-  wrapped in a subquery, so it re-evaluates per-row instead of once per
-  query. Real and fixable, but means rewriting actual policy
-  definitions (security logic, not just an index) — bigger, more
-  delicate than this pass, and this project's tables are tiny right now
-  (single-digit to dozens of rows) so the performance win is currently
-  theoretical, not measured.
+  both legitimately applying to the same role/table, confirmed by the
+  RLS simulation above returning 3 visible `profiles` rows for a coach
+  — their own plus linked clients — via a second policy this pass never
+  touched). Not a bug.
 - **`unused_index`** (4 pre-existing + the 26 new FK indexes above) —
   expected for brand-new indexes with no query history yet; not a
   concern, will clear naturally with real traffic.

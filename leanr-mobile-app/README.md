@@ -543,21 +543,23 @@ Supabase project to run against and hasn't been attempted here either.
 
 ## Open items (need a decision or a credential, not more code)
 
-1. **Google OAuth — now built, needs a dashboard credential to actually work.**
-   The "Continue with Google" button on the login screen is real and
+1. **Google OAuth — now built AND live (verified 2026-08-30).** The
+   "Continue with Google" button on the login screen is real and
    wired up (`auth-context.tsx::signInWithGoogle`), using Supabase's
    documented web-based OAuth pattern for Expo/RN: `supabase.auth.
    signInWithOAuth({provider:'google', options:{redirectTo, skipBrowserRedirect:true}})`
    opens the returned URL via `expo-web-browser`'s `openAuthSessionAsync`,
    and the resulting deep-link redirect (`leanrmobileapp://login#access_token=...`)
    is parsed and applied via `setSession`/`exchangeCodeForSession`. This
-   app never holds a Google client ID — GoTrue holds it server-side — so
-   there's genuinely no more app code needed. What's still required
-   outside this repo: a Google Cloud OAuth client (redirect URI
-   `https://<project-ref>.supabase.co/auth/v1/callback`) pasted into
-   Supabase Dashboard → Authentication → Providers → Google. Until that's
-   done, tapping the button surfaces Supabase's "provider is not enabled"
-   error inline (same as a bad password), not a broken control.
+   app never holds a Google client ID — GoTrue holds it server-side.
+   The Google provider is now enabled in the Supabase dashboard with a
+   real Google Cloud OAuth client — verified live by hitting
+   `GET /auth/v1/authorize?provider=google` directly: it returns a real
+   `302` to `accounts.google.com` with a genuine `client_id` and a
+   `redirect_uri` matching the registered Google Cloud client exactly,
+   not the "provider is not enabled" error. Nothing left blocking this —
+   the one remaining untested step is a real end-to-end tap-through on
+   a device/simulator, which this environment doesn't have.
    In the meantime, `(auth)/otp.tsx` ("Sign in with a code
    instead") is a real, no-credential-needed alternative to password
    login — `supabase.auth.signInWithOtp`/`verifyOtp`, no OAuth client, no

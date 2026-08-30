@@ -482,6 +482,52 @@ wired into both `(client)/profile.tsx` and `(coach)/profile.tsx` —
 extracted as a shared component rather than duplicated per-screen since
 this is real async logic, not a trivial field binding.
 
+## Database security hardening (2026-08-30)
+
+Ran Supabase's security advisor against the live project for the first
+time this pass and fixed the one real, safe-to-fix finding:
+**`function_search_path_mutable`** on 12 of the core scheduling
+functions (`create_temporary_booking`, `confirm_booking`,
+`cancel_booking`, `reschedule_booking` — both overloads —
+`generate_bookings_from_recurring_slot`, `assign_shadow_coach`,
+`reassign_shadow_coverage`, `mark_missed_bookings`,
+`flag_overdue_attendance`, `flag_overdue_notes`, `set_updated_at`,
+`booking_end_time`). Applied via a tracked migration
+(`harden_function_search_path`): `ALTER FUNCTION ... SET search_path =
+public` on each — safe because every one of these bodies already uses
+unqualified `public`-schema names throughout, so pinning `search_path`
+closes the schema-resolution attack vector without any behavior change.
+Verified live: re-ran the advisor (all 12 warnings gone, nothing new),
+and functionally re-invoked `mark_missed_bookings()`/
+`flag_overdue_attendance()`/`flag_overdue_notes()` directly — all still
+execute cleanly.
+
+**Investigated, not fixed:**
+- `rls_auto_enable()` flagged as "anon/authenticated can execute
+  SECURITY DEFINER function" — checked its body: it's an event-trigger
+  handler (`pg_event_trigger_ddl_commands()`), which Postgres itself
+  refuses to run outside an actual DDL event trigger. Calling it
+  directly via `/rest/v1/rpc/rls_auto_enable` errors immediately — the
+  warning is real but not practically exploitable. Same reasoning
+  applies to `handle_new_user`, `fn_audit_trigger`,
+  `fn_audit_trigger_settings`, `trigger_send_push_notification` (all
+  trigger-context-only).
+- The rest of the "anon/authenticated can execute SECURITY DEFINER"
+  list (`is_admin`, `my_role`, `my_client_id`, `my_coach_id`,
+  `has_scheduling_conflict`, `is_slot_within_working_hours`,
+  `get_setting_int`, `coach_client_linked`, `append_coach_skill`,
+  `expire_temporary_bookings`) — these are the PRD §11 documented public
+  RPC surface, working exactly as designed, not a real issue.
+- `btree_gist`/`pg_net` extensions installed in `public` (best practice:
+  a dedicated schema) — left alone. `btree_gist` specifically backs the
+  hard exclusion constraint that prevents double-booking a coach;
+  relocating it is generally safe in Postgres but not something to risk
+  against production booking data without a way to test first.
+- **Leaked password protection is disabled** (HaveIBeenPwned check on
+  new passwords) — this is an Auth config setting, not reachable via SQL
+  from this pass; needs a dashboard toggle (Authentication → Policies)
+  the same way Google OAuth did.
+
 ## Testing (LEANR_PT_MOBILE_PRD.md §28 Phase 13 / §29)
 
 A real Jest suite now exists (`jest-expo` preset) covering the app's

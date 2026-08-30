@@ -229,7 +229,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   const signInWithGoogle: AuthState['signInWithGoogle'] = async () => {
-    const redirectTo = Linking.createURL('/login');
+    const redirectTo = Linking.createURL('login');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo, skipBrowserRedirect: true },
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   const sendPasswordReset: AuthState['sendPasswordReset'] = async (email) => {
-    const redirectTo = Linking.createURL('/reset-password');
+    const redirectTo = Linking.createURL('reset-password');
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     return { error: error?.message ?? null };
   };

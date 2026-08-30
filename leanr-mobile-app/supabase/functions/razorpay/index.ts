@@ -117,7 +117,9 @@ async function handleRequest(req: Request): Promise<Response> {
       body: JSON.stringify({ amount: amountPaise, currency: "INR", notes: { client_id: clientId, package_id: pkg.id } }),
     });
     if (!razorpayRes.ok) {
-      return jsonResponse({ error: `Razorpay order creation failed: ${await razorpayRes.text()}` }, 502);
+      // Not 502/503/504 here: Supabase's own edge gateway intercepts and strips the body
+      // of those "gateway" status codes, so the client never sees this error message.
+      return jsonResponse({ error: `Razorpay order creation failed: ${await razorpayRes.text()}` }, 400);
     }
     const order = await razorpayRes.json();
 

@@ -523,13 +523,10 @@ execute cleanly.
   hard exclusion constraint that prevents double-booking a coach;
   relocating it is generally safe in Postgres but not something to risk
   against production booking data without a way to test first.
-- **Leaked password protection — plan-gated, not fixable here.**
-  Attempted to enable it (2026-08-30): Supabase's dashboard rejected it
-  with "Configuring leaked password protection via HaveIBeenPwned.org is
-  available on Pro Plans and up." This project is below that tier —
-  there is no config workaround; it's a server-side feature gate on
-  Supabase's end, not a code or SQL fix. Leave this warning as a known,
-  accepted limitation unless/until the project is upgraded to Pro.
+- **Leaked password protection** — attempted and found plan-gated
+  (Supabase requires Pro plan and up), not fixable from here. Moved to
+  "Open items" #10 below rather than tracked as an outstanding action
+  item in this section.
 
 ## Testing (LEANR_PT_MOBILE_PRD.md §28 Phase 13 / §29)
 
@@ -711,6 +708,15 @@ Supabase project to run against and hasn't been attempted here either.
    `eas submit` need you logged into a real EAS/Expo account plus an
    Apple Developer Program membership and Google Play Console access.
    Nothing to build here without those credentials.
+10. **Leaked password protection — plan-gated, not fixable here.**
+    Attempted to enable it (2026-08-30, part of the security-advisor
+    pass below): Supabase's dashboard rejected it with "Configuring
+    leaked password protection via HaveIBeenPwned.org is available on
+    Pro Plans and up." This project is below that tier — there is no
+    config or code workaround; it's a server-side feature gate on
+    Supabase's end. Accepted as a known limitation, not important
+    enough to block on — revisit only if/when the project moves to a
+    Pro plan.
 
 ## Everyday commands
 

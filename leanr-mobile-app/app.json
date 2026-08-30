@@ -12,7 +12,11 @@
     "ios": {
       "bundleIdentifier": "com.fitelo.leanr",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["tez", "phonepe", "paytmmp"]
+        "LSApplicationQueriesSchemes": [
+          "tez",
+          "phonepe",
+          "paytmmp"
+        ]
       }
     },
     "android": {
@@ -23,7 +27,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -56,6 +63,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0dbc31c9-9b60-40d0-8e83-e005712a5583"
+      }
+    },
+    "owner": "saketkrishna123"
   }
 }

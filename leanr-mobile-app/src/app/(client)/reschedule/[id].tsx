@@ -19,11 +19,16 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, useColorScheme, View, Pressable } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { Brand } from '@/constants/theme';
 import {
   addIstDays,
   formatIstDateLabel,
@@ -136,12 +141,15 @@ export default function RescheduleScreen() {
   if (phase === 'success') {
     return (
       <ScreenScaffold title="Rescheduled!">
-        <Card>
-          <Text style={shared.cardLabel}>NEW TIME</Text>
-          <Text style={shared.bigStat}>{formatIstDateLabel(selectedDate)}</Text>
-          {selectedSlot && <Text style={shared.cardLabel}>{formatIstTimeLabel(selectedSlot)}</Text>}
-        </Card>
-        <CtaButton onPress={() => router.replace('/sessions')}>View my sessions</CtaButton>
+        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="NEW TIME" />
+        {selectedSlot && (
+          <GlassCard>
+            <Text style={styles.metaText}>{formatIstTimeLabel(selectedSlot)}</Text>
+          </GlassCard>
+        )}
+        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+          View my sessions
+        </PrimaryButton>
       </ScreenScaffold>
     );
   }
@@ -156,59 +164,43 @@ export default function RescheduleScreen() {
         hour: 'numeric',
         minute: '2-digit',
       })}`}>
-      <Card>
-        <Text style={shared.cardLabel}>NEW DATE</Text>
-        <View style={styles.chipRow}>
+      <GlassCard>
+        <SectionHeader title="New date" />
+        <ChipGrid>
           {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i)).map((d) => {
             const key = `${d.year}-${d.month}-${d.day}`;
             const isSelected = d.year === selectedDate.year && d.month === selectedDate.month && d.day === selectedDate.day;
             return <Chip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
           })}
-        </View>
-      </Card>
+        </ChipGrid>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>NEW TIME</Text>
-        {slotsLoading && <LoadingState />}
-        {!slotsLoading && slots && slots.length === 0 && <EmptyState message="No open slots this day — try another date." />}
+      <GlassCard>
+        <SectionHeader title="New time" />
+        {slotsLoading && <LoadingState rows={1} />}
+        {!slotsLoading && slots && slots.length === 0 && (
+          <EmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
+        )}
         {!slotsLoading && slots && slots.length > 0 && (
-          <View style={styles.chipRow}>
+          <ChipGrid>
             {slots.map((s) => (
               <Chip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
             ))}
-          </View>
+          </ChipGrid>
         )}
-      </Card>
+      </GlassCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {actionError}
         </Text>
       )}
-      {phase === 'saving' && <LoadingState />}
+      {phase === 'saving' && <LoadingState rows={1} />}
     </ScreenScaffold>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.7)' },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

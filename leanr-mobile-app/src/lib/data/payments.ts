@@ -12,10 +12,28 @@
 import RazorpayCheckout from 'react-native-razorpay';
 
 import { extractFunctionErrorMessage } from '@/lib/data/edge-functions';
+import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 import { Brand } from '@/constants/theme';
+import type { Payment } from './types';
 
 export type PurchaseResult = { subscriptionId: string };
+
+export type PaymentWithPackage = Payment & { package_tiers: { name: string } | null };
+
+/** `payments_select_own` RLS lets a client read their own rows directly — no edge function needed for this one. */
+export async function getMyPayments(): Promise<PaymentWithPackage[]> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return [];
+
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*, package_tiers(name)')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PaymentWithPackage[];
+}
 
 export async function purchasePackage(
   packageId: string,

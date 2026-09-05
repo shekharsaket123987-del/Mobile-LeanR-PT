@@ -3,21 +3,29 @@
  * Escalations (list) — Tab Active/Resolved". Taps into the gated
  * resolution workflow (escalation/[id].tsx).
  */
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Brand } from '@/constants/theme';
 import { getAllEscalations } from '@/lib/data/admin-escalations';
 import { useAsync } from '@/lib/data/use-async';
 
-const STATUS_COLOR: Record<string, string> = {
-  open: Brand.streakEmberStart,
-  in_progress: Brand.yellow,
-  resolved: Brand.successEmerald,
+const STATUS_TONE: Record<string, 'yellow' | 'green' | 'red'> = {
+  open: 'red',
+  in_progress: 'yellow',
+  resolved: 'green',
 };
+
+const TABS = [
+  { key: 'active', label: 'Active' },
+  { key: 'resolved', label: 'Resolved' },
+] as const;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -29,47 +37,40 @@ export default function AdminEscalationsScreen() {
 
   return (
     <ScreenScaffold title="Escalations">
-      <View style={styles.tabRow} accessibilityRole="tablist">
-        {(['active', 'resolved'] as const).map((t) => (
-          <TextLink
-            key={t}
-            onPress={() => setTab(t)}
-            style={[styles.tabLabel, tab === t && styles.tabLabelActive]}
-            accessibilityLabel={t}>
-            {t === 'active' ? 'Active' : 'Resolved'}
-          </TextLink>
-        ))}
-      </View>
+      <SegmentedControl options={TABS} value={tab} onChange={setTab} />
 
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (escalations?.length ?? 0) === 0 && <EmptyState message={`No ${tab} escalations.`} />}
+      {!loading && !error && (escalations?.length ?? 0) === 0 && <EmptyState message={`No ${tab} escalations.`} icon="checkmark-circle-outline" />}
       {!loading &&
         !error &&
         escalations?.map((e) => (
-          <Card key={e.id}>
-            <View style={styles.header}>
-              <Text style={shared.cardLabel}>{formatDate(e.created_at)}</Text>
-              <Text style={[styles.status, { color: STATUS_COLOR[e.status] }]}>{e.status.replace('_', ' ')}</Text>
-            </View>
-            <Text style={shared.bigStat}>{e.reason}</Text>
-            {e.clientName && <Text style={shared.cardLabel}>{e.clientName}</Text>}
-            <TextLink
-              onPress={() => router.push({ pathname: '/escalation/[id]', params: { id: e.id } })}
-              style={styles.openLink}>
-              Open →
-            </TextLink>
-          </Card>
+          <Pressable
+            key={e.id}
+            onPress={() => router.push({ pathname: '/escalation/[id]', params: { id: e.id } })}
+            accessibilityRole="button"
+            accessibilityLabel={`Open escalation: ${e.reason}`}>
+            <GlassCard>
+              <View style={styles.header}>
+                <Text style={styles.date}>{formatDate(e.created_at)}</Text>
+                <Badge label={e.status.replace('_', ' ')} tone={STATUS_TONE[e.status] ?? 'gray'} />
+              </View>
+              <Text style={styles.reason}>{e.reason}</Text>
+              <View style={styles.footerRow}>
+                {e.clientName && <Text style={styles.client}>{e.clientName}</Text>}
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+              </View>
+            </GlassCard>
+          </Pressable>
         ))}
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  tabRow: { flexDirection: 'row', gap: 16, marginBottom: 4 },
-  tabLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, opacity: 0.5, color: Brand.yellow },
-  tabLabelActive: { opacity: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  status: { fontFamily: 'Manrope_700Bold', fontSize: 12, textTransform: 'capitalize' },
-  openLink: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 8 },
+  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  reason: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: '#FFFFFF' },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  client: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.yellow },
 });

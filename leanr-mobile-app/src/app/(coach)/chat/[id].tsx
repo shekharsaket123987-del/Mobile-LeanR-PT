@@ -4,29 +4,24 @@
  * specific conversation, sending as `sender_role='coach'`. Reuses
  * chat.ts's generic pieces directly (`sendMessage`/`markMessagesRead`
  * take a `senderRole` exactly for this) rather than a coach-specific
- * copy of the insert/update logic — only the UI is duplicated, same
- * per-screen-component convention as the rest of this app (Design
- * Principle #5 is about a consistent visual language, not shared
- * component code across the two independent portals). Camera capture +
- * captions alongside an image now both work — see
- * src/lib/media/pick-chat-image.ts, shared with the client-side thread.
+ * copy of the insert/update logic, and now shares the same
+ * MessageBubble/MessageInput UI as the client thread (components/ui/chat-thread.tsx)
+ * rather than a duplicated per-portal copy. Camera capture + captions
+ * alongside an image both work — see src/lib/media/pick-chat-image.ts,
+ * shared with the client-side thread.
  */
-import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { Brand, Colors } from '@/constants/theme';
+import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
+import { Brand } from '@/constants/theme';
 import { getMessages, markMessagesRead, sendMessage, subscribeToConversation, uploadChatImage } from '@/lib/data/chat';
 import { getMyConversations } from '@/lib/data/coach-chat';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
-
-function formatMessageTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
 
 export default function CoachChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -127,9 +122,9 @@ export default function CoachChatThreadScreen() {
   return (
     <ScreenScaffold title={conversation.clientName}>
       <View style={styles.thread}>
-        {messages.length === 0 && <EmptyState message="No messages yet." />}
+        {messages.length === 0 && <EmptyState message="No messages yet." icon="chatbubble-outline" />}
         {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} />
+          <MessageBubble key={m.id} message={m} mine={m.sender_role === 'coach'} />
         ))}
       </View>
 
@@ -148,149 +143,13 @@ export default function CoachChatThreadScreen() {
         attaching={attaching}
         pendingImage={pendingImage}
         onRemovePendingImage={() => setPendingImage(null)}
+        placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your client…'}
       />
     </ScreenScaffold>
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  const isMine = message.sender_role === 'coach';
-
-  return (
-    <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
-      <View style={[styles.bubble, { backgroundColor: isMine ? Brand.yellow : colors.backgroundElement }]}>
-        {message.attachment_url && (
-          <Image source={{ uri: message.attachment_url }} style={styles.attachmentImage} contentFit="cover" />
-        )}
-        {message.body && (
-          <Text style={[styles.bubbleText, { color: isMine ? Brand.black : colors.text }]}>{message.body}</Text>
-        )}
-        <View style={styles.bubbleMeta}>
-          <Text style={[styles.bubbleTime, { color: isMine ? 'rgba(0,0,0,0.6)' : colors.textSecondary }]}>
-            {formatMessageTime(message.created_at)}
-          </Text>
-          {isMine && (
-            <Text style={[styles.receipt, message.read_at && styles.receiptRead]}>{message.read_at ? '✓✓' : '✓'}</Text>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function MessageInput({
-  value,
-  onChangeText,
-  onSend,
-  sending,
-  onAttach,
-  attaching,
-  pendingImage,
-  onRemovePendingImage,
-}: {
-  value: string;
-  onChangeText: (text: string) => void;
-  onSend: () => void;
-  sending: boolean;
-  onAttach: () => void;
-  attaching: boolean;
-  pendingImage: PickedImage | null;
-  onRemovePendingImage: () => void;
-}) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  const canSend = (value.trim().length > 0 || pendingImage !== null) && !sending;
-
-  return (
-    <View>
-      {pendingImage && (
-        <View style={styles.pendingImageRow}>
-          <Image source={{ uri: pendingImage.uri }} style={styles.pendingImageThumb} contentFit="cover" />
-          <Pressable
-            onPress={onRemovePendingImage}
-            disabled={attaching}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Remove photo"
-            style={styles.pendingImageRemove}>
-            <Text style={styles.pendingImageRemoveText}>✕</Text>
-          </Pressable>
-        </View>
-      )}
-      <View style={[styles.inputRow, { backgroundColor: colors.backgroundElement }]}>
-        <Pressable
-          onPress={onAttach}
-          disabled={attaching}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Attach a photo"
-          accessibilityState={{ disabled: attaching, busy: attaching }}
-          style={[styles.attachButton, attaching && styles.sendButtonDisabled]}>
-          <Text style={styles.attachButtonText}>{attaching ? '…' : '📷'}</Text>
-        </Pressable>
-        <TextInput
-          style={[styles.input, { color: colors.text }]}
-          placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your client…'}
-          placeholderTextColor={colors.textSecondary}
-          value={value}
-          onChangeText={onChangeText}
-          multiline
-          accessibilityLabel="Message your client"
-        />
-        <Pressable
-          onPress={onSend}
-          disabled={!canSend}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-          accessibilityState={{ disabled: !canSend }}
-          style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}>
-          <Text style={styles.sendButtonText}>Send</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   thread: { gap: 8 },
-  bubbleRow: { flexDirection: 'row' },
-  bubbleRowMine: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '80%', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12, gap: 2 },
-  bubbleText: { fontFamily: 'Manrope_500Medium', fontSize: 15 },
-  attachmentImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4 },
-  bubbleMeta: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 2 },
-  bubbleTime: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
-  receipt: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(0,0,0,0.5)' },
-  receiptRead: { color: Brand.successEmerald },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, borderRadius: 20, padding: 8 },
-  input: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 15, maxHeight: 100, paddingVertical: 8, paddingHorizontal: 8 },
-  attachButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(128,128,128,0.15)',
-  },
-  attachButtonText: { fontSize: 18 },
-  pendingImageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
-  pendingImageThumb: { width: 56, height: 56, borderRadius: 10 },
-  pendingImageRemove: {
-    marginLeft: -12,
-    marginTop: -6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Brand.alertRed,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingImageRemoveText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Manrope_700Bold' },
-  sendButton: { backgroundColor: Brand.yellow, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
-  sendButtonDisabled: { opacity: 0.5 },
-  sendButtonText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.black },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

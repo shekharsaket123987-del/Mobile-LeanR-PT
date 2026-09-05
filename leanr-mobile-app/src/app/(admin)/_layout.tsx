@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import { ColorValue, useColorScheme } from 'react-native';
 
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { Brand, Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
@@ -37,6 +38,7 @@ export default function AdminLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Brand.black,

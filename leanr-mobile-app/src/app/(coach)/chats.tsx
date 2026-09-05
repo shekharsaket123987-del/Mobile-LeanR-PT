@@ -5,11 +5,12 @@
  * (chat/[id].tsx). See src/lib/data/coach-chat.ts header for the
  * confirmed RLS.
  */
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { GlassCard } from '@/components/ui/glass-card';
 import { Brand } from '@/constants/theme';
 import { getMyConversations } from '@/lib/data/coach-chat';
 import { useAsync } from '@/lib/data/use-async';
@@ -25,27 +26,37 @@ export default function CoachChatsScreen() {
     <ScreenScaffold title="Chats">
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (conversations?.length ?? 0) === 0 && <EmptyState message="No active conversations yet." />}
+      {!loading && !error && (conversations?.length ?? 0) === 0 && <EmptyState message="No active conversations yet." icon="chatbubbles-outline" />}
       {!loading &&
         !error &&
         conversations?.map((c) => (
-          <Card key={c.id}>
-            <View style={styles.row}>
-              <Text style={shared.bigStat}>{c.clientName}</Text>
-              {c.unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{c.unreadCount}</Text>
-                </View>
+          <Pressable
+            key={c.id}
+            onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.id } })}
+            accessibilityRole="button"
+            accessibilityLabel={`Open chat with ${c.clientName}`}>
+            <GlassCard variant={c.unreadCount > 0 ? 'yellow' : 'default'}>
+              <View style={styles.row}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {c.clientName}
+                </Text>
+                {c.unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{c.unreadCount}</Text>
+                  </View>
+                )}
+              </View>
+              {c.lastMessage && (
+                <Text style={styles.preview} numberOfLines={1}>
+                  {c.lastMessage}
+                </Text>
               )}
-            </View>
-            {c.lastMessage && <Text style={styles.preview}>{c.lastMessage}</Text>}
-            {c.lastMessageAt && <Text style={shared.cardLabel}>{formatTime(c.lastMessageAt)}</Text>}
-            <TextLink
-              onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.id } })}
-              style={styles.openLink}>
-              Open chat →
-            </TextLink>
-          </Card>
+              <View style={styles.footerRow}>
+                {c.lastMessageAt && <Text style={styles.time}>{formatTime(c.lastMessageAt)}</Text>}
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+              </View>
+            </GlassCard>
+          </Pressable>
         ))}
     </ScreenScaffold>
   );
@@ -53,8 +64,18 @@ export default function CoachChatsScreen() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badge: { backgroundColor: Brand.yellow, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  badge: {
+    backgroundColor: Brand.yellow,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
   badgeText: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: Brand.black },
-  preview: { fontFamily: 'Manrope_500Medium', fontSize: 14, marginTop: 2 },
-  openLink: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 8 },
+  preview: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  time: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.4)' },
 });

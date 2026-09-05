@@ -6,11 +6,15 @@
  * directly, not just a record).
  */
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Brand } from '@/constants/theme';
 import { assignShadowCoach, getActiveCoachOptions, getShadowCoverageGaps, type ShadowGap } from '@/lib/data/admin-shadow';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -27,7 +31,7 @@ export default function AdminShadowScreen() {
     <ScreenScaffold title="Shadow Coverage" subtitle="Clients with sessions during approved leave, not yet covered">
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && gaps.length === 0 && <EmptyState message="No coverage gaps right now." />}
+      {!loading && !error && gaps.length === 0 && <EmptyState message="No coverage gaps right now." icon="shield-checkmark-outline" />}
       {!loading &&
         !error &&
         gaps.map((gap) => (
@@ -74,51 +78,34 @@ function GapCard({
   };
 
   return (
-    <Card>
-      <Text style={shared.bigStat}>{gap.clientName}</Text>
-      <Text style={shared.cardLabel}>
+    <GlassCard>
+      <Text style={styles.name}>{gap.clientName}</Text>
+      <Text style={styles.meta}>
         {gap.affectedSessions} session{gap.affectedSessions === 1 ? '' : 's'} with {gap.primaryCoachName}, {gap.startsOn}
         {gap.endsOn !== gap.startsOn ? ` – ${gap.endsOn}` : ''}
       </Text>
 
-      <Text style={shared.cardLabel}>ASSIGN SHADOW COACH</Text>
-      <View style={styles.chipRow}>
+      <SectionHeader title="Assign shadow coach" />
+      <ChipGrid>
         {candidates.map((c) => (
           <Chip key={c.id} label={c.full_name} selected={selectedCoach === c.id} onPress={() => setSelectedCoach(c.id)} />
         ))}
-      </View>
+      </ChipGrid>
 
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {error}
         </Text>
       )}
-      <CtaButton onPress={onAssign} loading={assigning} disabled={!selectedCoach}>
-        Assign Coverage
-      </CtaButton>
-    </Card>
-  );
-}
-
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
+      <PrimaryButton onPress={onAssign} loading={assigning} disabled={!selectedCoach}>
+        Assign coverage
+      </PrimaryButton>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
+  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
 });

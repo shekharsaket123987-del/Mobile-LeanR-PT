@@ -15,6 +15,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { ColorValue, useColorScheme } from 'react-native';
 
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { Brand, Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
@@ -48,6 +49,7 @@ export default function ClientLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Brand.black,
@@ -118,6 +120,9 @@ export default function ClientLayout() {
       <Tabs.Screen name="demo-booking" options={{ href: null, title: 'Book a Free Demo' }} />
       <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
       <Tabs.Screen name="profile" options={{ href: null, title: 'Profile' }} />
+      <Tabs.Screen name="activate" options={{ href: null, title: 'Activate Your Plan' }} />
+      <Tabs.Screen name="onboarding" options={{ href: null, title: 'Onboarding' }} />
+      <Tabs.Screen name="subscription" options={{ href: null, title: 'Subscription' }} />
     </Tabs>
   );
 }

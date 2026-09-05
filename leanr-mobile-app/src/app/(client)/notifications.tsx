@@ -10,8 +10,9 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { GhostButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
 import { Brand } from '@/constants/theme';
 import {
   getMyNotifications,
@@ -55,26 +56,30 @@ export default function ClientNotificationsScreen() {
   return (
     <ScreenScaffold title="Notifications">
       {hasUnread && (
-        <TextLink onPress={onMarkAllRead} style={styles.markAllLink}>
+        <GhostButton size="sm" onPress={onMarkAllRead} style={styles.markAllBtn}>
           Mark all as read
-        </TextLink>
+        </GhostButton>
       )}
 
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (notifications?.length ?? 0) === 0 && <EmptyState message="No notifications yet." />}
+      {!loading && !error && (notifications?.length ?? 0) === 0 && (
+        <EmptyState message="No notifications yet." icon="notifications-off-outline" />
+      )}
       {!loading &&
         !error &&
         notifications?.map((n) => (
           <Pressable key={n.id} onPress={() => onPress(n)} accessibilityRole="button" accessibilityLabel={n.title}>
-            <Card>
+            <GlassCard variant={n.read ? 'default' : 'yellow'}>
               <View style={styles.row}>
                 {!n.read && <View style={styles.dot} />}
-                <Text style={[shared.bigStat, styles.title]}>{n.title}</Text>
+                <Text style={styles.title} numberOfLines={1}>
+                  {n.title}
+                </Text>
               </View>
               <Text style={styles.message}>{n.message}</Text>
-              <Text style={shared.cardLabel}>{formatDate(n.created_at)}</Text>
-            </Card>
+              <Text style={styles.date}>{formatDate(n.created_at)}</Text>
+            </GlassCard>
           </Pressable>
         ))}
     </ScreenScaffold>
@@ -82,9 +87,10 @@ export default function ClientNotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  markAllLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, alignSelf: 'flex-end' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  markAllBtn: { alignSelf: 'flex-end' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Brand.yellow },
-  title: { fontSize: 20 },
-  message: { fontFamily: 'Manrope_500Medium', fontSize: 14, marginTop: 2 },
+  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  message: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.4)', marginTop: 6 },
 });

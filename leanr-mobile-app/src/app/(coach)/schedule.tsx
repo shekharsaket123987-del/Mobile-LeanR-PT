@@ -3,11 +3,12 @@
  * bookings". This phase builds the upcoming-bookings list; the day/week
  * toggle itself is a presentation detail left for a later pass.
  */
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { Text } from 'react-native';
-import { TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { GlassCard } from '@/components/ui/glass-card';
 import { Brand } from '@/constants/theme';
 import { getCoachBookings } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
@@ -29,19 +30,28 @@ export default function CoachSchedule() {
     <ScreenScaffold title="Schedule">
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (bookings?.length ?? 0) === 0 && <EmptyState message="No upcoming bookings." />}
+      {!loading && !error && (bookings?.length ?? 0) === 0 && <EmptyState message="No upcoming bookings." icon="calendar-outline" />}
       {!loading &&
         !error &&
         bookings?.map((booking) => (
-          <Card key={booking.id}>
-            <Text style={shared.cardLabel}>{formatSessionTime(booking.scheduled_start)}</Text>
-            <TextLink
-              onPress={() => router.push({ pathname: '/session/[id]', params: { id: booking.id } })}
-              style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginTop: 4 }}>
-              View →
-            </TextLink>
-          </Card>
+          <Pressable
+            key={booking.id}
+            onPress={() => router.push({ pathname: '/session/[id]', params: { id: booking.id } })}
+            accessibilityRole="button"
+            accessibilityLabel={`Session at ${formatSessionTime(booking.scheduled_start)}`}>
+            <GlassCard>
+              <View style={styles.row}>
+                <Text style={styles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
+                <Ionicons name="chevron-forward" size={18} color={Brand.yellow} />
+              </View>
+            </GlassCard>
+          </Pressable>
         ))}
     </ScreenScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+});

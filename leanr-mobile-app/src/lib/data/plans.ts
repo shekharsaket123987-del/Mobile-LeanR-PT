@@ -15,3 +15,14 @@ export async function getMarketingPlans() {
   if (error) throw error;
   return (data ?? []) as Plan[];
 }
+
+/** Not filtered to `is_active` — a subscription can reference a since-retired package (soft-deleted, never hard-deleted). */
+export async function getPackageById(packageId: string): Promise<Plan | null> {
+  const { data, error } = await supabase
+    .from('package_tiers')
+    .select('id, name, sessions_count, price, is_active')
+    .eq('id', packageId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Plan | null;
+}

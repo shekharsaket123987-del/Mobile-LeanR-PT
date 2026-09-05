@@ -14,11 +14,17 @@
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { TextLink } from '@/components/tappable';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { addIstDays, formatIstDateLabel, formatIstTimeLabel, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { confirmAnonymousDemoBooking, findAnonymousDemoSlots, type AnonymousDemoMatch } from '@/lib/data/anonymous-demo-booking';
 
@@ -98,14 +104,15 @@ export default function BookFreeDemoScreen() {
   if (phase === 'success') {
     return (
       <ScreenScaffold title="Demo booked!">
-        <Card>
-          <Text style={shared.cardLabel}>ASSESSMENT CONFIRMED</Text>
-          <Text style={shared.bigStat}>{formatIstDateLabel(selectedDate)}</Text>
+        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="ASSESSMENT CONFIRMED" />
+        <GlassCard>
           {selectedSlot && <Text style={shared.cardLabel}>{formatIstTimeLabel(selectedSlot)}</Text>}
-          {result && <Text style={shared.cardLabel}>with {result.coachName}</Text>}
+          {result && <Text style={styles.withCoach}>with {result.coachName}</Text>}
           <Text style={styles.successNote}>We&apos;ve noted your details — your coach will be in touch to confirm.</Text>
-        </Card>
-        <CtaButton onPress={() => router.replace('/login')}>Back to login</CtaButton>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.replace('/login')}>
+          Back to login
+        </PrimaryButton>
       </ScreenScaffold>
     );
   }
@@ -113,32 +120,24 @@ export default function BookFreeDemoScreen() {
   if (phase === 'details' || phase === 'confirming') {
     return (
       <ScreenScaffold title="Almost done" subtitle="Tell us how to reach you and we'll lock in your slot.">
-        <Card>
+        <GlassCard variant="yellow">
           <Text style={shared.cardLabel}>{formatIstDateLabel(selectedDate)}</Text>
           <Text style={shared.bigStat}>{selectedSlot ? formatIstTimeLabel(selectedSlot) : ''}</Text>
-          {match?.coachName && <Text style={shared.cardLabel}>with {match.coachName}</Text>}
-        </Card>
+          {match?.coachName && <Text style={styles.withCoach}>with {match.coachName}</Text>}
+        </GlassCard>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Your name"
-          placeholderTextColor="#9A9A9A"
-          value={name}
-          onChangeText={setName}
-        />
-        <TextInput
-          style={styles.input}
+        <TextField icon="person-outline" placeholder="Your name" value={name} onChangeText={setName} />
+        <TextField
+          icon="mail-outline"
           placeholder="Email"
-          placeholderTextColor="#9A9A9A"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
         />
-        <TextInput
-          style={styles.input}
+        <TextField
+          icon="call-outline"
           placeholder="Phone (optional if email given)"
-          placeholderTextColor="#9A9A9A"
           keyboardType="phone-pad"
           value={phone}
           onChangeText={setPhone}
@@ -150,9 +149,9 @@ export default function BookFreeDemoScreen() {
           </Text>
         )}
 
-        <CtaButton onPress={onSubmit} loading={phase === 'confirming'} style={styles.ctaSpacing}>
+        <PrimaryButton size="lg" onPress={onSubmit} loading={phase === 'confirming'}>
           Confirm free demo
-        </CtaButton>
+        </PrimaryButton>
         <TextLink onPress={() => setPhase('pick')}>Pick a different slot</TextLink>
       </ScreenScaffold>
     );
@@ -160,8 +159,8 @@ export default function BookFreeDemoScreen() {
 
   return (
     <ScreenScaffold title="Book a Free Demo" subtitle="No account needed — we'll match you with an available coach.">
-      <Card>
-        <Text style={shared.cardLabel}>DATE</Text>
+      <GlassCard>
+        <SectionHeader eyebrow="Step 1" title="Pick a date" />
         <View style={styles.chipRow}>
           {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i + 1)).map((d) => {
             const key = `${d.year}-${d.month}-${d.day}`;
@@ -169,15 +168,15 @@ export default function BookFreeDemoScreen() {
             return <Chip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
           })}
         </View>
-      </Card>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>AVAILABLE TIMES</Text>
-        {matchLoading && <LoadingState />}
+      <GlassCard>
+        <SectionHeader eyebrow="Step 2" title="Available times" />
+        {matchLoading && <LoadingState rows={1} />}
         {!matchLoading && !match?.coachId && <EmptyState message="No coaches have an opening this day — try another date." />}
         {!matchLoading && match?.coachId && (
           <>
-            <Text style={shared.cardLabel}>Matched with {match.coachName}</Text>
+            <Text style={styles.withCoach}>Matched with {match.coachName}</Text>
             <View style={styles.chipRow}>
               {match.slots.map((s) => (
                 <Chip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
@@ -185,7 +184,7 @@ export default function BookFreeDemoScreen() {
             </View>
           </>
         )}
-      </Card>
+      </GlassCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -200,38 +199,10 @@ export default function BookFreeDemoScreen() {
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  withCoach: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.7)' },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
-  input: {
-    backgroundColor: Brand.charcoal2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginTop: 12,
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-  },
-  ctaSpacing: { marginTop: 12 },
-  link: { alignSelf: 'center', marginTop: 20, color: Brand.yellow, fontFamily: 'Manrope_500Medium', fontSize: 14 },
-  successNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: '#CCCCCC', marginTop: 8 },
+  link: { alignSelf: 'center', marginTop: 4 },
+  successNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
 });

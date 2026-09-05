@@ -20,13 +20,16 @@
  * low-volume PT coaching chat, not a high-frequency messaging app; a
  * docked input bar is a fair polish-pass upgrade later.
  */
-import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { PrimaryButton } from '@/components/ui/button';
+import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Brand, Radius, Shadow } from '@/constants/theme';
 import {
   getMyActiveConversation,
   getMessages,
@@ -45,10 +48,6 @@ import {
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
-
-function formatMessageTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -139,29 +138,39 @@ export default function CoachScreen() {
     <ScreenScaffold title="Your Coach">
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && !coach && <EmptyState message="No coach assigned yet." />}
+      {!loading && !error && !coach && <EmptyState message="No coach assigned yet." icon="person-outline" />}
       {!loading && !error && coach && (
-        <Card>
-          <Text style={shared.cardLabel}>COACH</Text>
-          <Text style={shared.bigStat}>{coach.full_name}</Text>
-          {coach.bio && <Text style={shared.cardLabel}>{coach.bio}</Text>}
-        </Card>
+        <GlassCard variant="yellow" style={styles.coachCard}>
+          <View style={styles.coachRow}>
+            <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={56} ring />
+            <View style={styles.coachInfo}>
+              <Text style={styles.coachEyebrow}>YOUR COACH</Text>
+              <Text style={styles.coachName} numberOfLines={1}>
+                {coach.full_name}
+              </Text>
+              {coach.specialization && (
+                <Text style={styles.coachSpecialty} numberOfLines={1}>
+                  {coach.specialization}
+                </Text>
+              )}
+            </View>
+          </View>
+          {coach.bio && <Text style={styles.coachBio}>{coach.bio}</Text>}
+        </GlassCard>
       )}
 
-      {!loading && !error && coach && (
-        <CoachChangeSection requests={changeRequests} onSubmitted={reload} />
-      )}
+      {!loading && !error && coach && <CoachChangeSection requests={changeRequests} onSubmitted={reload} />}
 
       {!loading && !error && coach && !conversation && (
-        <EmptyState message="No conversation with your coach yet." />
+        <EmptyState message="No conversation with your coach yet." icon="chatbubble-outline" />
       )}
 
       {!loading && !error && conversation && (
         <>
           <View style={styles.thread}>
-            {messages.length === 0 && <EmptyState message="Say hello to your coach." />}
+            {messages.length === 0 && <EmptyState message="Say hello to your coach." icon="hand-left-outline" />}
             {messages.map((m) => (
-              <MessageBubble key={m.id} message={m} />
+              <MessageBubble key={m.id} message={m} mine={m.sender_role === 'client'} />
             ))}
           </View>
 
@@ -180,6 +189,7 @@ export default function CoachScreen() {
             attaching={attaching}
             pendingImage={pendingImage}
             onRemovePendingImage={() => setPendingImage(null)}
+            placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your coach…'}
           />
         </>
       )}
@@ -192,10 +202,10 @@ const CHANGE_STATUS_LABEL: Record<CoachChangeStatus, string> = {
   approved: 'Approved',
   rejected: 'Not approved',
 };
-const CHANGE_STATUS_COLOR: Record<CoachChangeStatus, string> = {
-  pending: Brand.streakEmberStart,
-  approved: Brand.successEmerald,
-  rejected: Brand.alertRed,
+const CHANGE_STATUS_TONE: Record<CoachChangeStatus, 'yellow' | 'green' | 'red'> = {
+  pending: 'yellow',
+  approved: 'green',
+  rejected: 'red',
 };
 
 function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRequest[]; onSubmitted: () => void }) {
@@ -228,9 +238,9 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
   };
 
   return (
-    <Card>
+    <GlassCard>
       <View style={styles.changeHeader}>
-        <Text style={shared.cardLabel}>COACH CHANGE</Text>
+        <Text style={styles.sectionLabel}>COACH CHANGE</Text>
         {!hasOpenRequest && (
           <Pressable onPress={() => setShowForm((v) => !v)} hitSlop={8} accessibilityRole="button">
             <Text style={styles.changeToggle}>{showForm ? 'Cancel' : 'Request change'}</Text>
@@ -240,10 +250,8 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
 
       {requests.map((r) => (
         <View key={r.id} style={styles.changeRow}>
-          <Text style={styles.bubbleTime}>{formatDate(r.created_at)}</Text>
-          <Text style={[styles.changeStatus, { color: CHANGE_STATUS_COLOR[r.status] }]}>
-            {CHANGE_STATUS_LABEL[r.status]}
-          </Text>
+          <Text style={styles.metaLabel}>{formatDate(r.created_at)}</Text>
+          <Badge label={CHANGE_STATUS_LABEL[r.status]} tone={CHANGE_STATUS_TONE[r.status]} />
         </View>
       ))}
       {requests.some((r) => r.status === 'approved') && (
@@ -258,12 +266,13 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
           <TextInput
             style={styles.reasonInput}
             placeholder="Why do you want to switch coaches?"
+            placeholderTextColor="rgba(255,255,255,0.35)"
             value={reason}
             onChangeText={setReason}
             multiline
             accessibilityLabel="Reason for coach change"
           />
-          <Text style={styles.bubbleTime}>RATE YOUR CURRENT COACH (OPTIONAL)</Text>
+          <Text style={styles.metaLabel}>RATE YOUR CURRENT COACH (OPTIONAL)</Text>
           <View style={styles.ratingRow}>
             {[1, 2, 3, 4, 5].map((n) => (
               <Pressable
@@ -283,124 +292,40 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
               {formError}
             </Text>
           )}
-          <CtaButton onPress={onSubmit} loading={submitting}>
+          <PrimaryButton onPress={onSubmit} loading={submitting}>
             Submit request
-          </CtaButton>
+          </PrimaryButton>
         </View>
       )}
-    </Card>
-  );
-}
-
-function MessageBubble({ message }: { message: Message }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  const isMine = message.sender_role === 'client';
-
-  return (
-    <View style={[styles.bubbleRow, isMine && styles.bubbleRowMine]}>
-      <View style={[styles.bubble, { backgroundColor: isMine ? Brand.yellow : colors.backgroundElement }]}>
-        {message.attachment_url && (
-          <Image source={{ uri: message.attachment_url }} style={styles.attachmentImage} contentFit="cover" />
-        )}
-        {message.body && (
-          <Text style={[styles.bubbleText, { color: isMine ? Brand.black : colors.text }]}>{message.body}</Text>
-        )}
-        <View style={styles.bubbleMeta}>
-          <Text style={[styles.bubbleTime, { color: isMine ? 'rgba(0,0,0,0.6)' : colors.textSecondary }]}>
-            {formatMessageTime(message.created_at)}
-          </Text>
-          {isMine && (
-            <Text style={[styles.receipt, message.read_at && styles.receiptRead]}>{message.read_at ? '✓✓' : '✓'}</Text>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function MessageInput({
-  value,
-  onChangeText,
-  onSend,
-  sending,
-  onAttach,
-  attaching,
-  pendingImage,
-  onRemovePendingImage,
-}: {
-  value: string;
-  onChangeText: (text: string) => void;
-  onSend: () => void;
-  sending: boolean;
-  onAttach: () => void;
-  attaching: boolean;
-  pendingImage: PickedImage | null;
-  onRemovePendingImage: () => void;
-}) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  const canSend = (value.trim().length > 0 || pendingImage !== null) && !sending;
-
-  return (
-    <View>
-      {pendingImage && (
-        <View style={styles.pendingImageRow}>
-          <Image source={{ uri: pendingImage.uri }} style={styles.pendingImageThumb} contentFit="cover" />
-          <Pressable
-            onPress={onRemovePendingImage}
-            disabled={attaching}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Remove photo"
-            style={styles.pendingImageRemove}>
-            <Text style={styles.pendingImageRemoveText}>✕</Text>
-          </Pressable>
-        </View>
-      )}
-      <View style={[styles.inputRow, { backgroundColor: colors.backgroundElement }]}>
-        <Pressable
-          onPress={onAttach}
-          disabled={attaching}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Attach a photo"
-          accessibilityState={{ disabled: attaching, busy: attaching }}
-          style={[styles.attachButton, attaching && styles.sendButtonDisabled]}>
-          <Text style={styles.attachButtonText}>{attaching ? '…' : '📷'}</Text>
-        </Pressable>
-        <TextInput
-          style={[styles.input, { color: colors.text }]}
-          placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your coach…'}
-          placeholderTextColor={colors.textSecondary}
-          value={value}
-          onChangeText={onChangeText}
-          multiline
-          accessibilityLabel="Message your coach"
-        />
-        <Pressable
-          onPress={onSend}
-          disabled={!canSend}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-          accessibilityState={{ disabled: !canSend }}
-          style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}>
-          <Text style={styles.sendButtonText}>Send</Text>
-        </Pressable>
-      </View>
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
+  coachCard: { gap: 10 },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  coachInfo: { flexShrink: 1, gap: 2 },
+  coachEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 1, color: Brand.yellow },
+  coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: '#FFFFFF' },
+  coachSpecialty: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 20 },
+  sectionLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.55)' },
+  metaLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.5)' },
   changeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   changeToggle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
-  changeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  changeStatus: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
-  changeNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 6 },
-  changeForm: { marginTop: 8, gap: 8 },
-  reasonInput: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2, minHeight: 44 },
+  changeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  changeNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 6, color: 'rgba(255,255,255,0.6)' },
+  changeForm: { marginTop: 8, gap: 10 },
+  reasonInput: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 80,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
+  },
   ratingRow: { flexDirection: 'row', gap: 8 },
   ratingChip: {
     width: 40,
@@ -408,53 +333,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(128,128,128,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  ratingChipSelected: { backgroundColor: Brand.yellow },
-  ratingChipText: { fontFamily: 'Manrope_700Bold', fontSize: 15 },
+  ratingChipSelected: { backgroundColor: Brand.yellow, ...Shadow.glow },
+  ratingChipText: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
   ratingChipTextSelected: { color: Brand.black },
   thread: { gap: 8 },
-  bubbleRow: { flexDirection: 'row' },
-  bubbleRowMine: { justifyContent: 'flex-end' },
-  bubble: { maxWidth: '80%', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12, gap: 2 },
-  bubbleText: { fontFamily: 'Manrope_500Medium', fontSize: 15 },
-  attachmentImage: { width: 200, height: 200, borderRadius: 12, marginBottom: 4 },
-  bubbleMeta: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 2 },
-  bubbleTime: { fontFamily: 'Manrope_500Medium', fontSize: 11 },
-  receipt: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(0,0,0,0.5)' },
-  receiptRead: { color: Brand.successEmerald },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    borderRadius: 20,
-    padding: 8,
-  },
-  input: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 15, maxHeight: 100, paddingVertical: 8, paddingHorizontal: 8 },
-  attachButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(128,128,128,0.15)',
-  },
-  attachButtonText: { fontSize: 18 },
-  pendingImageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
-  pendingImageThumb: { width: 56, height: 56, borderRadius: 10 },
-  pendingImageRemove: {
-    marginLeft: -12,
-    marginTop: -6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Brand.alertRed,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingImageRemoveText: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Manrope_700Bold' },
-  sendButton: { backgroundColor: Brand.yellow, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
-  sendButtonDisabled: { opacity: 0.5 },
-  sendButtonText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.black },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

@@ -4,9 +4,12 @@
  * can read any client's name/status, not just linked ones).
  */
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { TextField } from '@/components/ui/text-field';
 import { Brand } from '@/constants/theme';
 import { searchClients, type ClientSearchResult } from '@/lib/data/coach-search';
 
@@ -35,46 +38,32 @@ export default function CoachSearchScreen() {
 
   return (
     <ScreenScaffold title="Search Clients">
-      <TextInput
-        style={styles.input}
-        placeholder="Search by name…"
-        value={query}
-        onChangeText={onSearch}
-        accessibilityLabel="Search clients by name"
-      />
+      <TextField icon="search-outline" placeholder="Search by name…" value={query} onChangeText={onSearch} accessibilityLabel="Search clients by name" />
 
-      {loading && <LoadingState />}
+      {loading && <LoadingState rows={1} />}
       {error && <ErrorState message={error} onRetry={() => onSearch(query)} />}
-      {!loading && !error && results !== null && results.length === 0 && <EmptyState message="No clients found." />}
+      {!loading && !error && results !== null && results.length === 0 && <EmptyState message="No clients found." icon="search-outline" />}
       {!loading &&
         !error &&
         results?.map((r) => (
-          <Card key={r.id}>
+          <GlassCard key={r.id}>
             <View style={styles.row}>
-              <Text style={shared.bigStat}>{r.fullName}</Text>
-              {r.isMyClient && <Text style={styles.myClientTag}>Your client</Text>}
+              <Text style={styles.name}>{r.fullName}</Text>
+              {r.isMyClient && <Badge label="Your client" tone="green" />}
             </View>
-            <Text style={shared.cardLabel}>
+            <Text style={styles.meta}>
               {r.clientCode} · {r.status}
             </Text>
             {!r.isMyClient && <Text style={styles.readOnlyNote}>Read-only — not one of your clients</Text>}
-          </Card>
+          </GlassCard>
         ))}
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  input: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(128,128,128,0.15)',
-    color: Brand.charcoal2,
-  },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  myClientTag: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: Brand.successEmerald },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
   readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: Brand.streakEmberStart, marginTop: 4 },
 });

@@ -15,11 +15,16 @@
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { TextLink } from '@/components/tappable';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { Brand } from '@/constants/theme';
 import {
   addIstDays,
   confirmHold,
@@ -166,8 +171,10 @@ export default function BookSessionScreen() {
   if (!subscription) {
     return (
       <ScreenScaffold title="Book a Session">
-        <EmptyState message="You need an active plan before you can book a session." />
-        <CtaButton onPress={() => router.push('/plans')}>View plans</CtaButton>
+        <EmptyState message="You need an active plan before you can book a session." icon="lock-closed-outline" />
+        <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
+          View plans
+        </PrimaryButton>
       </ScreenScaffold>
     );
   }
@@ -183,13 +190,14 @@ export default function BookSessionScreen() {
   if (phase === 'success') {
     return (
       <ScreenScaffold title="Booked!">
-        <Card>
-          <Text style={shared.cardLabel}>SESSION CONFIRMED</Text>
-          <Text style={shared.bigStat}>{formatIstDateLabel(selectedDate)}</Text>
-          {selectedSlot && <Text style={shared.cardLabel}>{formatIstTimeLabel(selectedSlot)}</Text>}
-          {activeCoachName && <Text style={shared.cardLabel}>with {activeCoachName}</Text>}
-        </Card>
-        <CtaButton onPress={() => router.replace('/sessions')}>View my sessions</CtaButton>
+        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="SESSION CONFIRMED" />
+        <GlassCard>
+          {selectedSlot && <Text style={styles.metaText}>{formatIstTimeLabel(selectedSlot)}</Text>}
+          {activeCoachName && <Text style={styles.metaText}>with {activeCoachName}</Text>}
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+          View my sessions
+        </PrimaryButton>
       </ScreenScaffold>
     );
   }
@@ -197,24 +205,24 @@ export default function BookSessionScreen() {
   if (phase === 'review' || phase === 'confirming') {
     return (
       <ScreenScaffold title="Confirm your session">
-        <Card>
-          <Text style={shared.cardLabel}>{formatIstDateLabel(selectedDate)}</Text>
-          <Text style={shared.bigStat}>{selectedSlot ? formatIstTimeLabel(selectedSlot) : ''}</Text>
-          {activeCoachName && <Text style={shared.cardLabel}>with {activeCoachName}</Text>}
+        <GlassCard variant="yellow">
+          <Text style={styles.eyebrow}>{formatIstDateLabel(selectedDate)}</Text>
+          <Text style={styles.bigTime}>{selectedSlot ? formatIstTimeLabel(selectedSlot) : ''}</Text>
+          {activeCoachName && <Text style={styles.metaText}>with {activeCoachName}</Text>}
           <Text style={styles.holdTimer}>
             {holdSecondsLeft > 0
               ? `Hold expires in ${Math.floor(holdSecondsLeft / 60)}:${String(holdSecondsLeft % 60).padStart(2, '0')}`
               : 'Hold expired — go back and pick a slot again'}
           </Text>
-        </Card>
+        </GlassCard>
         {actionError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {actionError}
           </Text>
         )}
-        <CtaButton onPress={onConfirm} loading={phase === 'confirming'} disabled={holdSecondsLeft <= 0}>
+        <PrimaryButton size="lg" onPress={onConfirm} loading={phase === 'confirming'} disabled={holdSecondsLeft <= 0}>
           Confirm booking
-        </CtaButton>
+        </PrimaryButton>
         <TextLink onPress={onRestart}>Pick a different slot</TextLink>
       </ScreenScaffold>
     );
@@ -223,18 +231,18 @@ export default function BookSessionScreen() {
   return (
     <ScreenScaffold title="Book a Session" subtitle={activeCoachName ? `with ${activeCoachName}` : undefined}>
       {!coach && coaches.length > 0 && (
-        <Card>
-          <Text style={shared.cardLabel}>CHOOSE A COACH</Text>
+        <GlassCard>
+          <SectionHeader title="Choose a coach" />
           <View style={styles.chipRow}>
             {coaches.map((c) => (
               <Chip key={c.id} label={c.full_name} selected={c.id === selectedCoachId} onPress={() => setSelectedCoachId(c.id)} />
             ))}
           </View>
-        </Card>
+        </GlassCard>
       )}
 
-      <Card>
-        <Text style={shared.cardLabel}>DATE</Text>
+      <GlassCard>
+        <SectionHeader title="Pick a date" />
         <View style={styles.chipRow}>
           {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i + 1)).map((d) => {
             const key = `${d.year}-${d.month}-${d.day}`;
@@ -242,12 +250,14 @@ export default function BookSessionScreen() {
             return <Chip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
           })}
         </View>
-      </Card>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>AVAILABLE TIMES</Text>
-        {slotsLoading && <LoadingState />}
-        {!slotsLoading && slots && slots.length === 0 && <EmptyState message="No open slots this day — try another date." />}
+      <GlassCard>
+        <SectionHeader title="Available times" />
+        {slotsLoading && <LoadingState rows={1} />}
+        {!slotsLoading && slots && slots.length === 0 && (
+          <EmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
+        )}
         {!slotsLoading && slots && slots.length > 0 && (
           <View style={styles.chipRow}>
             {slots.map((s) => (
@@ -255,47 +265,27 @@ export default function BookSessionScreen() {
             ))}
           </View>
         )}
-      </Card>
+      </GlassCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {actionError}
         </Text>
       )}
-      {phase === 'holding' && <LoadingState />}
+      {phase === 'holding' && <LoadingState rows={1} />}
     </ScreenScaffold>
-  );
-}
-
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[
-        styles.chip,
-        { backgroundColor: selected ? Brand.yellow : colors.backgroundElement },
-      ]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  chip: {
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    minHeight: 44,
-    justifyContent: 'center',
+  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.6)' },
+  bigTime: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 34,
+    color: '#FFFFFF',
   },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.7)' },
   holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.streakEmberStart, marginTop: 8 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

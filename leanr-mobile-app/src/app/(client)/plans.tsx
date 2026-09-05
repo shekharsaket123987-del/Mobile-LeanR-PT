@@ -13,15 +13,18 @@
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { CelebrationOverlay } from '@/components/celebration-overlay';
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton, TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { TextLink } from '@/components/tappable';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
-import { useAsync } from '@/lib/data/use-async';
 import { getMarketingPlans } from '@/lib/data/plans';
 import { purchasePackage } from '@/lib/data/payments';
+import { useAsync } from '@/lib/data/use-async';
 
 function formatPrice(price: number) {
   return `₹${price.toLocaleString()}`;
@@ -52,33 +55,38 @@ export default function PlansScreen() {
   };
 
   return (
-    <ScreenScaffold title="Choose Your Plan">
-      <TextLink onPress={() => router.push('/demo-booking')} style={shared.retryLink}>
+    <ScreenScaffold title="Choose Your Plan" subtitle="Every plan pairs you with a dedicated live coach.">
+      <TextLink onPress={() => router.push('/demo-booking')} style={styles.demoLink}>
         Book a Free Demo first →
       </TextLink>
 
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (plans?.length ?? 0) === 0 && <EmptyState message="No plans available right now." />}
+      {!loading && !error && (plans?.length ?? 0) === 0 && (
+        <EmptyState message="No plans available right now." icon="pricetag-outline" />
+      )}
       {!loading &&
         !error &&
         plans?.map((plan) => (
-          <Card key={plan.id}>
-            <Text style={shared.cardLabel}>{plan.name}</Text>
-            <Text style={shared.bigStat}>{formatPrice(plan.price)}</Text>
-            {plan.sessions_count && <Text style={shared.cardLabel}>{plan.sessions_count} sessions</Text>}
-            <CtaButton
+          <GlassCard key={plan.id} style={styles.planCard}>
+            <Text style={styles.planName}>{plan.name}</Text>
+            <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
+            {plan.sessions_count ? (
+              <Text style={styles.planMeta}>{plan.sessions_count} live sessions with your coach</Text>
+            ) : null}
+            <PrimaryButton
+              size="lg"
               onPress={() => onPurchase(plan.id, plan.name)}
               loading={purchasingId === plan.id}
               disabled={purchasingId !== null && purchasingId !== plan.id}
-              style={{ marginTop: 12 }}>
-              Purchase Plan
-            </CtaButton>
-          </Card>
+              style={styles.purchaseButton}>
+              Purchase plan
+            </PrimaryButton>
+          </GlassCard>
         ))}
 
       {purchaseError && (
-        <Text style={{ fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#EF4444' }} accessibilityRole="alert">
+        <Text style={styles.errorText} accessibilityRole="alert">
           {purchaseError}
         </Text>
       )}
@@ -86,13 +94,30 @@ export default function PlansScreen() {
       {celebrating && (
         <CelebrationOverlay
           title="You're in! 🎉"
-          subtitle="Your plan is active — set up your weekly schedule next."
+          subtitle="Pick a start date next, then a quick health check."
           onDismiss={() => {
             setCelebrating(false);
-            router.replace('/my-schedule');
+            router.replace('/activate');
           }}
         />
       )}
     </ScreenScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  demoLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginTop: -8 },
+  planCard: { gap: 4 },
+  planName: { fontFamily: 'Manrope_700Bold', fontSize: 13, letterSpacing: 0.4, color: 'rgba(255,255,255,0.7)' },
+  planPrice: {
+    fontFamily: DisplayFont,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    fontSize: 38,
+    color: Brand.yellow,
+    letterSpacing: -0.5,
+  },
+  planMeta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  purchaseButton: { marginTop: 12 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+});

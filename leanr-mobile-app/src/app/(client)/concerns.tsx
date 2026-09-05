@@ -8,11 +8,16 @@
  * `href: null` in the (client) layout.
  */
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { Badge } from '@/components/ui/badge';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { Brand, Radius } from '@/constants/theme';
 import {
   CONCERN_CATEGORIES,
   getMyConcerns,
@@ -26,10 +31,10 @@ import {
 import { useAsync } from '@/lib/data/use-async';
 
 const STATUS_LABEL: Record<EscalationStatus, string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
-const STATUS_COLOR: Record<EscalationStatus, string> = {
-  open: Brand.streakEmberStart,
-  in_progress: Brand.yellow,
-  resolved: Brand.successEmerald,
+const STATUS_TONE: Record<EscalationStatus, 'yellow' | 'green' | 'red'> = {
+  open: 'red',
+  in_progress: 'yellow',
+  resolved: 'green',
 };
 
 function formatDate(iso: string) {
@@ -76,30 +81,26 @@ export default function ConcernsScreen() {
 
   return (
     <ScreenScaffold title="My Concerns">
-      <CtaButton onPress={() => setShowForm((v) => !v)}>{showForm ? 'Cancel' : '+ Raise a Concern'}</CtaButton>
+      <PrimaryButton size="lg" onPress={() => setShowForm((v) => !v)}>
+        {showForm ? 'Cancel' : 'Raise a concern'}
+      </PrimaryButton>
 
       {showForm && (
-        <Card>
-          <Text style={shared.cardLabel}>WHAT&apos;S GOING ON?</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Short summary"
-            value={reason}
-            onChangeText={setReason}
-            accessibilityLabel="Concern summary"
-          />
+        <GlassCard>
+          <SectionHeader title="What's going on?" />
+          <TextField placeholder="Short summary" value={reason} onChangeText={setReason} accessibilityLabel="Concern summary" />
 
-          <Text style={shared.cardLabel}>CATEGORY</Text>
+          <Text style={styles.label}>CATEGORY</Text>
           <View style={styles.chipRow}>
             {CONCERN_CATEGORIES.map((c) => (
               <Chip key={c.value} label={c.label} selected={c.value === category} onPress={() => setCategory(c.value)} />
             ))}
           </View>
 
-          <Text style={shared.cardLabel}>DETAILS (OPTIONAL)</Text>
           <TextInput
-            style={[styles.input, styles.multiline]}
-            placeholder="Anything else we should know?"
+            style={styles.multilineInput}
+            placeholder="Anything else we should know? (optional)"
+            placeholderTextColor="rgba(255,255,255,0.35)"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -112,15 +113,15 @@ export default function ConcernsScreen() {
             </Text>
           )}
 
-          <CtaButton onPress={onSubmit} loading={submitting}>
+          <PrimaryButton onPress={onSubmit} loading={submitting}>
             Submit
-          </CtaButton>
-        </Card>
+          </PrimaryButton>
+        </GlassCard>
       )}
 
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && concerns.length === 0 && <EmptyState message="No concerns raised yet." />}
+      {!loading && !error && concerns.length === 0 && <EmptyState message="No concerns raised yet." icon="alert-circle-outline" />}
       {!loading &&
         !error &&
         concerns.map((concern) => <ConcernCard key={concern.id} concern={concern} notes={notes[concern.id] ?? []} />)}
@@ -132,25 +133,25 @@ function ConcernCard({ concern, notes }: { concern: Concern; notes: ConcernNote[
   const categoryLabel = CONCERN_CATEGORIES.find((c) => c.value === concern.category)?.label ?? concern.category;
 
   return (
-    <Card>
+    <GlassCard>
       <View style={styles.cardHeader}>
-        <Text style={shared.cardLabel}>{formatDate(concern.created_at)}</Text>
-        <Text style={[styles.statusChip, { color: STATUS_COLOR[concern.status] }]}>{STATUS_LABEL[concern.status]}</Text>
+        <Text style={styles.dateLabel}>{formatDate(concern.created_at)}</Text>
+        <Badge label={STATUS_LABEL[concern.status]} tone={STATUS_TONE[concern.status]} />
       </View>
-      <Text style={shared.bigStat}>{concern.reason}</Text>
-      {categoryLabel && <Text style={shared.cardLabel}>{categoryLabel}</Text>}
+      <Text style={styles.reasonText}>{concern.reason}</Text>
+      {categoryLabel && <Text style={styles.dateLabel}>{categoryLabel}</Text>}
       {concern.description && <Text style={styles.bodyText}>{concern.description}</Text>}
 
       {concern.status === 'resolved' && concern.resolution_notes && (
         <View style={styles.resolutionBox}>
-          <Text style={shared.cardLabel}>RESOLUTION</Text>
+          <Text style={styles.label}>RESOLUTION</Text>
           <Text style={styles.bodyText}>{concern.resolution_notes}</Text>
         </View>
       )}
 
       {notes.length > 0 && (
         <View style={styles.notesBox}>
-          <Text style={shared.cardLabel}>UPDATES</Text>
+          <Text style={styles.label}>UPDATES</Text>
           {notes.map((n) => (
             <Text key={n.id} style={styles.bodyText}>
               {n.note}
@@ -158,41 +159,28 @@ function ConcernCard({ concern, notes }: { concern: Concern; notes: ConcernNote[
           ))}
         </View>
       )}
-    </Card>
-  );
-}
-
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  input: {
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.5)' },
+  multilineInput: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 15,
-    paddingVertical: 8,
-    color: Brand.charcoal2,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 70,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
   },
-  multiline: { minHeight: 60 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 4 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statusChip: { fontFamily: 'Manrope_700Bold', fontSize: 12 },
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, marginTop: 2 },
+  dateLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  reasonText: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: '#FFFFFF' },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   resolutionBox: { marginTop: 8, gap: 2 },
   notesBox: { marginTop: 8, gap: 2 },
 });

@@ -6,11 +6,16 @@
  */
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, TextInput } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { Badge } from '@/components/ui/badge';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Brand, Radius } from '@/constants/theme';
 import {
   addEscalationNote,
   confirmCalledClient,
@@ -24,6 +29,12 @@ import { useAsync } from '@/lib/data/use-async';
 
 const FAULT_OPTIONS = ['client', 'coach', 'platform', 'unclear'];
 const ISSUE_TYPE_OPTIONS = ['coach_behavior', 'scheduling', 'billing', 'technical', 'other'];
+
+const STATUS_TONE: Record<string, 'yellow' | 'green' | 'red'> = {
+  open: 'red',
+  in_progress: 'yellow',
+  resolved: 'green',
+};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -90,42 +101,41 @@ export default function AdminEscalationDetailScreen() {
 
   return (
     <ScreenScaffold title={escalation.reason} subtitle={formatDate(escalation.created_at)}>
-      <Card>
-        {escalation.clientName && <Text style={shared.cardLabel}>CLIENT: {escalation.clientName}</Text>}
-        {escalation.coachName && <Text style={shared.cardLabel}>COACH: {escalation.coachName}</Text>}
-        {escalation.category && <Text style={shared.cardLabel}>CATEGORY: {escalation.category}</Text>}
+      <GlassCard variant={isResolved ? 'default' : 'yellow'}>
+        {escalation.clientName && <Text style={styles.metaLine}>Client: {escalation.clientName}</Text>}
+        {escalation.coachName && <Text style={styles.metaLine}>Coach: {escalation.coachName}</Text>}
+        {escalation.category && <Text style={styles.metaLine}>Category: {escalation.category}</Text>}
         {escalation.description && <Text style={styles.bodyText}>{escalation.description}</Text>}
-        <Text style={[styles.statusText, isResolved && { color: Brand.successEmerald }]}>
-          {escalation.status.replace('_', ' ').toUpperCase()}
-        </Text>
-      </Card>
+        <Badge label={escalation.status.replace('_', ' ')} tone={STATUS_TONE[escalation.status] ?? 'gray'} />
+      </GlassCard>
 
       {!called && !isResolved && (
-        <CtaButton onPress={() => run(() => confirmCalledClient(id), setConfirming)} loading={confirming}>
-          Confirm I&apos;ve Called the Client
-        </CtaButton>
+        <PrimaryButton size="lg" onPress={() => run(() => confirmCalledClient(id), setConfirming)} loading={confirming}>
+          Confirm I&apos;ve called the client
+        </PrimaryButton>
       )}
 
-      {!called && <EmptyState message="Assessment, notes, and resolution unlock once you've confirmed the call." />}
+      {!called && <EmptyState message="Assessment, notes, and resolution unlock once you've confirmed the call." icon="call-outline" />}
 
       {called && (
         <>
-          <Card>
-            <Text style={shared.cardLabel}>ISSUE TYPE</Text>
-            <View style={styles.chipRow}>
+          <GlassCard>
+            <SectionHeader title="Issue type" />
+            <ChipGrid>
               {ISSUE_TYPE_OPTIONS.map((opt) => (
                 <Chip key={opt} label={opt.replace('_', ' ')} selected={issueType === opt} onPress={() => setIssueType(opt)} disabled={isResolved} />
               ))}
-            </View>
-            <Text style={shared.cardLabel}>FAULT</Text>
-            <View style={styles.chipRow}>
+            </ChipGrid>
+            <Text style={styles.label}>FAULT</Text>
+            <ChipGrid>
               {FAULT_OPTIONS.map((opt) => (
                 <Chip key={opt} label={opt} selected={fault === opt} onPress={() => setFault(opt)} disabled={isResolved} />
               ))}
-            </View>
-            <Text style={shared.cardLabel}>SUMMARY</Text>
+            </ChipGrid>
+            <Text style={styles.label}>SUMMARY</Text>
             <TextInput
               style={styles.input}
+              placeholderTextColor="rgba(255,255,255,0.35)"
               value={summary}
               onChangeText={setSummary}
               multiline
@@ -133,7 +143,7 @@ export default function AdminEscalationDetailScreen() {
               accessibilityLabel="Assessment summary"
             />
             {!isResolved && (
-              <CtaButton
+              <PrimaryButton
                 onPress={() =>
                   run(
                     () => updateEscalationAssessment(id, { adminIssueType: issueType, fault, adminSummary: summary || null }),
@@ -142,13 +152,13 @@ export default function AdminEscalationDetailScreen() {
                 }
                 loading={savingAssessment}
                 style={styles.saveButton}>
-                Save Assessment
-              </CtaButton>
+                Save assessment
+              </PrimaryButton>
             )}
-          </Card>
+          </GlassCard>
 
-          <Card>
-            <Text style={shared.cardLabel}>NOTES (CLIENT-VISIBLE)</Text>
+          <GlassCard>
+            <SectionHeader title="Notes (client-visible)" />
             {notes.length === 0 && <Text style={styles.bodyText}>No notes yet.</Text>}
             {notes.map((n) => (
               <Text key={n.id} style={styles.bodyText}>
@@ -160,12 +170,13 @@ export default function AdminEscalationDetailScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Add a note…"
+                  placeholderTextColor="rgba(255,255,255,0.35)"
                   value={newNote}
                   onChangeText={setNewNote}
                   multiline
                   accessibilityLabel="New note"
                 />
-                <CtaButton
+                <PrimaryButton
                   onPress={() =>
                     run(async () => {
                       if (!newNote.trim()) throw new Error('Write a note first.');
@@ -175,29 +186,30 @@ export default function AdminEscalationDetailScreen() {
                   }
                   loading={savingNote}
                   style={styles.saveButton}>
-                  Add Note
-                </CtaButton>
+                  Add note
+                </PrimaryButton>
               </>
             )}
-          </Card>
+          </GlassCard>
 
           {!isResolved && (
-            <Card>
-              <Text style={shared.cardLabel}>RESOLVE</Text>
+            <GlassCard>
+              <SectionHeader title="Resolve" />
               {escalation.status === 'open' && (
-                <CtaButton onPress={() => run(() => markEscalationInProgress(id), setMarkingInProgress)} loading={markingInProgress}>
-                  Mark In Progress
-                </CtaButton>
+                <PrimaryButton onPress={() => run(() => markEscalationInProgress(id), setMarkingInProgress)} loading={markingInProgress}>
+                  Mark in progress
+                </PrimaryButton>
               )}
               <TextInput
                 style={styles.input}
                 placeholder="Resolution notes"
+                placeholderTextColor="rgba(255,255,255,0.35)"
                 value={resolutionNotes}
                 onChangeText={setResolutionNotes}
                 multiline
                 accessibilityLabel="Resolution notes"
               />
-              <CtaButton
+              <PrimaryButton
                 onPress={() =>
                   run(async () => {
                     if (!resolutionNotes.trim()) throw new Error('Add resolution notes first.');
@@ -206,16 +218,16 @@ export default function AdminEscalationDetailScreen() {
                 }
                 loading={resolving}
                 style={styles.saveButton}>
-                Mark Resolved & Close
-              </CtaButton>
-            </Card>
+                Mark resolved & close
+              </PrimaryButton>
+            </GlassCard>
           )}
 
           {isResolved && escalation.resolution_notes && (
-            <Card>
-              <Text style={shared.cardLabel}>RESOLUTION</Text>
+            <GlassCard variant="yellow">
+              <SectionHeader title="Resolution" />
               <Text style={styles.bodyText}>{escalation.resolution_notes}</Text>
-            </Card>
+            </GlassCard>
           )}
         </>
       )}
@@ -229,31 +241,22 @@ export default function AdminEscalationDetailScreen() {
   );
 }
 
-function Chip({ label, selected, onPress, disabled }: { label: string; selected: boolean; onPress: () => void; disabled?: boolean }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={disabled ? undefined : onPress}
-      disabled={disabled}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected, disabled }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }, disabled && styles.chipDisabled]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, marginTop: 2 },
-  statusText: { fontFamily: 'Manrope_700Bold', fontSize: 12, marginTop: 6, color: Brand.streakEmberStart },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipDisabled: { opacity: 0.5 },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, textTransform: 'capitalize' },
-  input: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2, minHeight: 44 },
-  saveButton: { marginTop: 8 },
+  metaLine: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.7)' },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.5)', marginTop: 6 },
+  input: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 60,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  saveButton: { marginTop: 6 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

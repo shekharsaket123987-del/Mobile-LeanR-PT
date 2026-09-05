@@ -7,9 +7,12 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
-import { Card, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
+import { ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { Brand, Radius } from '@/constants/theme';
 import { changeMyPassword, getMyCoachDetails, getMyProfile, updateMyCoachDetails, updateMyProfile } from '@/lib/data/profile';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -157,73 +160,61 @@ export default function CoachProfileScreen() {
         </Text>
       )}
 
-      <Card>
-        <Text style={shared.cardLabel}>NAME</Text>
-        <TextInput style={styles.input} value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
-        <Text style={shared.cardLabel}>PHONE</Text>
-        <TextInput
-          style={styles.input}
-          value={displayPhone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          accessibilityLabel="Phone number"
-        />
-        <Text style={shared.cardLabel}>EMERGENCY CONTACT</Text>
-        <TextInput
-          style={styles.input}
-          value={displayEmergency}
-          onChangeText={setEmergencyContact}
-          accessibilityLabel="Emergency contact"
-        />
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Your details" />
+        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <TextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
+        <TextField placeholder="Emergency contact" value={displayEmergency} onChangeText={setEmergencyContact} accessibilityLabel="Emergency contact" />
         {profileError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {profileError}
           </Text>
         )}
         {profileSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <CtaButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
+        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
           Save
-        </CtaButton>
-      </Card>
+        </PrimaryButton>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>SPECIALIZATION</Text>
-        <TextInput style={styles.input} value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
-        <Text style={shared.cardLabel}>BIO</Text>
-        <TextInput style={[styles.input, styles.multiline]} value={displayBio} onChangeText={setBio} multiline accessibilityLabel="Bio" />
-        <Text style={shared.cardLabel}>CERTIFICATIONS (COMMA-SEPARATED)</Text>
-        <TextInput style={styles.input} value={displayCertifications} onChangeText={setCertifications} accessibilityLabel="Certifications" />
-        <Text style={shared.cardLabel}>LANGUAGES (COMMA-SEPARATED)</Text>
-        <TextInput style={styles.input} value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
-        <Text style={shared.cardLabel}>SKILLS (COMMA-SEPARATED)</Text>
-        <TextInput style={styles.input} value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Coaching profile" />
+        <TextField placeholder="Specialization" value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
+        <TextInput
+          style={styles.multilineInput}
+          placeholder="Bio"
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          value={displayBio}
+          onChangeText={setBio}
+          multiline
+          accessibilityLabel="Bio"
+        />
+        <TextField
+          placeholder="Certifications (comma-separated)"
+          value={displayCertifications}
+          onChangeText={setCertifications}
+          accessibilityLabel="Certifications"
+        />
+        <TextField placeholder="Languages (comma-separated)" value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
+        <TextField placeholder="Skills (comma-separated)" value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
         {detailsError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {detailsError}
           </Text>
         )}
         {detailsSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <CtaButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
+        <PrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
           Save
-        </CtaButton>
-      </Card>
+        </PrimaryButton>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>CHANGE PASSWORD</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="New password"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-          accessibilityLabel="New password"
-        />
-        <TextInput
-          style={styles.input}
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Change password" />
+        <TextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
+        <TextField
           placeholder="Confirm new password"
+          isPassword
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          secureTextEntry
           accessibilityLabel="Confirm new password"
         />
         {passwordError && (
@@ -232,18 +223,27 @@ export default function CoachProfileScreen() {
           </Text>
         )}
         {passwordChanged && <Text style={styles.savedText}>Password changed.</Text>}
-        <CtaButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
+        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
           Change password
-        </CtaButton>
-      </Card>
+        </PrimaryButton>
+      </GlassCard>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  input: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2 },
-  multiline: { minHeight: 80 },
+  card: { gap: 12 },
+  multilineInput: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 80,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
+  },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
   savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
-  saveButton: { marginTop: 12 },
+  saveButton: { marginTop: 4 },
 });

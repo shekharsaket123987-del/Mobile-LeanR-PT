@@ -6,10 +6,14 @@
  */
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton, TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { TextLink } from '@/components/tappable';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Brand } from '@/constants/theme';
 import { cancelBooking, getSessionsByStatus } from '@/lib/data/bookings';
 import type { Booking, BookingStatus } from '@/lib/data/types';
@@ -52,10 +56,15 @@ function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: 
   };
 
   return (
-    <Card>
-      <Text style={shared.cardLabel}>{formatSessionTime(booking.scheduled_start)}</Text>
-      {booking.coach_name && <Text style={shared.cardLabel}>with {booking.coach_name}</Text>}
-      {booking.was_rescheduled && <Text style={shared.cardLabel}>Rescheduled</Text>}
+    <GlassCard>
+      <View style={styles.cardTopRow}>
+        <Text style={styles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
+        <StatusBadge status={booking.status} />
+      </View>
+      <View style={styles.metaRow}>
+        {booking.coach_name && <Text style={styles.meta}>with {booking.coach_name}</Text>}
+        {booking.was_rescheduled && <Badge label="Rescheduled" tone="outline" />}
+      </View>
       {booking.status === 'upcoming' && (
         <View style={styles.actionRow}>
           <TextLink onPress={() => router.push(`/reschedule/${booking.id}`)} style={styles.rescheduleLink}>
@@ -66,7 +75,7 @@ function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: 
           </TextLink>
         </View>
       )}
-    </Card>
+    </GlassCard>
   );
 }
 
@@ -87,31 +96,20 @@ export default function SessionsScreen() {
 
   return (
     <ScreenScaffold title="Sessions">
-      <CtaButton onPress={() => router.push('/book-session')} style={styles.bookButton}>
-        + Book a Session
-      </CtaButton>
+      <PrimaryButton size="lg" onPress={() => router.push('/book-session')}>
+        Book a session
+      </PrimaryButton>
       <TextLink onPress={() => router.push('/my-schedule')} style={styles.scheduleLink}>
         Manage my schedule
       </TextLink>
 
-      <View style={styles.tabRow} accessibilityRole="tablist">
-        {TABS.map((tab) => (
-          <Pressable
-            key={tab.key}
-            onPress={() => setActiveTab(tab.key)}
-            style={styles.tabPressable}
-            hitSlop={8}
-            accessibilityRole="tab"
-            accessibilityLabel={tab.label}
-            accessibilityState={{ selected: activeTab === tab.key }}>
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>{tab.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <SegmentedControl options={TABS} value={activeTab} onChange={setActiveTab} />
 
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (data?.length ?? 0) === 0 && <EmptyState message={`No ${activeTab} sessions.`} />}
+      {!loading && !error && (data?.length ?? 0) === 0 && (
+        <EmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />
+      )}
       {!loading &&
         !error &&
         data?.map((booking) => <SessionCard key={booking.id} booking={booking} onCancelled={reload} />)}
@@ -120,13 +118,12 @@ export default function SessionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  bookButton: { marginBottom: 4 },
-  scheduleLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginBottom: 8 },
-  tabRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
-  tabPressable: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
-  tabLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, opacity: 0.5 },
-  tabLabelActive: { opacity: 1, color: Brand.yellow },
-  actionRow: { flexDirection: 'row', gap: 16, marginTop: 4 },
+  scheduleLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginTop: -8 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  actionRow: { flexDirection: 'row', gap: 20, marginTop: 6 },
   rescheduleLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
   cancelLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.alertRed },
 });

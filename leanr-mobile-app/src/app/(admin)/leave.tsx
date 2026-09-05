@@ -5,8 +5,9 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton, TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { DestructiveButton, PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
 import { Brand } from '@/constants/theme';
 import { getPendingLeaveRequests, resolveLeaveRequest, type AdminLeaveRequest } from '@/lib/data/admin-leave';
 import { useAsync } from '@/lib/data/use-async';
@@ -18,7 +19,7 @@ export default function AdminLeaveScreen() {
     <ScreenScaffold title="Leave Requests">
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (requests?.length ?? 0) === 0 && <EmptyState message="No pending leave requests." />}
+      {!loading && !error && (requests?.length ?? 0) === 0 && <EmptyState message="No pending leave requests." icon="checkmark-circle-outline" />}
       {!loading && !error && requests?.map((r) => <LeaveRow key={r.id} request={r} onResolved={reload} />)}
     </ScreenScaffold>
   );
@@ -42,9 +43,9 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
   };
 
   return (
-    <Card>
-      <Text style={shared.bigStat}>{request.coachName}</Text>
-      <Text style={shared.cardLabel}>
+    <GlassCard>
+      <Text style={styles.name}>{request.coachName}</Text>
+      <Text style={styles.dates}>
         {request.starts_on}
         {request.ends_on !== request.starts_on ? ` – ${request.ends_on}` : ''}
         {request.leave_type === 'partial' ? ` (${request.partial_start_time?.slice(0, 5)}–${request.partial_end_time?.slice(0, 5)})` : ' (full day)'}
@@ -55,19 +56,21 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
           {error}
         </Text>
       )}
-      <CtaButton onPress={() => onResolve('approved')} loading={busy === 'approve'} style={styles.approveButton}>
+      <PrimaryButton onPress={() => onResolve('approved')} loading={busy === 'approve'} disabled={busy !== null} style={styles.approveButton}>
         Approve
-      </CtaButton>
-      <TextLink onPress={() => onResolve('rejected')} style={styles.rejectLink}>
+      </PrimaryButton>
+      <DestructiveButton onPress={() => onResolve('rejected')} loading={busy === 'reject'} disabled={busy !== null} style={styles.rejectButton}>
         Reject
-      </TextLink>
-    </Card>
+      </DestructiveButton>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, marginTop: 2 },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
+  dates: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
-  approveButton: { marginTop: 8 },
-  rejectLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.alertRed, marginTop: 8, alignSelf: 'flex-start' },
+  approveButton: { marginTop: 10 },
+  rejectButton: { marginTop: 8 },
 });

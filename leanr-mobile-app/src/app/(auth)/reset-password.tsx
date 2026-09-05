@@ -14,11 +14,12 @@
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text } from 'react-native';
 
-import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand, DisplayFont } from '@/constants/theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function ResetPasswordScreen() {
@@ -30,20 +31,17 @@ export default function ResetPasswordScreen() {
 
   if (!recoveryInProgress) {
     return (
-      <SafeAreaView style={styles.root}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Link expired</Text>
-          <Text style={styles.subtitle}>
-            This password reset link is invalid or has already been used. Request a new one to continue.
-          </Text>
-          <CtaButton onPress={() => router.replace('/forgot-password')} style={styles.ctaSpacing}>
-            Request a new link
-          </CtaButton>
-          <TextLink onPress={() => router.replace('/login')} style={styles.link}>
-            Back to login
-          </TextLink>
-        </View>
-      </SafeAreaView>
+      <AuthShell
+        compact
+        title="Link expired"
+        subtitle="This password reset link is invalid or has already been used. Request a new one to continue.">
+        <PrimaryButton onPress={() => router.replace('/forgot-password')} size="lg">
+          Request a new link
+        </PrimaryButton>
+        <GhostButton size="sm" onPress={() => router.replace('/login')} style={styles.centerBtn}>
+          Back to login
+        </GhostButton>
+      </AuthShell>
     );
   }
 
@@ -70,58 +68,38 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Set a new password</Text>
-          <Text style={styles.subtitle}>Choose a new password for your account.</Text>
+    <AuthShell compact title="Set a new password" subtitle="Choose a new password for your account.">
+      <TextField
+        icon="lock-closed-outline"
+        placeholder="New password"
+        isPassword
+        autoComplete="password-new"
+        value={password}
+        onChangeText={setPassword}
+      />
+      <TextField
+        icon="lock-closed-outline"
+        placeholder="Confirm new password"
+        isPassword
+        autoComplete="password-new"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+      />
 
-          <TextInput
-            style={styles.input}
-            placeholder="New password"
-            placeholderTextColor="#9A9A9A"
-            secureTextEntry
-            autoComplete="password-new"
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm new password"
-            placeholderTextColor="#9A9A9A"
-            secureTextEntry
-            autoComplete="password-new"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
+      {error && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
 
-          {error && <Text style={styles.error}>{error}</Text>}
-
-          <CtaButton onPress={onSubmit} loading={submitting} style={styles.ctaSpacing}>
-            Save new password
-          </CtaButton>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+        Save new password
+      </PrimaryButton>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Brand.black },
-  flex: { flex: 1 },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  title: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 24, color: '#FFFFFF' },
-  subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#CCCCCC', marginBottom: 8 },
-  input: {
-    backgroundColor: Brand.charcoal2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-  },
   error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  ctaSpacing: { marginTop: 8 },
-  link: { alignSelf: 'center', marginTop: 24, color: Brand.yellow, fontFamily: 'Manrope_500Medium', fontSize: 14 },
+  centerBtn: { alignSelf: 'center', marginTop: 4 },
 });

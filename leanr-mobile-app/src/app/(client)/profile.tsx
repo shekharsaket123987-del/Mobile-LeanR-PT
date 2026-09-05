@@ -11,9 +11,12 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
-import { Card, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
+import { ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { Brand, Radius } from '@/constants/theme';
 import {
   changeMyPassword,
   getMyClientDetails,
@@ -161,20 +164,18 @@ export default function ClientProfileScreen() {
         </Text>
       )}
 
-      <Card>
-        <Text style={shared.cardLabel}>NAME</Text>
-        <TextInput style={styles.input} value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
-        <Text style={shared.cardLabel}>PHONE</Text>
-        <TextInput
-          style={styles.input}
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Your details" />
+        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <TextField
+          placeholder="Phone number"
           value={displayPhone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
           accessibilityLabel="Phone number"
         />
-        <Text style={shared.cardLabel}>EMERGENCY CONTACT</Text>
-        <TextInput
-          style={styles.input}
+        <TextField
+          placeholder="Emergency contact"
           value={displayEmergency}
           onChangeText={setEmergencyContact}
           accessibilityLabel="Emergency contact"
@@ -185,19 +186,24 @@ export default function ClientProfileScreen() {
           </Text>
         )}
         {profileSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <CtaButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
+        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
           Save
-        </CtaButton>
-      </Card>
+        </PrimaryButton>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>GOALS (COMMA-SEPARATED)</Text>
-        <TextInput style={styles.input} value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
-        <Text style={shared.cardLabel}>EQUIPMENT (COMMA-SEPARATED)</Text>
-        <TextInput style={styles.input} value={displayEquipment} onChangeText={setEquipment} accessibilityLabel="Equipment" />
-        <Text style={shared.cardLabel}>MEDICAL NOTES</Text>
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Training profile" />
+        <TextField placeholder="Goals (comma-separated)" value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
+        <TextField
+          placeholder="Equipment (comma-separated)"
+          value={displayEquipment}
+          onChangeText={setEquipment}
+          accessibilityLabel="Equipment"
+        />
         <TextInput
-          style={[styles.input, styles.multiline]}
+          style={styles.multilineInput}
+          placeholder="Medical notes"
+          placeholderTextColor="rgba(255,255,255,0.35)"
           value={displayMedicalNotes}
           onChangeText={setMedicalNotes}
           multiline
@@ -209,27 +215,25 @@ export default function ClientProfileScreen() {
           </Text>
         )}
         {detailsSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <CtaButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
+        <PrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
           Save
-        </CtaButton>
-      </Card>
+        </PrimaryButton>
+      </GlassCard>
 
-      <Card>
-        <Text style={shared.cardLabel}>CHANGE PASSWORD</Text>
-        <TextInput
-          style={styles.input}
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Change password" />
+        <TextField
           placeholder="New password"
+          isPassword
           value={newPassword}
           onChangeText={setNewPassword}
-          secureTextEntry
           accessibilityLabel="New password"
         />
-        <TextInput
-          style={styles.input}
+        <TextField
           placeholder="Confirm new password"
+          isPassword
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          secureTextEntry
           accessibilityLabel="Confirm new password"
         />
         {passwordError && (
@@ -238,18 +242,27 @@ export default function ClientProfileScreen() {
           </Text>
         )}
         {passwordChanged && <Text style={styles.savedText}>Password changed.</Text>}
-        <CtaButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
+        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
           Change password
-        </CtaButton>
-      </Card>
+        </PrimaryButton>
+      </GlassCard>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  input: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2 },
-  multiline: { minHeight: 80 },
+  card: { gap: 12 },
+  multilineInput: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 80,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
+  },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
   savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
-  saveButton: { marginTop: 12 },
+  saveButton: { marginTop: 4 },
 });

@@ -13,11 +13,14 @@
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Brand } from '@/constants/theme';
 import { getBookingSettings } from '@/lib/data/booking-wizard';
 import { getMyCoach } from '@/lib/data/coach';
 import {
@@ -141,8 +144,10 @@ export default function MyScheduleScreen() {
   if (!subscription) {
     return (
       <ScreenScaffold title="My Schedule">
-        <EmptyState message="You need an active plan before setting up a recurring schedule." />
-        <CtaButton onPress={() => router.push('/plans')}>View plans</CtaButton>
+        <EmptyState message="You need an active plan before setting up a recurring schedule." icon="lock-closed-outline" />
+        <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
+          View plans
+        </PrimaryButton>
       </ScreenScaffold>
     );
   }
@@ -150,7 +155,7 @@ export default function MyScheduleScreen() {
   if (!coach) {
     return (
       <ScreenScaffold title="My Schedule">
-        <EmptyState message="You need a coach assigned before setting up a recurring schedule." />
+        <EmptyState message="You need a coach assigned before setting up a recurring schedule." icon="person-outline" />
       </ScreenScaffold>
     );
   }
@@ -159,10 +164,10 @@ export default function MyScheduleScreen() {
     const shortfall = results.some((r) => r.confirmed < r.requested);
     return (
       <ScreenScaffold title="Schedule set!">
-        <Card>
-          <Text style={shared.cardLabel}>YOUR NEW WEEKLY PLAN</Text>
+        <GlassCard variant="yellow">
+          <Text style={styles.eyebrow}>YOUR NEW WEEKLY PLAN</Text>
           {results.map((r) => (
-            <Text key={r.dayOfWeek} style={shared.bigStat}>
+            <Text key={r.dayOfWeek} style={styles.resultRow}>
               {dayLabel(r.dayOfWeek)} — {r.confirmed}/{r.requested} sessions confirmed
             </Text>
           ))}
@@ -172,8 +177,10 @@ export default function MyScheduleScreen() {
               than requested. Check My Sessions, or try a different time.
             </Text>
           )}
-        </Card>
-        <CtaButton onPress={() => router.replace('/sessions')}>View my sessions</CtaButton>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+          View my sessions
+        </PrimaryButton>
       </ScreenScaffold>
     );
   }
@@ -181,16 +188,16 @@ export default function MyScheduleScreen() {
   return (
     <ScreenScaffold title="My Schedule" subtitle={`with ${coach.full_name}`}>
       {currentSlots.length > 0 && (
-        <Card>
-          <Text style={shared.cardLabel}>CURRENT SCHEDULE</Text>
+        <GlassCard>
+          <SectionHeader title="Current schedule" />
           {currentSlots.map((s) => (
             <CurrentSlotRow key={s.id} slot={s} />
           ))}
-        </Card>
+        </GlassCard>
       )}
 
-      <Card>
-        <Text style={shared.cardLabel}>QUICK PICK</Text>
+      <GlassCard>
+        <SectionHeader title="Quick pick" />
         <View style={styles.chipRow}>
           {PATTERN_PRESETS.map((p) => (
             <Chip
@@ -205,20 +212,22 @@ export default function MyScheduleScreen() {
           ))}
         </View>
 
-        <Text style={shared.cardLabel}>OR PICK DAYS (2-6)</Text>
+        <SectionHeader title="Or pick days (2–6)" />
         <View style={styles.chipRow}>
           {WEEKDAYS.map((d) => (
             <Chip key={d.dow} label={d.short} selected={selectedDays.includes(d.dow)} onPress={() => toggleDay(d.dow)} />
           ))}
         </View>
-      </Card>
+      </GlassCard>
 
-      {selectedDays.length > 0 && selectedDays.length < 2 && <EmptyState message="Pick at least 2 days." />}
+      {selectedDays.length > 0 && selectedDays.length < 2 && (
+        <EmptyState message="Pick at least 2 days." icon="calendar-outline" />
+      )}
 
       {selectedDays.length >= 2 && (
-        <Card>
-          <Text style={shared.cardLabel}>TIME (SAME EVERY DAY)</Text>
-          {hoursLoading && <LoadingState />}
+        <GlassCard>
+          <SectionHeader title="Time (same every day)" />
+          {hoursLoading && <LoadingState rows={1} />}
           {!hoursLoading && hours && hours.length === 0 && (
             <EmptyState message="No single time works for your coach across all those days — try different days." />
           )}
@@ -229,7 +238,7 @@ export default function MyScheduleScreen() {
               ))}
             </View>
           )}
-        </Card>
+        </GlassCard>
       )}
 
       {actionError && (
@@ -239,9 +248,9 @@ export default function MyScheduleScreen() {
       )}
 
       {selectedHour !== null && (
-        <CtaButton onPress={onConfirm} loading={phase === 'saving'}>
-          Confirm Schedule
-        </CtaButton>
+        <PrimaryButton size="lg" onPress={onConfirm} loading={phase === 'saving'}>
+          Confirm schedule
+        </PrimaryButton>
       )}
     </ScreenScaffold>
   );
@@ -250,32 +259,17 @@ export default function MyScheduleScreen() {
 function CurrentSlotRow({ slot }: { slot: RecurringSlot }) {
   const hour = Number(slot.start_time.slice(0, 2));
   return (
-    <Text style={shared.cardLabel}>
+    <Text style={styles.slotRow}>
       {dayLabel(slot.day_of_week)} — {formatHourLabel(hour)}
     </Text>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
+  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.6)' },
+  resultRow: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', marginTop: 6 },
+  slotRow: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   warningText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.streakEmberStart, marginTop: 8 },
 });

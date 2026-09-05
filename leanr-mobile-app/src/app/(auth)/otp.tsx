@@ -17,11 +17,13 @@
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text } from 'react-native';
 
-import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand, DisplayFont } from '@/constants/theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { TextLink } from '@/components/tappable';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 type Stage = 'email' | 'code';
@@ -68,89 +70,65 @@ export default function OtpScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.content}>
-          <Text style={styles.wordmark}>LEANR</Text>
-          <Text style={styles.subLockup}>By Fitelo</Text>
+    <AuthShell
+      title={stage === 'email' ? 'Sign in with a code' : 'Enter your code'}
+      subtitle={
+        stage === 'email'
+          ? "We'll email you a one-time code — no password needed."
+          : `Check ${email.trim()} for a 6-digit code.`
+      }>
+      {stage === 'email' ? (
+        <TextField
+          icon="mail-outline"
+          placeholder="Email"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+      ) : (
+        <TextField
+          icon="keypad-outline"
+          placeholder="6-digit code"
+          keyboardType="number-pad"
+          maxLength={6}
+          value={code}
+          onChangeText={setCode}
+        />
+      )}
 
-          <Text style={styles.title}>{stage === 'email' ? 'Sign in with a code' : 'Enter your code'}</Text>
-          <Text style={styles.subtitle}>
-            {stage === 'email'
-              ? "We'll email you a one-time code — no password needed."
-              : `Check ${email.trim()} for a 6-digit code.`}
-          </Text>
+      {error && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
 
-          {stage === 'email' ? (
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#9A9A9A"
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
-          ) : (
-            <TextInput
-              style={styles.input}
-              placeholder="6-digit code"
-              placeholderTextColor="#9A9A9A"
-              keyboardType="number-pad"
-              maxLength={6}
-              value={code}
-              onChangeText={setCode}
-            />
-          )}
+      <PrimaryButton onPress={stage === 'email' ? onSendCode : onVerify} loading={submitting} size="lg">
+        {stage === 'email' ? 'Send code' : 'Verify & continue'}
+      </PrimaryButton>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+      {stage === 'code' && (
+        <GhostButton size="sm" onPress={() => setStage('email')} style={styles.centerBtn}>
+          Use a different email
+        </GhostButton>
+      )}
 
-          <CtaButton onPress={stage === 'email' ? onSendCode : onVerify} loading={submitting} style={styles.ctaSpacing}>
-            {stage === 'email' ? 'Send code' : 'Verify & continue'}
-          </CtaButton>
-
-          {stage === 'code' && (
-            <TextLink onPress={() => setStage('email')} style={styles.link}>
-              Use a different email
-            </TextLink>
-          )}
-
-          <TextLink onPress={() => router.replace('/login')} style={styles.skipLink}>
-            Skip for now — use email & password instead
-          </TextLink>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <TextLink onPress={() => router.replace('/login')} style={styles.skipLink}>
+        Skip for now — use email & password instead
+      </TextLink>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Brand.black },
-  flex: { flex: 1 },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  wordmark: {
-    fontFamily: DisplayFont,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    fontSize: 40,
-    color: Brand.yellow,
-    letterSpacing: -0.5,
-  },
-  subLockup: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: '#FFFFFF', marginBottom: 24 },
-  title: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 24, color: '#FFFFFF' },
-  subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#CCCCCC', marginBottom: 8 },
-  input: {
-    backgroundColor: Brand.charcoal2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-  },
   error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  ctaSpacing: { marginTop: 8 },
-  link: { alignSelf: 'center', marginTop: 4 },
-  skipLink: { alignSelf: 'center', marginTop: 24, color: '#888888' },
+  centerBtn: { alignSelf: 'center' },
+  skipLink: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.45)',
+    textAlign: 'center',
+    marginTop: 12,
+  },
 });

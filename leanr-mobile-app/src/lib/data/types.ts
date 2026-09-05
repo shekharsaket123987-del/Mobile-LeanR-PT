@@ -58,6 +58,42 @@ export type Subscription = {
   sessions_total: number;
   // NOTE: there is no sessions_used column — "used" is derived by
   // counting bookings for this subscription_id with status='completed'.
+  started_at: string;
+  activated_at: string | null; // set by the subscription-lifecycle edge function's "activate" action
+  paused_at: string | null;
+  resumed_at: string | null;
+  pause_days_allowed: number;
+};
+
+export type PaymentStatus = 'created' | 'paid' | 'failed' | 'paid_unfulfilled';
+
+export type Payment = {
+  id: string;
+  client_id: string; // FK -> client_profiles.id
+  purpose: 'package_purchase' | 'demo_session';
+  package_id: string | null;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paid_at: string | null;
+  created_at: string;
+};
+
+export type FitnessGoal = 'fat_loss' | 'muscle_gain' | 'strength' | 'general_fitness' | 'rehabilitation';
+
+export type ClientOnboarding = {
+  id: string;
+  client_id: string; // FK -> client_profiles.id
+  age: number | null;
+  gender: string | null;
+  height_cm: number | null;
+  weight_kg: number;
+  medical_conditions: string | null;
+  injuries: string | null;
+  medications: string | null;
+  exercise_restrictions: string | null;
+  fitness_goal: FitnessGoal;
+  submitted_at: string;
 };
 
 export type ProgressLog = {

@@ -5,24 +5,27 @@
  * extent buildable from this mobile-only repo.
  */
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { Brand } from '@/constants/theme';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { DestructiveButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { MenuRow } from '@/components/ui/menu-row';
 import { useAuth } from '@/lib/auth/auth-context';
 
 const LINKED_ROWS: {
   label: string;
   href: '/availability' | '/escalations' | '/renewals' | '/performance' | '/notifications' | '/profile' | '/chats' | '/search';
+  icon: 'calendar-outline' | 'chatbubbles-outline' | 'alert-circle-outline' | 'bar-chart-outline' | 'search-outline' | 'trending-up-outline' | 'notifications-outline' | 'person-outline';
 }[] = [
-  { label: 'Availability', href: '/availability' },
-  { label: 'Chats', href: '/chats' },
-  { label: 'Escalations', href: '/escalations' },
-  { label: 'Performance', href: '/performance' },
-  { label: 'Search', href: '/search' },
-  { label: 'Renewals', href: '/renewals' },
-  { label: 'Notifications', href: '/notifications' },
-  { label: 'Profile', href: '/profile' },
+  { label: 'Availability', href: '/availability', icon: 'calendar-outline' },
+  { label: 'Chats', href: '/chats', icon: 'chatbubbles-outline' },
+  { label: 'Escalations', href: '/escalations', icon: 'alert-circle-outline' },
+  { label: 'Performance', href: '/performance', icon: 'bar-chart-outline' },
+  { label: 'Search', href: '/search', icon: 'search-outline' },
+  { label: 'Renewals', href: '/renewals', icon: 'trending-up-outline' },
+  { label: 'Notifications', href: '/notifications', icon: 'notifications-outline' },
+  { label: 'Profile', href: '/profile', icon: 'person-outline' },
 ];
 
 export default function CoachMore() {
@@ -30,33 +33,26 @@ export default function CoachMore() {
 
   return (
     <ScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
-      {LINKED_ROWS.map((row) => (
-        <Pressable
-          key={row.label}
-          style={styles.row}
-          onPress={() => router.push(row.href)}
-          accessibilityRole="button"
-          accessibilityLabel={row.label}>
-          <Text style={shared.cardLabel}>{row.label}</Text>
-        </Pressable>
-      ))}
+      <GlassCard style={styles.card}>
+        {LINKED_ROWS.map((row, i) => (
+          <MenuRow
+            key={row.label}
+            label={row.label}
+            icon={row.icon}
+            onPress={() => router.push(row.href)}
+            last={i === LINKED_ROWS.length - 1}
+          />
+        ))}
+      </GlassCard>
 
-      <Pressable style={styles.signOutButton} onPress={signOut} accessibilityRole="button" accessibilityLabel="Sign out">
-        <Text style={styles.signOutText}>Sign out</Text>
-      </Pressable>
+      <DestructiveButton size="lg" onPress={signOut} style={styles.signOut}>
+        Sign out
+      </DestructiveButton>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#00000022' },
-  signOutButton: {
-    marginTop: 12,
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Brand.alertRed,
-  },
-  signOutText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.alertRed },
+  card: { paddingVertical: 4 },
+  signOut: { marginTop: 4 },
 });

@@ -7,11 +7,12 @@
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text } from 'react-native';
 
-import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand, DisplayFont } from '@/constants/theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function ForgotPasswordScreen() {
@@ -38,62 +39,46 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.content}>
-          <Text style={styles.title}>{sent ? 'Check your email' : 'Reset your password'}</Text>
-          <Text style={styles.subtitle}>
-            {sent
-              ? `We've sent a password reset link to ${email.trim()}. Open it on this device to continue.`
-              : "Enter your account email and we'll send you a link to set a new password."}
-          </Text>
+    <AuthShell
+      compact
+      title={sent ? 'Check your email' : 'Reset your password'}
+      subtitle={
+        sent
+          ? `We've sent a password reset link to ${email.trim()}. Open it on this device to continue.`
+          : "Enter your account email and we'll send you a link to set a new password."
+      }>
+      {!sent && (
+        <>
+          <TextField
+            icon="mail-outline"
+            placeholder="Email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
 
-          {!sent && (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#9A9A9A"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-
-              {error && <Text style={styles.error}>{error}</Text>}
-
-              <CtaButton onPress={onSubmit} loading={submitting} style={styles.ctaSpacing}>
-                Send reset link
-              </CtaButton>
-            </>
+          {error && (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
           )}
 
-          <TextLink onPress={() => router.replace('/login')} style={styles.link}>
-            {sent ? 'Back to login' : 'Cancel'}
-          </TextLink>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+            Send reset link
+          </PrimaryButton>
+        </>
+      )}
+
+      <GhostButton size="sm" onPress={() => router.replace('/login')} style={styles.centerBtn}>
+        {sent ? 'Back to login' : 'Cancel'}
+      </GhostButton>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Brand.black },
-  flex: { flex: 1 },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  title: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 24, color: '#FFFFFF' },
-  subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#CCCCCC', marginBottom: 8 },
-  input: {
-    backgroundColor: Brand.charcoal2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-  },
   error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  ctaSpacing: { marginTop: 8 },
-  link: { alignSelf: 'center', marginTop: 24, color: Brand.yellow, fontFamily: 'Manrope_500Medium', fontSize: 14 },
+  centerBtn: { alignSelf: 'center', marginTop: 4 },
 });

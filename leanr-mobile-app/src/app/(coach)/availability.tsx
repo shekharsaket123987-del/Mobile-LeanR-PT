@@ -5,11 +5,16 @@
  * for the confirmed RLS/constraint detail.
  */
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton } from '@/components/tappable';
-import { Brand, Colors } from '@/constants/theme';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { Badge } from '@/components/ui/badge';
+import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Brand, Radius } from '@/constants/theme';
 import { addIstDays, formatIstDateLabel, istDateKey, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import {
   dayName,
@@ -26,10 +31,10 @@ function formatTimeRange(start: string, end: string) {
   return `${start.slice(0, 5)} – ${end.slice(0, 5)}`;
 }
 
-const LEAVE_STATUS_COLOR: Record<LeaveStatus, string> = {
-  pending: Brand.streakEmberStart,
-  approved: Brand.successEmerald,
-  rejected: Brand.alertRed,
+const LEAVE_STATUS_TONE: Record<LeaveStatus, 'yellow' | 'green' | 'red'> = {
+  pending: 'yellow',
+  approved: 'green',
+  rejected: 'red',
 };
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 5); // 5–21, matches the booking window default
@@ -99,8 +104,8 @@ export default function CoachAvailabilityScreen() {
 
       {!loading && !error && (
         <>
-          <Card>
-            <Text style={shared.cardLabel}>YOUR WEEKLY HOURS</Text>
+          <GlassCard>
+            <SectionHeader title="Your weekly hours" />
             {weekly.length === 0 && <Text style={styles.bodyText}>No working hours set by admin yet.</Text>}
             {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
               const rows = byDay.get(dow);
@@ -111,59 +116,61 @@ export default function CoachAvailabilityScreen() {
                 </Text>
               );
             })}
-          </Card>
+          </GlassCard>
 
-          <CtaButton onPress={() => setShowForm((v) => !v)}>{showForm ? 'Cancel' : 'Request Leave'}</CtaButton>
+          <PrimaryButton size="lg" onPress={() => setShowForm((v) => !v)}>
+            {showForm ? 'Cancel' : 'Request leave'}
+          </PrimaryButton>
 
           {showForm && (
-            <Card>
-              <Text style={shared.cardLabel}>LEAVE TYPE</Text>
-              <View style={styles.chipRow}>
+            <GlassCard>
+              <SectionHeader title="Leave type" />
+              <ChipGrid>
                 <Chip label="Full day" selected={leaveType === 'full_day'} onPress={() => setLeaveType('full_day')} />
                 <Chip label="Partial day" selected={leaveType === 'partial'} onPress={() => setLeaveType('partial')} />
-              </View>
+              </ChipGrid>
 
-              <Text style={shared.cardLabel}>STARTS</Text>
-              <View style={styles.chipRow}>
+              <Text style={styles.label}>STARTS</Text>
+              <ChipGrid>
                 {Array.from({ length: 14 }, (_, i) => addIstDays(todayIst(), i + 1)).map((d) => {
                   const key = istDateKey(d);
                   const isSelected = key === istDateKey(startDate);
                   return <Chip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setStartDate(d)} />;
                 })}
-              </View>
+              </ChipGrid>
 
               {leaveType === 'full_day' && (
                 <>
-                  <Text style={shared.cardLabel}>HOW MANY DAYS</Text>
-                  <View style={styles.chipRow}>
+                  <Text style={styles.label}>HOW MANY DAYS</Text>
+                  <ChipGrid>
                     {[1, 2, 3, 5, 7, 14].map((n) => (
                       <Chip key={n} label={`${n}`} selected={days === n} onPress={() => setDays(n)} />
                     ))}
-                  </View>
+                  </ChipGrid>
                 </>
               )}
 
               {leaveType === 'partial' && (
                 <>
-                  <Text style={shared.cardLabel}>FROM</Text>
-                  <View style={styles.chipRow}>
+                  <Text style={styles.label}>FROM</Text>
+                  <ChipGrid>
                     {HOURS.map((h) => (
                       <Chip key={h} label={`${h}:00`} selected={partialStartHour === h} onPress={() => setPartialStartHour(h)} />
                     ))}
-                  </View>
-                  <Text style={shared.cardLabel}>TO</Text>
-                  <View style={styles.chipRow}>
+                  </ChipGrid>
+                  <Text style={styles.label}>TO</Text>
+                  <ChipGrid>
                     {HOURS.map((h) => (
                       <Chip key={h} label={`${h}:00`} selected={partialEndHour === h} onPress={() => setPartialEndHour(h)} />
                     ))}
-                  </View>
+                  </ChipGrid>
                 </>
               )}
 
-              <Text style={shared.cardLabel}>REASON (OPTIONAL)</Text>
               <TextInput
                 style={styles.reasonInput}
-                placeholder="Why are you requesting leave?"
+                placeholder="Reason (optional)"
+                placeholderTextColor="rgba(255,255,255,0.35)"
                 value={reason}
                 onChangeText={setReason}
                 multiline
@@ -175,19 +182,19 @@ export default function CoachAvailabilityScreen() {
                   {formError}
                 </Text>
               )}
-              <CtaButton onPress={onSubmit} loading={submitting}>
+              <PrimaryButton onPress={onSubmit} loading={submitting}>
                 Submit request
-              </CtaButton>
-            </Card>
+              </PrimaryButton>
+            </GlassCard>
           )}
 
-          <Card>
-            <Text style={shared.cardLabel}>MY LEAVE REQUESTS</Text>
-            {leaveRequests.length === 0 && <EmptyState message="No leave requests yet." />}
+          <GlassCard>
+            <SectionHeader title="My leave requests" />
+            {leaveRequests.length === 0 && <EmptyState message="No leave requests yet." icon="airplane-outline" />}
             {leaveRequests.map((r) => (
               <LeaveRow key={r.id} request={r} />
             ))}
-          </Card>
+          </GlassCard>
         </>
       )}
     </ScreenScaffold>
@@ -202,34 +209,26 @@ function LeaveRow({ request }: { request: LeaveRequest }) {
         {request.ends_on !== request.starts_on ? ` – ${request.ends_on}` : ''}
         {request.leave_type === 'partial' ? ` (${request.partial_start_time?.slice(0, 5)}–${request.partial_end_time?.slice(0, 5)})` : ''}
       </Text>
-      <Text style={[styles.leaveStatus, { color: LEAVE_STATUS_COLOR[request.status] }]}>{request.status}</Text>
+      <Badge label={request.status} tone={LEAVE_STATUS_TONE[request.status]} />
     </View>
   );
 }
 
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={4}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? Brand.yellow : colors.backgroundElement }]}>
-      <Text style={[styles.chipLabel, { color: selected ? Brand.black : colors.text }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, marginTop: 2 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, marginBottom: 8 },
-  chip: { borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
-  chipLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 13 },
-  reasonInput: { fontFamily: 'Manrope_500Medium', fontSize: 15, paddingVertical: 8, color: Brand.charcoal2, minHeight: 44 },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.5)', marginTop: 6 },
+  reasonInput: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 60,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
+    marginTop: 6,
+    marginBottom: 10,
+  },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
-  leaveRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  leaveStatus: { fontFamily: 'Manrope_700Bold', fontSize: 12, textTransform: 'capitalize' },
+  leaveRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
 });

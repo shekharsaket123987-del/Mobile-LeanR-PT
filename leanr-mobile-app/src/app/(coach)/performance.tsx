@@ -4,9 +4,10 @@
  * fresh from `bookings.trainer_rating` rather than trusting
  * `coach_profiles.rating`.
  */
-import { Text } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Card, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
+import { ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { StatCard } from '@/components/ui/stat-card';
 import { getMyPerformance } from '@/lib/data/coach-performance';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -19,30 +20,28 @@ export default function CoachPerformanceScreen() {
       {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && performance && (
         <>
-          <Card>
-            <Text style={shared.cardLabel}>AVERAGE RATING</Text>
-            <Text style={shared.bigStat}>
-              {performance.averageTrainerRating !== null ? performance.averageTrainerRating.toFixed(1) : '—'} / 5
-            </Text>
-            <Text style={shared.cardLabel}>{performance.ratingCount} ratings</Text>
-          </Card>
+          <StatCard
+            emphasize
+            value={`${performance.averageTrainerRating !== null ? performance.averageTrainerRating.toFixed(1) : '—'} / 5`}
+            label={`AVERAGE RATING · ${performance.ratingCount} ratings`}
+          />
 
-          <Card>
-            <Text style={shared.cardLabel}>COMPLETED SESSIONS</Text>
-            <Text style={shared.bigStat}>{performance.completedSessions}</Text>
-          </Card>
-
-          <Card>
-            <Text style={shared.cardLabel}>UPCOMING SESSIONS</Text>
-            <Text style={shared.bigStat}>{performance.upcomingSessions}</Text>
-          </Card>
-
-          <Card>
-            <Text style={shared.cardLabel}>MISSED SESSIONS</Text>
-            <Text style={shared.bigStat}>{performance.missedSessions}</Text>
-          </Card>
+          <View style={styles.grid}>
+            <View style={styles.gridItem}>
+              <StatCard value={String(performance.completedSessions)} label="COMPLETED" />
+            </View>
+            <View style={styles.gridItem}>
+              <StatCard value={String(performance.upcomingSessions)} label="UPCOMING" />
+            </View>
+          </View>
+          <StatCard value={String(performance.missedSessions)} label="MISSED SESSIONS" />
         </>
       )}
     </ScreenScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  grid: { flexDirection: 'row', gap: 16 },
+  gridItem: { flex: 1 },
+});

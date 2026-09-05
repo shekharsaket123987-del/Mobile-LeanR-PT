@@ -4,21 +4,22 @@
  * The best-grounded write path in the coach app — attendance and
  * workout_notes have exact documented column names, unlike most other
  * writes in this project (see src/lib/data/coach-portal.ts header).
+ *
+ * Attendance/notes controls are real buttons (not text links) at 44pt+
+ * touch targets per LEANR_PT_NEXTGEN_APP_PRD.md §7's coach-workflow note.
  */
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { CtaButton, TextLink } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
-import {
-  attendanceEligible,
-  getBookingById,
-  markAttendance,
-  markJoined,
-  submitSessionNotes,
-} from '@/lib/data/coach-portal';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { Brand, Radius } from '@/constants/theme';
+import { attendanceEligible, getBookingById, markAttendance, markJoined, submitSessionNotes } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
 import { openZoomLink } from '@/lib/data/zoom';
 
@@ -33,6 +34,12 @@ function formatSessionTime(iso: string) {
 }
 
 type Stage = 'pre' | 'notes' | 'absent-closed' | 'completed';
+
+const ATTENDANCE_OPTIONS: { key: 'present' | 'late' | 'absent'; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
+  { key: 'present', label: 'Present', icon: 'checkmark-circle', color: Brand.successEmerald },
+  { key: 'late', label: 'Late', icon: 'time', color: Brand.streakEmberStart },
+  { key: 'absent', label: 'Absent', icon: 'close-circle', color: Brand.alertRed },
+];
 
 export default function SessionWorkflow() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -92,76 +99,106 @@ export default function SessionWorkflow() {
   return (
     <ScreenScaffold title={formatSessionTime(booking.scheduled_start)}>
       {stage === 'completed' && (
-        <Card>
-          <Text style={shared.bigStat}>Session Completed</Text>
-        </Card>
+        <StatCard emphasize value="Completed" label="SESSION" />
       )}
 
       {stage === 'absent-closed' && (
-        <Card>
-          <Text style={shared.bigStat}>Client Absent</Text>
-          <Text style={shared.cardLabel}>This session is closed. No notes required.</Text>
-        </Card>
+        <GlassCard>
+          <Text style={styles.bigStatus}>Client absent</Text>
+          <Text style={styles.metaLabel}>This session is closed. No notes required.</Text>
+        </GlassCard>
       )}
 
       {stage === 'notes' && (
         <>
-          <Card>
-            <Text style={shared.cardLabel}>SESSION SUMMARY</Text>
+          <GlassCard>
+            <SectionHeader title="Session summary" />
             <TextInput
-              style={{ fontFamily: 'Manrope_500Medium', fontSize: 15, color: Brand.charcoal2, minHeight: 80 }}
+              style={styles.notesInput}
               placeholder="What did you cover this session?"
+              placeholderTextColor="rgba(255,255,255,0.35)"
               multiline
               value={summary}
               onChangeText={setSummary}
             />
-          </Card>
-          <CtaButton onPress={onSubmitNotes} loading={submitting}>
-            Mark Completed
-          </CtaButton>
+          </GlassCard>
+          <PrimaryButton size="lg" onPress={onSubmitNotes} loading={submitting}>
+            Mark completed
+          </PrimaryButton>
         </>
       )}
 
       {stage === 'pre' && (
         <>
-          <Card>
-            <Text style={shared.cardLabel}>JOIN</Text>
-            <TextLink
+          <GlassCard variant={booking.coach_joined_at ? 'default' : 'yellow'}>
+            <SectionHeader title="Join session" />
+            <Pressable
               onPress={onJoin}
-              accessibilityLabel={booking.coach_joined_at ? 'Joined — tap to reopen Zoom' : 'Mark joined'}
-              style={{ fontFamily: 'Manrope_700Bold', fontSize: 15, color: Brand.yellow, marginTop: 4 }}>
-              {booking.coach_joined_at ? '✓ Joined' : 'Mark joined →'}
-            </TextLink>
-          </Card>
+              accessibilityRole="button"
+              accessibilityLabel={booking.coach_joined_at ? 'Joined — tap to reopen Zoom' : 'Mark joined and open Zoom'}
+              style={styles.joinRow}>
+              <Ionicons
+                name={booking.coach_joined_at ? 'checkmark-circle' : 'videocam'}
+                size={18}
+                color={booking.coach_joined_at ? Brand.successEmerald : Brand.yellow}
+              />
+              <Text style={[styles.joinLabel, { color: booking.coach_joined_at ? Brand.successEmerald : Brand.yellow }]}>
+                {booking.coach_joined_at ? 'Joined — reopen Zoom' : 'Mark joined & open Zoom'}
+              </Text>
+            </Pressable>
+          </GlassCard>
 
-          <Card>
-            <Text style={shared.cardLabel}>MARK ATTENDANCE</Text>
-            {!eligible && (
-              <Text style={shared.cardLabel}>Available once the session&apos;s scheduled time has passed.</Text>
-            )}
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-              <TextLink
-                disabled={!eligible}
-                onPress={() => onMarkAttendance('present')}
-                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.successEmerald : '#888' }}>
-                Present
-              </TextLink>
-              <TextLink
-                disabled={!eligible}
-                onPress={() => onMarkAttendance('late')}
-                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.streakEmberStart : '#888' }}>
-                Late
-              </TextLink>
-              <TextLink
-                disabled={!eligible}
-                onPress={() => onMarkAttendance('absent')}
-                style={{ fontFamily: 'Manrope_700Bold', fontSize: 14, color: eligible ? Brand.alertRed : '#888' }}>
-                Absent
-              </TextLink>
+          <GlassCard>
+            <SectionHeader title="Mark attendance" />
+            {!eligible && <Text style={styles.metaLabel}>Available once the session&apos;s scheduled time has passed.</Text>}
+            <View style={styles.attendanceRow}>
+              {ATTENDANCE_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.key}
+                  disabled={!eligible}
+                  onPress={() => onMarkAttendance(opt.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.label}
+                  accessibilityState={{ disabled: !eligible }}
+                  style={[styles.attendanceBtn, { borderColor: opt.color + '55' }, !eligible && styles.attendanceBtnDisabled]}>
+                  <Ionicons name={opt.icon} size={20} color={eligible ? opt.color : 'rgba(255,255,255,0.3)'} />
+                  <Text style={[styles.attendanceLabel, { color: eligible ? opt.color : 'rgba(255,255,255,0.3)' }]}>{opt.label}</Text>
+                </Pressable>
+              ))}
             </View>
-          </Card>
+          </GlassCard>
         </>
       )}
     </ScreenScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  bigStatus: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, color: '#FFFFFF' },
+  metaLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.55)', marginTop: 4 },
+  notesInput: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    padding: 14,
+    color: '#FFFFFF',
+    minHeight: 100,
+    backgroundColor: Brand.charcoal2,
+    borderRadius: Radius.md,
+    textAlignVertical: 'top',
+  },
+  joinRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
+  joinLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15 },
+  attendanceRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  attendanceBtn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    minHeight: 44,
+  },
+  attendanceBtnDisabled: { opacity: 0.5 },
+  attendanceLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12.5 },
+});

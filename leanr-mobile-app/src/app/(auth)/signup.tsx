@@ -5,11 +5,12 @@
  */
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text } from 'react-native';
 
-import { CtaButton } from '@/components/tappable';
-import { Brand, DisplayFont } from '@/constants/theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function SignupScreen() {
@@ -40,64 +41,44 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Create your account</Text>
-          <Text style={styles.subtitle}>Get matched with your coach in minutes.</Text>
+    <AuthShell title="Create your account" subtitle="Get matched with your coach in minutes.">
+      <TextField
+        icon="mail-outline"
+        placeholder="Email"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        value={email}
+        onChangeText={setEmail}
+      />
+      <TextField
+        icon="lock-closed-outline"
+        placeholder="Password (min. 8 characters)"
+        isPassword
+        autoComplete="password-new"
+        value={password}
+        onChangeText={setPassword}
+      />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#9A9A9A"
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password (min. 8 characters)"
-            placeholderTextColor="#9A9A9A"
-            secureTextEntry
-            autoComplete="password-new"
-            value={password}
-            onChangeText={setPassword}
-          />
+      {error && (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
 
-          {error && <Text style={styles.error}>{error}</Text>}
+      <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+        Create account
+      </PrimaryButton>
 
-          <CtaButton onPress={onSubmit} loading={submitting} style={styles.ctaSpacing}>
-            Create account
-          </CtaButton>
-
-          <Link href="/login" style={styles.link}>
-            <Text style={styles.linkText}>Already have an account? Log in</Text>
-          </Link>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <Link href="/login" style={styles.link}>
+        <Text style={styles.linkText}>Already have an account? Log in</Text>
+      </Link>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Brand.black },
-  flex: { flex: 1 },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  title: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 28, color: Brand.yellow },
-  subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#CCCCCC', marginBottom: 20 },
-  input: {
-    backgroundColor: Brand.charcoal2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#FFFFFF',
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-  },
   error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  ctaSpacing: { marginTop: 8 },
-  link: { marginTop: 20, alignSelf: 'center' },
-  linkText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.yellow },
+  link: { alignSelf: 'center', marginTop: 8 },
+  linkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: Brand.yellow },
 });

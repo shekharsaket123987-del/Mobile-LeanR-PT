@@ -9,6 +9,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { ColorValue, useColorScheme } from 'react-native';
 
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { Brand, Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
@@ -38,6 +39,7 @@ export default function CoachLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Brand.black,

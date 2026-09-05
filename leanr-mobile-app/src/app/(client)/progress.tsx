@@ -5,12 +5,15 @@
  * column — see src/lib/data/progress.ts and subscription.ts).
  */
 import { useState } from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { Card, EmptyState, ErrorState, LoadingState, ScreenScaffold, styles as shared } from '@/components/screen-scaffold';
-import { Brand } from '@/constants/theme';
 import { ProgressRing } from '@/components/progress-ring';
-import { CtaButton } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { DisplayFont } from '@/constants/theme';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
 import { getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
@@ -59,41 +62,49 @@ export default function ProgressScreen() {
       {!loading && !error && (
         <>
           {subscription && (
-            <View style={{ alignItems: 'center', marginBottom: 4 }}>
-              <ProgressRing progress={ringProgress} valueText={`${sessionsUsed}/${total}`} label="sessions this plan" />
+            <View style={styles.ringWrap}>
+              <ProgressRing progress={ringProgress} valueText={`${sessionsUsed}/${total}`} label="sessions this plan" size={190} strokeWidth={16} />
             </View>
           )}
 
           {latest ? (
-            <Card>
-              <Text style={shared.cardLabel}>LATEST — {formatDate(latest.logged_at)}</Text>
-              <Text style={shared.bigStat}>{latest.weight ?? '—'} kg</Text>
-            </Card>
+            <GlassCard variant="yellow">
+              <Text style={styles.eyebrow}>LATEST — {formatDate(latest.logged_at)}</Text>
+              <Text style={styles.weightValue}>{latest.weight ?? '—'} kg</Text>
+            </GlassCard>
           ) : (
-            <EmptyState message="No progress logged yet." />
+            <EmptyState message="No progress logged yet." icon="trending-up-outline" />
           )}
 
-          <Card>
-            <Text style={shared.cardLabel}>LOG THIS WEEK</Text>
-            <TextInput
-              style={{
-                fontFamily: 'Manrope_500Medium',
-                fontSize: 16,
-                paddingVertical: 8,
-                color: Brand.charcoal2,
-              }}
+          <GlassCard>
+            <SectionHeader eyebrow="Weekly check-in" title="Log this week" />
+            <TextField
+              icon="scale-outline"
               placeholder="Weight (kg)"
               keyboardType="numeric"
               value={weight}
               onChangeText={setWeight}
             />
-          </Card>
+          </GlassCard>
 
-          <CtaButton onPress={onSubmit} loading={submitting}>
+          <PrimaryButton size="lg" onPress={onSubmit} loading={submitting}>
             Log this week&apos;s update
-          </CtaButton>
+          </PrimaryButton>
         </>
       )}
     </ScreenScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  ringWrap: { alignItems: 'center', marginBottom: 4, marginTop: 4 },
+  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.55)' },
+  weightValue: {
+    fontFamily: DisplayFont,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    fontSize: 40,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+});

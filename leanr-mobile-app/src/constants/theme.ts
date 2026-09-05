@@ -95,3 +95,68 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+// Additive design-system tokens for the premium UI pass (LEANR_PT_MOBILE_PRD.md
+// §23 "Shape & elevation" / "Glassmorphism system"). Nothing above this line
+// is renamed or removed, so every existing import keeps working unchanged.
+
+export const Radius = {
+  sm: 12,
+  md: 16, // cards, inputs — matches web `rounded-xl`
+  lg: 20, // modals, glass panels — matches web `rounded-2xl`
+  pill: 999, // buttons, badges, avatars, chips — matches web `rounded-full`
+} as const;
+
+/**
+ * Cross-platform shadow presets matching the web app's `shadow-soft` /
+ * `shadow-card` / `shadow-glow` tokens (tailwind.config.ts), expressed as
+ * RN shadow* + Android `elevation`. Spread directly into a StyleSheet entry.
+ */
+export const Shadow = {
+  soft: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  glow: {
+    shadowColor: Brand.yellow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 40,
+    elevation: 10,
+  },
+} as const;
+
+/** Purposeful, short motion only (LEANR_PT_NEXTGEN_APP_PRD.md §4.3) — never idle/looping decoration. */
+export const Motion = {
+  fast: 150,
+  base: 220,
+  slow: 320,
+  ringFill: 700,
+} as const;
+
+/**
+ * Glass surface recipe — reproduces the web app's `.glass` utility
+ * (`linear-gradient(155deg, rgba(255,255,255,.07), rgba(255,255,255,.02))`
+ * + `backdrop-filter: blur(20px)` + hairline border) using `expo-blur`
+ * (cross-platform BlurView) rather than `expo-glass-effect`, which is
+ * iOS-26-only "Liquid Glass" and would make the app look inconsistent
+ * across devices — see components/ui/glass-card.tsx.
+ */
+export const Glass = {
+  gradient: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.015)'] as const,
+  gradientYellow: ['rgba(245,217,10,0.16)', 'rgba(245,217,10,0.03)'] as const,
+  border: 'rgba(255,255,255,0.09)',
+  borderYellow: 'rgba(245,217,10,0.28)',
+  blurIntensity: 40,
+  blurIntensityStrong: 65,
+} as const;

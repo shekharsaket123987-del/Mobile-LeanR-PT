@@ -1,14 +1,21 @@
 /**
- * Shared shell for Phase-0 placeholder screens: brand background, safe
- * area, scroll container, and a title in the Anton bold-italic display
- * style (LEANR_PT_NEXTGEN_APP_PRD.md §4.2). Screens in later phases
- * (§9 Key Screen Specs) replace the body content, not this shell.
+ * Shared shell for screens that haven't yet received a fully bespoke
+ * layout (LEANR_PT_NEXTGEN_APP_PRD.md §4.2 for the title treatment) —
+ * brand background with a soft top glow, safe area, scroll container.
+ * `Card`/`LoadingState`/`ErrorState`/`EmptyState` now delegate to the
+ * premium components/ui/* primitives so every screen still importing
+ * this file gets the upgraded look with zero call-site changes; `styles`
+ * keeps every key screens already reference (`shared.cardLabel`,
+ * `shared.bigStat`, `shared.ctaButton`, ...) so nothing breaks mid-migration.
  */
 import { PropsWithChildren } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Brand, Colors, DisplayFont } from '@/constants/theme';
+import { Brand, Colors, DisplayFont, Radius, Shadow } from '@/constants/theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { EmptyState as UiEmptyState, ErrorState as UiErrorState, LoadingState as UiLoadingState } from '@/components/ui/states';
 
 type Props = PropsWithChildren<{ title: string; subtitle?: string }>;
 
@@ -18,6 +25,13 @@ export function ScreenScaffold({ title, subtitle, children }: Props) {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <LinearGradient
+        colors={['rgba(245,217,10,0.06)', 'rgba(245,217,10,0)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGlow}
+        pointerEvents="none"
+      />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
@@ -30,51 +44,20 @@ export function ScreenScaffold({ title, subtitle, children }: Props) {
 }
 
 export function Card({ children }: PropsWithChildren) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'light' ? 'light' : 'dark'];
-  return <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>{children}</View>;
+  return <GlassCard>{children}</GlassCard>;
 }
 
-/** Shared inline states for the useAsync-backed screens (§9). */
-export function LoadingState() {
-  return (
-    <View style={styles.centeredState}>
-      <ActivityIndicator color={Brand.yellow} />
-    </View>
-  );
-}
-
-export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <Card>
-      <Text style={styles.cardLabel} accessibilityRole="alert">
-        SOMETHING WENT WRONG
-      </Text>
-      <Text style={styles.errorText}>{message}</Text>
-      <Pressable
-        onPress={onRetry}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel="Try again"
-        style={styles.retryLinkWrap}>
-        <Text style={styles.retryLink}>Try again</Text>
-      </Pressable>
-    </Card>
-  );
-}
-
-export function EmptyState({ message }: { message: string }) {
-  return (
-    <View style={styles.centeredState}>
-      <Text style={styles.emptyText}>{message}</Text>
-    </View>
-  );
-}
+/** Delegates to components/ui/states.tsx — kept here so ~30 existing screens keep working unchanged. */
+export const LoadingState = UiLoadingState;
+export const ErrorState = UiErrorState;
+export const EmptyState = UiEmptyState;
 
 export const styles = StyleSheet.create({
   root: { flex: 1 },
+  topGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   safeArea: { flex: 1 },
-  scrollContent: { padding: 20, gap: 16, paddingBottom: 48 },
+  // paddingBottom clears the floating glass tab bar (components/ui/floating-tab-bar.tsx: ~60px bar + 10px float margin + safe-area inset).
+  scrollContent: { padding: 20, gap: 16, paddingBottom: 120 },
   title: {
     fontFamily: DisplayFont,
     fontWeight: '700',
@@ -93,9 +76,11 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   cardLabel: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 13,
-    opacity: 0.7,
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.8,
+    opacity: 0.55,
+    textTransform: 'uppercase',
   },
   bigStat: {
     fontFamily: DisplayFont,
@@ -103,12 +88,14 @@ export const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontSize: 40,
     color: Brand.yellow,
+    letterSpacing: -0.5,
   },
   ctaButton: {
     backgroundColor: Brand.yellow,
-    borderRadius: 16,
+    borderRadius: Radius.pill,
     paddingVertical: 16,
     alignItems: 'center',
+    ...Shadow.glow,
   },
   ctaButtonText: {
     fontFamily: 'Manrope_700Bold',

@@ -1,29 +1,40 @@
 /**
- * Coach More — Availability, Escalations, Performance, Search, Renewals,
- * Notifications, Profile, Chats (LEANR_PT_MOBILE_PRD.md §5 coach nav).
- * All eight rows are now real — this completes §28 Phase 11 to the
- * extent buildable from this mobile-only repo.
+ * Coach More — New PRD.md §4.B nav items not promoted to the 5-tab bar
+ * (mockup frame 16): Global Client Search, Availability Management,
+ * Leave Requests, Renewals, Escalations, Performance, Notifications,
+ * Profile. "Chats" dropped from this list since it's now a real tab
+ * (Stage A) — no need for a duplicate entry point. No "Activity Log"/
+ * "Notification Settings"/"Help & Support" rows — admin-only or
+ * non-existent anywhere in the PRD for the coach role.
  */
 import { router } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
-import { ScreenScaffold } from '@/components/screen-scaffold';
-import { DestructiveButton } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { MenuRow } from '@/components/ui/menu-row';
+import { LightCard } from '@/components/light/light-card';
+import { LightDestructiveButton } from '@/components/light/light-button';
+import { LightMenuRow } from '@/components/light/light-menu-row';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { useAuth } from '@/lib/auth/auth-context';
 
 const LINKED_ROWS: {
   label: string;
-  href: '/availability' | '/escalations' | '/renewals' | '/performance' | '/notifications' | '/profile' | '/chats' | '/search';
-  icon: 'calendar-outline' | 'chatbubbles-outline' | 'alert-circle-outline' | 'bar-chart-outline' | 'search-outline' | 'trending-up-outline' | 'notifications-outline' | 'person-outline';
+  href: '/search' | '/availability' | '/leave-requests' | '/renewals' | '/escalations' | '/performance' | '/notifications' | '/profile';
+  icon:
+    | 'search-outline'
+    | 'calendar-outline'
+    | 'airplane-outline'
+    | 'trending-up-outline'
+    | 'alert-circle-outline'
+    | 'bar-chart-outline'
+    | 'notifications-outline'
+    | 'person-outline';
 }[] = [
-  { label: 'Availability', href: '/availability', icon: 'calendar-outline' },
-  { label: 'Chats', href: '/chats', icon: 'chatbubbles-outline' },
+  { label: 'Global Client Search', href: '/search', icon: 'search-outline' },
+  { label: 'Availability Management', href: '/availability', icon: 'calendar-outline' },
+  { label: 'Leave Requests', href: '/leave-requests', icon: 'airplane-outline' },
+  { label: 'Renewals', href: '/renewals', icon: 'trending-up-outline' },
   { label: 'Escalations', href: '/escalations', icon: 'alert-circle-outline' },
   { label: 'Performance', href: '/performance', icon: 'bar-chart-outline' },
-  { label: 'Search', href: '/search', icon: 'search-outline' },
-  { label: 'Renewals', href: '/renewals', icon: 'trending-up-outline' },
   { label: 'Notifications', href: '/notifications', icon: 'notifications-outline' },
   { label: 'Profile', href: '/profile', icon: 'person-outline' },
 ];
@@ -32,23 +43,17 @@ export default function CoachMore() {
   const { session, signOut } = useAuth();
 
   return (
-    <ScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
-      <GlassCard style={styles.card}>
+    <LightScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
+      <LightCard style={styles.card}>
         {LINKED_ROWS.map((row, i) => (
-          <MenuRow
-            key={row.label}
-            label={row.label}
-            icon={row.icon}
-            onPress={() => router.push(row.href)}
-            last={i === LINKED_ROWS.length - 1}
-          />
+          <LightMenuRow key={row.label} label={row.label} icon={row.icon} onPress={() => router.push(row.href)} last={i === LINKED_ROWS.length - 1} />
         ))}
-      </GlassCard>
+      </LightCard>
 
-      <DestructiveButton size="lg" onPress={signOut} style={styles.signOut}>
+      <LightDestructiveButton size="lg" onPress={signOut} style={styles.signOut}>
         Sign out
-      </DestructiveButton>
-    </ScreenScaffold>
+      </LightDestructiveButton>
+    </LightScreenScaffold>
   );
 }
 

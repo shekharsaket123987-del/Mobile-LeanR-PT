@@ -1,16 +1,21 @@
 /**
- * Global Client Search — LEANR_PT_MOBILE_PRD.md §5. See
- * src/lib/data/coach-search.ts header for the confirmed RLS (any coach
- * can read any client's name/status, not just linked ones).
+ * Global Client Search — New PRD.md §4.B. See src/lib/data/coach-search.ts
+ * header for the confirmed RLS (any coach can read any client's name/
+ * status, not just linked ones). Relit; results now push to Client
+ * Detail (`coach-clients.ts`'s `getCoachClientDetail` already handles the
+ * non-roster/read-only case) — previously these rows weren't tappable at
+ * all, a real gap this stage closes.
  */
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { Badge } from '@/components/ui/badge';
-import { GlassCard } from '@/components/ui/glass-card';
-import { TextField } from '@/components/ui/text-field';
-import { Brand } from '@/constants/theme';
+import { LightBadge } from '@/components/light/light-badge';
+import { LightCard } from '@/components/light/light-card';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightTextField } from '@/components/light/light-text-field';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { searchClients, type ClientSearchResult } from '@/lib/data/coach-search';
 import { getErrorMessage } from '@/lib/data/errors';
 
@@ -38,33 +43,45 @@ export default function CoachSearchScreen() {
   };
 
   return (
-    <ScreenScaffold title="Search Clients">
-      <TextField icon="search-outline" placeholder="Search by name…" value={query} onChangeText={onSearch} accessibilityLabel="Search clients by name" />
+    <LightScreenScaffold title="Search Clients">
+      <LightTextField
+        icon="search-outline"
+        placeholder="Search by name…"
+        value={query}
+        onChangeText={onSearch}
+        accessibilityLabel="Search clients by name"
+      />
 
-      {loading && <LoadingState rows={1} />}
-      {error && <ErrorState message={error} onRetry={() => onSearch(query)} />}
-      {!loading && !error && results !== null && results.length === 0 && <EmptyState message="No clients found." icon="search-outline" />}
+      {loading && <LightLoadingState rows={1} />}
+      {error && <LightErrorState message={error} onRetry={() => onSearch(query)} />}
+      {!loading && !error && results !== null && results.length === 0 && <LightEmptyState message="No clients found." icon="search-outline" />}
       {!loading &&
         !error &&
         results?.map((r) => (
-          <GlassCard key={r.id}>
-            <View style={styles.row}>
-              <Text style={styles.name}>{r.fullName}</Text>
-              {r.isMyClient && <Badge label="Your client" tone="green" />}
-            </View>
-            <Text style={styles.meta}>
-              {r.clientCode} · {r.status}
-            </Text>
-            {!r.isMyClient && <Text style={styles.readOnlyNote}>Read-only — not one of your clients</Text>}
-          </GlassCard>
+          <Pressable
+            key={r.id}
+            onPress={() => router.push({ pathname: '/clients/[id]', params: { id: r.id } })}
+            accessibilityRole="button"
+            accessibilityLabel={r.fullName}>
+            <LightCard>
+              <View style={styles.row}>
+                <Text style={styles.name}>{r.fullName}</Text>
+                {r.isMyClient && <LightBadge label="Your client" tone="green" />}
+              </View>
+              <Text style={styles.meta}>
+                {r.clientCode} · {r.status}
+              </Text>
+              {!r.isMyClient && <Text style={styles.readOnlyNote}>Read-only — not one of your clients</Text>}
+            </LightCard>
+          </Pressable>
         ))}
-    </ScreenScaffold>
+    </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
-  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: Brand.streakEmberStart, marginTop: 4 },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy, flexShrink: 1 },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 2 },
+  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.amber, marginTop: 4 },
 });

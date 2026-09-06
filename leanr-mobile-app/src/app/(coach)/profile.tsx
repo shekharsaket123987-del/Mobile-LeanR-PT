@@ -1,21 +1,24 @@
 /**
- * Profile (coach) — LEANR_PT_MOBILE_PRD.md §5 "Coach Profile
- * (self-service subset)/Password Change". See src/lib/data/profile.ts
- * header for the confirmed RLS and the deliberate field-scope cut.
+ * Profile (coach) — New PRD.md §4.B: editable Mobile Number/Emergency
+ * Contact/Photo, append-only Skills, password (direct Supabase call);
+ * read-only (admin-owned): email/specialization/bio/certifications/
+ * languages/employee code/joining date/working hours/capacity/name.
+ * Relit only — logic already correct.
  */
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
-import { ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { PrimaryButton } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { TextField } from '@/components/ui/text-field';
-import { Brand, Radius } from '@/constants/theme';
+import { LightCard } from '@/components/light/light-card';
+import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightTextField } from '@/components/light/light-text-field';
+import { LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { changeMyPassword, getMyCoachDetails, getMyProfile, updateMyCoachDetails, updateMyProfile } from '@/lib/data/profile';
-import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { useAsync } from '@/lib/data/use-async';
 
 function joinList(values: string[]) {
   return values.join(', ');
@@ -138,22 +141,22 @@ export default function CoachProfileScreen() {
 
   if (loading) {
     return (
-      <ScreenScaffold title="Profile">
-        <LoadingState />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Profile">
+        <LightLoadingState />
+      </LightScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <ScreenScaffold title="Profile">
-        <ErrorState message={error} onRetry={reload} />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Profile">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold title="Profile">
+    <LightScreenScaffold title="Profile">
       <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
       {avatarError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -161,57 +164,54 @@ export default function CoachProfileScreen() {
         </Text>
       )}
 
-      <GlassCard style={styles.card}>
-        <SectionHeader title="Your details" />
-        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
-        <TextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
-        <TextField placeholder="Emergency contact" value={displayEmergency} onChangeText={setEmergencyContact} accessibilityLabel="Emergency contact" />
+      <LightCard style={styles.card}>
+        <LightSectionHeader title="Your details" />
+        <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <LightTextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
+        <LightTextField
+          placeholder="Emergency contact"
+          value={displayEmergency}
+          onChangeText={setEmergencyContact}
+          accessibilityLabel="Emergency contact"
+        />
         {profileError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {profileError}
           </Text>
         )}
         {profileSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
+        <LightPrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
           Save
-        </PrimaryButton>
-      </GlassCard>
+        </LightPrimaryButton>
+      </LightCard>
 
-      <GlassCard style={styles.card}>
-        <SectionHeader title="Coaching profile" />
-        <TextField placeholder="Specialization" value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
-        <TextInput
-          style={styles.multilineInput}
-          placeholder="Bio"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={displayBio}
-          onChangeText={setBio}
-          multiline
-          accessibilityLabel="Bio"
-        />
-        <TextField
+      <LightCard style={styles.card}>
+        <LightSectionHeader title="Coaching profile" />
+        <LightTextField placeholder="Specialization" value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
+        <LightTextField placeholder="Bio" value={displayBio} onChangeText={setBio} multiline style={styles.multilineInput} accessibilityLabel="Bio" />
+        <LightTextField
           placeholder="Certifications (comma-separated)"
           value={displayCertifications}
           onChangeText={setCertifications}
           accessibilityLabel="Certifications"
         />
-        <TextField placeholder="Languages (comma-separated)" value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
-        <TextField placeholder="Skills (comma-separated)" value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
+        <LightTextField placeholder="Languages (comma-separated)" value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
+        <LightTextField placeholder="Skills (comma-separated)" value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
         {detailsError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {detailsError}
           </Text>
         )}
         {detailsSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <PrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
+        <LightPrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
           Save
-        </PrimaryButton>
-      </GlassCard>
+        </LightPrimaryButton>
+      </LightCard>
 
-      <GlassCard style={styles.card}>
-        <SectionHeader title="Change password" />
-        <TextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
-        <TextField
+      <LightCard style={styles.card}>
+        <LightSectionHeader title="Change password" />
+        <LightTextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
+        <LightTextField
           placeholder="Confirm new password"
           isPassword
           value={confirmPassword}
@@ -224,27 +224,18 @@ export default function CoachProfileScreen() {
           </Text>
         )}
         {passwordChanged && <Text style={styles.savedText}>Password changed.</Text>}
-        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
+        <LightPrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
           Change password
-        </PrimaryButton>
-      </GlassCard>
-    </ScreenScaffold>
+        </LightPrimaryButton>
+      </LightCard>
+    </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 12 },
-  multilineInput: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-    padding: 14,
-    color: '#FFFFFF',
-    minHeight: 80,
-    backgroundColor: Brand.charcoal2,
-    borderRadius: Radius.md,
-    textAlignVertical: 'top',
-  },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
-  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
+  multilineInput: { minHeight: 80, textAlignVertical: 'top', paddingTop: 14 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 4 },
+  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 4 },
 });

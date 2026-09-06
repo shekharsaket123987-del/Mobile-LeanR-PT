@@ -1,28 +1,28 @@
 /**
- * Coach Chat Thread — LEANR_PT_MOBILE_PRD.md §5/§20. Mirrors the
- * client Coach tab's chat thread (src/app/(client)/coach.tsx) but for a
- * specific conversation, sending as `sender_role='coach'`. Reuses
- * chat.ts's generic pieces directly (`sendMessage`/`markMessagesRead`
- * take a `senderRole` exactly for this) rather than a coach-specific
- * copy of the insert/update logic, and now shares the same
- * MessageBubble/MessageInput UI as the client thread (components/ui/chat-thread.tsx)
- * rather than a duplicated per-portal copy. Camera capture + captions
- * alongside an image both work — see src/lib/media/pick-chat-image.ts,
- * shared with the client-side thread.
+ * Coach Chat Thread — New PRD.md §4.B: mirrors the client Coach tab's
+ * chat thread but for a specific conversation, sending as
+ * `sender_role='coach'`. Reuses chat.ts's generic pieces directly
+ * (`sendMessage`/`markMessagesRead` take a `senderRole`) and the same
+ * `LightMessageBubble`/`LightMessageInput` the client Chats tab uses.
+ * Closed conversations are read-only (PRD: "A new coach has been
+ * assigned to this client — you can still see this history, but can't
+ * send new messages") — the composer is hidden and this exact copy shown
+ * instead, not just an error on send.
  */
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
-import { Brand } from '@/constants/theme';
+import { LightMessageBubble, LightMessageInput } from '@/components/light/light-chat-thread';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { getMessages, markMessagesRead, sendMessage, subscribeToConversation, uploadChatImage } from '@/lib/data/chat';
 import { getMyConversations } from '@/lib/data/coach-chat';
+import { getErrorMessage } from '@/lib/data/errors';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
-import { getErrorMessage } from '@/lib/data/errors';
 
 export default function CoachChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -98,34 +98,34 @@ export default function CoachChatThreadScreen() {
 
   if (loading) {
     return (
-      <ScreenScaffold title="Chat">
-        <LoadingState />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Chat">
+        <LightLoadingState />
+      </LightScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <ScreenScaffold title="Chat">
-        <ErrorState message={error} onRetry={reload} />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Chat">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
     );
   }
 
   if (!conversation) {
     return (
-      <ScreenScaffold title="Chat">
-        <EmptyState message="Conversation not found." />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Chat">
+        <LightEmptyState message="Conversation not found." />
+      </LightScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold title={conversation.clientName}>
+    <LightScreenScaffold title={conversation.clientName}>
       <View style={styles.thread}>
-        {messages.length === 0 && <EmptyState message="No messages yet." icon="chatbubble-outline" />}
+        {messages.length === 0 && <LightEmptyState message="No messages yet." icon="chatbubble-outline" />}
         {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} mine={m.sender_role === 'coach'} />
+          <LightMessageBubble key={m.id} message={m} mine={m.sender_role === 'coach'} />
         ))}
       </View>
 
@@ -135,22 +135,29 @@ export default function CoachChatThreadScreen() {
         </Text>
       )}
 
-      <MessageInput
-        value={draft}
-        onChangeText={setDraft}
-        onSend={onSend}
-        sending={sending}
-        onAttach={onPickImage}
-        attaching={attaching}
-        pendingImage={pendingImage}
-        onRemovePendingImage={() => setPendingImage(null)}
-        placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your client…'}
-      />
-    </ScreenScaffold>
+      {conversation.readOnly ? (
+        <Text style={styles.readOnlyNote}>
+          A new coach has been assigned to this client — you can still see this history, but can&apos;t send new messages.
+        </Text>
+      ) : (
+        <LightMessageInput
+          value={draft}
+          onChangeText={setDraft}
+          onSend={onSend}
+          sending={sending}
+          onAttach={onPickImage}
+          attaching={attaching}
+          pendingImage={pendingImage}
+          onRemovePendingImage={() => setPendingImage(null)}
+          placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your client…'}
+        />
+      )}
+    </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   thread: { gap: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, textAlign: 'center', lineHeight: 18 },
 });

@@ -57,3 +57,55 @@ export async function getMyPerformance(): Promise<CoachPerformance> {
     ratingCount: values.length,
   };
 }
+
+export type Last30DaysPerformance = {
+  total: number;
+  completed: number;
+  cancelled: number;
+  rescheduled: number;
+};
+
+/**
+ * Performance screen "Last 30 Days" summary (mockup) — the PRD's own
+ * `getMyPerformanceAction` data isn't time-windowed at all (it's the
+ * all-time 14-stat object `getMyPerformance` above already covers), but
+ * scoping these 4 specific counts to the last 30 days is a real,
+ * derivable view over the same real data, not a fabricated metric.
+ */
+export async function getMyPerformanceLast30Days(): Promise<Last30DaysPerformance> {
+  const coachId = await getMyCoachProfileId();
+  if (!coachId) return { total: 0, completed: 0, cancelled: 0, rescheduled: 0 };
+
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('status, was_rescheduled')
+    .eq('coach_id', coachId)
+    .gte('scheduled_start', since.toISOString());
+  if (error) throw error;
+
+  const rows = data ?? [];
+  return {
+    total: rows.length,
+    completed: rows.filter((r) => r.status === 'completed').length,
+    cancelled: rows.filter((r) => r.status === 'cancelled').length,
+    rescheduled: rows.filter((r) => r.was_rescheduled).length,
+  };
+}
+
+/**
+ * Dashboard "Utilization%" KPI — reads the real, shared `coach_utilization_view`
+ * (confirmed columns: coach_id/coach_name/active_clients/utilization_pct)
+ * rather than computing a mobile-only formula, so this always matches
+ * whatever web shows for the same coach.
+ */
+export async function getMyUtilization(): Promise<number | null> {
+  const coachId = await getMyCoachProfileId();
+  if (!coachId) return null;
+
+  const { data, error } = await supabase.from('coach_utilization_view').select('utilization_pct').eq('coach_id', coachId).maybeSingle();
+  if (error) throw error;
+  return data ? Number(data.utilization_pct) : null;
+}

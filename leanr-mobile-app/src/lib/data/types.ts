@@ -27,6 +27,8 @@ export type Booking = {
   coach_joined_at: string | null;
   zoom_join_url: string | null;
   zoom_start_url: string | null;
+  cancelled_by: string | null; // free text column (e.g. "admin"/"coach"/"client"), not an enum
+  cancel_reason: string | null;
   coach_name?: string | null; // present when joined via coach_profiles(profiles(full_name))
 };
 
@@ -36,6 +38,8 @@ export type ClientProfile = {
   profile_id: string; // FK -> profiles.id (the auth uid)
   status: string;
   full_name?: string; // present when joined via profiles(full_name)
+  photo_url?: string | null; // present when joined via profiles(photo_url)
+  client_code?: string; // present when joined from client_profiles.client_code
 };
 
 /** `coach_profiles` row, generally selected joined with `profiles(full_name, photo_url)`. */

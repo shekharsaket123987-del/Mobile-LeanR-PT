@@ -1,20 +1,21 @@
 /**
- * Shadow Coverage (admin) — LEANR_PT_MOBILE_PRD.md §10 "Assign Shadow
- * Coach" flow. See src/lib/data/admin-shadow.ts header for how
- * "uncovered leave-affected sessions" is computed and for the confirmed
- * `assign_shadow_coach` RPC behavior (reassigns the affected bookings
- * directly, not just a record).
+ * Shadow Coverage (admin) — New PRD.md §4.C "Shadow Coach Required (gap
+ * queue)" + "Assign Shadow Coach" flow. See src/lib/data/admin-shadow.ts
+ * header for how "uncovered leave-affected sessions" is computed and for
+ * the confirmed `assign_shadow_coach` RPC behavior (reassigns the
+ * affected bookings directly, not just a record). Relit from the
+ * previous dark-theme version — same data layer, untouched.
  */
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { PrimaryButton } from '@/components/ui/button';
-import { Chip } from '@/components/ui/chip';
-import { ChipGrid } from '@/components/ui/chip-grid';
-import { GlassCard } from '@/components/ui/glass-card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { Brand } from '@/constants/theme';
+import { LightCard } from '@/components/light/light-card';
+import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightChip, LightChipGrid } from '@/components/light/light-chip';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { assignShadowCoach, getActiveCoachOptions, getShadowCoverageGaps, type ShadowGap } from '@/lib/data/admin-shadow';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -29,16 +30,16 @@ export default function AdminShadowScreen() {
   const coaches = data?.coaches ?? [];
 
   return (
-    <ScreenScaffold title="Shadow Coverage" subtitle="Clients with sessions during approved leave, not yet covered">
-      {loading && <LoadingState />}
-      {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && gaps.length === 0 && <EmptyState message="No coverage gaps right now." icon="shield-checkmark-outline" />}
+    <LightScreenScaffold title="Shadow Coverage" subtitle="Clients with sessions during approved leave, not yet covered">
+      {loading && <LightLoadingState />}
+      {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && gaps.length === 0 && <LightEmptyState message="No coverage gaps right now." icon="shield-checkmark-outline" />}
       {!loading &&
         !error &&
         gaps.map((gap) => (
           <GapCard key={`${gap.leaveId}-${gap.clientId}`} gap={gap} coaches={coaches} onAssigned={reload} />
         ))}
-    </ScreenScaffold>
+    </LightScreenScaffold>
   );
 }
 
@@ -79,34 +80,36 @@ function GapCard({
   };
 
   return (
-    <GlassCard>
+    <LightCard style={styles.card}>
       <Text style={styles.name}>{gap.clientName}</Text>
       <Text style={styles.meta}>
         {gap.affectedSessions} session{gap.affectedSessions === 1 ? '' : 's'} with {gap.primaryCoachName}, {gap.startsOn}
         {gap.endsOn !== gap.startsOn ? ` – ${gap.endsOn}` : ''}
       </Text>
 
-      <SectionHeader title="Assign shadow coach" />
-      <ChipGrid>
+      <LightSectionHeader title="Assign shadow coach" />
+      <LightChipGrid>
         {candidates.map((c) => (
-          <Chip key={c.id} label={c.full_name} selected={selectedCoach === c.id} onPress={() => setSelectedCoach(c.id)} />
+          <LightChip key={c.id} label={c.full_name} selected={selectedCoach === c.id} onPress={() => setSelectedCoach(c.id)} />
         ))}
-      </ChipGrid>
+      </LightChipGrid>
 
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {error}
         </Text>
       )}
-      <PrimaryButton onPress={onAssign} loading={assigning} disabled={!selectedCoach}>
+      <LightPrimaryButton onPress={onAssign} loading={assigning} disabled={!selectedCoach} style={styles.assignButton}>
         Assign coverage
-      </PrimaryButton>
-    </GlassCard>
+      </LightPrimaryButton>
+    </LightCard>
   );
 }
 
 const styles = StyleSheet.create({
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
-  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
+  card: { gap: 4 },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy },
+  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed, marginTop: 4 },
+  assignButton: { marginTop: 8 },
 });

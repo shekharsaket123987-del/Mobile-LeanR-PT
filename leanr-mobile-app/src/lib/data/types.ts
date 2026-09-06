@@ -13,6 +13,8 @@ export type Booking = {
   coach_id: string; // FK -> coach_profiles.id (NOT the coach's auth uid)
   subscription_id: string | null;
   recurring_slot_id: string | null;
+  assessment_session_id: string | null;
+  session_type: string; // 'assessment' | 'regular' — free text at the type level, no distinct enum (New PRD.md §7.1)
   scheduled_start: string; // ISO timestamp
   duration_minutes: number;
   status: BookingStatus;

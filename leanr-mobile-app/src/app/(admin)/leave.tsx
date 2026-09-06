@@ -1,14 +1,22 @@
 /**
- * Leave Requests (admin) — LEANR_PT_MOBILE_PRD.md §10 "Screen: Leave
- * Requests (admin)". Approve/Reject a coach's pending leave request.
+ * Leave Requests (admin) — New PRD.md §4.C "Screen: Leave Requests".
+ * Approve/Reject a coach's pending leave request. Relit from the
+ * previous dark-theme version — same data layer (admin-leave.ts),
+ * untouched. Note (documented in the build plan): this simplified
+ * approve/reject does not run the web app's automatic shadow-coverage
+ * cascade (that scoring algorithm lives only in the web repo's
+ * scheduling.service.ts) — any gap it leaves is closed via the
+ * Shadow Coverage screen's manual "Assign shadow coach" tool, the same
+ * fallback the web app itself provides for cases its own cascade misses.
  */
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { DestructiveButton, PrimaryButton } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { Brand } from '@/constants/theme';
+import { LightCard } from '@/components/light/light-card';
+import { LightDestructiveButton, LightPrimaryButton } from '@/components/light/light-button';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { getPendingLeaveRequests, resolveLeaveRequest, type AdminLeaveRequest } from '@/lib/data/admin-leave';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -17,12 +25,12 @@ export default function AdminLeaveScreen() {
   const { data: requests, loading, error, reload } = useAsync(getPendingLeaveRequests, []);
 
   return (
-    <ScreenScaffold title="Leave Requests">
-      {loading && <LoadingState />}
-      {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (requests?.length ?? 0) === 0 && <EmptyState message="No pending leave requests." icon="checkmark-circle-outline" />}
+    <LightScreenScaffold title="Leave Requests">
+      {loading && <LightLoadingState />}
+      {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (requests?.length ?? 0) === 0 && <LightEmptyState message="No pending leave requests." icon="checkmark-circle-outline" />}
       {!loading && !error && requests?.map((r) => <LeaveRow key={r.id} request={r} onResolved={reload} />)}
-    </ScreenScaffold>
+    </LightScreenScaffold>
   );
 }
 
@@ -44,7 +52,7 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
   };
 
   return (
-    <GlassCard>
+    <LightCard style={styles.card}>
       <Text style={styles.name}>{request.coachName}</Text>
       <Text style={styles.dates}>
         {request.starts_on}
@@ -57,21 +65,22 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
           {error}
         </Text>
       )}
-      <PrimaryButton onPress={() => onResolve('approved')} loading={busy === 'approve'} disabled={busy !== null} style={styles.approveButton}>
+      <LightPrimaryButton onPress={() => onResolve('approved')} loading={busy === 'approve'} disabled={busy !== null} style={styles.approveButton}>
         Approve
-      </PrimaryButton>
-      <DestructiveButton onPress={() => onResolve('rejected')} loading={busy === 'reject'} disabled={busy !== null} style={styles.rejectButton}>
+      </LightPrimaryButton>
+      <LightDestructiveButton onPress={() => onResolve('rejected')} loading={busy === 'reject'} disabled={busy !== null} style={styles.rejectButton}>
         Reject
-      </DestructiveButton>
-    </GlassCard>
+      </LightDestructiveButton>
+    </LightCard>
   );
 }
 
 const styles = StyleSheet.create({
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
-  dates: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
+  card: { gap: 2 },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy },
+  dates: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.textSecondary, marginTop: 2 },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary, marginTop: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed, marginTop: 4 },
   approveButton: { marginTop: 10 },
   rejectButton: { marginTop: 8 },
 });

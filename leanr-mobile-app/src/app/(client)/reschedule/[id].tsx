@@ -14,6 +14,10 @@
  * function body directly, not assumed from the PRD prose (see
  * booking-wizard.ts's `isAfterRescheduleCutoff` comment).
  *
+ * Relit for the post-purchase light theme — real month calendar via
+ * `LightCalendarGrid` (min date = today, not tomorrow, matching the
+ * same-day-allowed rule above).
+ *
  * Reached from Sessions ("Reschedule" on an upcoming SessionCard) — not a
  * tab itself, hidden via `href: null` in the (client) layout.
  */
@@ -21,14 +25,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { PrimaryButton } from '@/components/ui/button';
-import { Chip } from '@/components/ui/chip';
-import { ChipGrid } from '@/components/ui/chip-grid';
-import { GlassCard } from '@/components/ui/glass-card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { Brand } from '@/constants/theme';
+import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
+import { LightCard } from '@/components/light/light-card';
+import { LightChip, LightChipGrid } from '@/components/light/light-chip';
+import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightStatCard } from '@/components/light/light-stat-card';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import {
   addIstDays,
   formatIstDateLabel,
@@ -42,7 +47,7 @@ import {
 import { getClientBookingById, rescheduleBooking } from '@/lib/data/bookings';
 import { useAsync } from '@/lib/data/use-async';
 
-const DATE_CHOICES = 30; // matches §13 rule 7's forward window (not itself server-enforced, but a sane UI bound)
+const RESCHEDULE_WINDOW_DAYS = 30; // matches §13 rule 7's forward window (not itself server-enforced, but a sane UI bound)
 
 type Phase = 'pick' | 'saving' | 'success';
 
@@ -108,54 +113,54 @@ export default function RescheduleScreen() {
 
   if (loading) {
     return (
-      <ScreenScaffold title="Reschedule">
-        <LoadingState />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Reschedule">
+        <LightLoadingState />
+      </LightScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <ScreenScaffold title="Reschedule">
-        <ErrorState message={error} onRetry={reload} />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Reschedule">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
     );
   }
 
   if (!booking) {
     return (
-      <ScreenScaffold title="Reschedule">
-        <EmptyState message="Session not found." />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Reschedule">
+        <LightEmptyState message="Session not found." />
+      </LightScreenScaffold>
     );
   }
 
   if (booking.status !== 'upcoming') {
     return (
-      <ScreenScaffold title="Reschedule">
-        <EmptyState message="Only upcoming sessions can be rescheduled." />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Reschedule">
+        <LightEmptyState message="Only upcoming sessions can be rescheduled." />
+      </LightScreenScaffold>
     );
   }
 
   if (phase === 'success') {
     return (
-      <ScreenScaffold title="Rescheduled!">
-        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="NEW TIME" />
+      <LightScreenScaffold title="Rescheduled!">
+        <LightStatCard emphasize value={formatIstDateLabel(selectedDate)} label="NEW TIME" />
         {selectedSlot && (
-          <GlassCard>
+          <LightCard>
             <Text style={styles.metaText}>{formatIstTimeLabel(selectedSlot)}</Text>
-          </GlassCard>
+          </LightCard>
         )}
-        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+        <LightPrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
           View my sessions
-        </PrimaryButton>
-      </ScreenScaffold>
+        </LightPrimaryButton>
+      </LightScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold
+    <LightScreenScaffold
       title="Reschedule"
       subtitle={`Currently ${new Date(booking.scheduled_start).toLocaleString(undefined, {
         weekday: 'short',
@@ -164,43 +169,45 @@ export default function RescheduleScreen() {
         hour: 'numeric',
         minute: '2-digit',
       })}`}>
-      <GlassCard>
-        <SectionHeader title="New date" />
-        <ChipGrid>
-          {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i)).map((d) => {
-            const key = `${d.year}-${d.month}-${d.day}`;
-            const isSelected = d.year === selectedDate.year && d.month === selectedDate.month && d.day === selectedDate.day;
-            return <Chip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
-          })}
-        </ChipGrid>
-      </GlassCard>
+      <LightCard>
+        <LightSectionHeader title="New date" />
+        <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
+        <LightCalendarGrid
+          selected={selectedDate}
+          onSelect={setSelectedDate}
+          minDate={todayIst()}
+          maxDate={addIstDays(todayIst(), RESCHEDULE_WINDOW_DAYS)}
+          initialMonth={selectedDate}
+        />
+      </LightCard>
 
-      <GlassCard>
-        <SectionHeader title="New time" />
-        {slotsLoading && <LoadingState rows={1} />}
+      <LightCard>
+        <LightSectionHeader title="New time" />
+        {slotsLoading && <LightLoadingState rows={1} />}
         {!slotsLoading && slots && slots.length === 0 && (
-          <EmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
+          <LightEmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
         )}
         {!slotsLoading && slots && slots.length > 0 && (
-          <ChipGrid>
+          <LightChipGrid>
             {slots.map((s) => (
-              <Chip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
+              <LightChip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
             ))}
-          </ChipGrid>
+          </LightChipGrid>
         )}
-      </GlassCard>
+      </LightCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {actionError}
         </Text>
       )}
-      {phase === 'saving' && <LoadingState rows={1} />}
-    </ScreenScaffold>
+      {phase === 'saving' && <LightLoadingState rows={1} />}
+    </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.7)' },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
 });

@@ -13,6 +13,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { LightAvatar } from '@/components/light/light-avatar';
 import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
+import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
 import { LightCard } from '@/components/light/light-card';
 import { LightChip, LightChipGrid } from '@/components/light/light-chip';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
@@ -33,8 +34,6 @@ import {
 } from '@/lib/data/booking-wizard';
 import { findDemoMatch, hasExistingAssessment, type DemoMatch } from '@/lib/data/demo-booking';
 import { useAsync } from '@/lib/data/use-async';
-
-const DATE_CHOICES = 14; // tomorrow onward — §13 rule 1: no same-day booking, any type
 
 type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
@@ -213,13 +212,8 @@ export default function DemoBookingScreen() {
 
       <LightCard>
         <LightSectionHeader title="Pick a date" />
-        <LightChipGrid>
-          {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i + 1)).map((d) => {
-            const key = `${d.year}-${d.month}-${d.day}`;
-            const isSelected = d.year === selectedDate.year && d.month === selectedDate.month && d.day === selectedDate.day;
-            return <LightChip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
-          })}
-        </LightChipGrid>
+        <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
+        <LightCalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
       </LightCard>
 
       <LightCard>
@@ -250,6 +244,7 @@ export default function DemoBookingScreen() {
 
 const styles = StyleSheet.create({
   eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary },
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
   bigTime: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, color: LightBrand.navy },
   metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
   holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.amber, marginTop: 8 },

@@ -8,15 +8,9 @@
  * `href: null` in the (client) layout.
  */
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
-import { ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { PrimaryButton } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { TextField } from '@/components/ui/text-field';
-import { Brand, Radius } from '@/constants/theme';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightCard } from '@/components/light/light-card';
 import { LightErrorState, LightLoadingState } from '@/components/light/light-states';
@@ -292,95 +286,94 @@ function EnrolledProfileScreen() {
 
   if (loading) {
     return (
-      <ScreenScaffold title="Profile">
-        <LoadingState />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Profile">
+        <LightLoadingState />
+      </LightScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <ScreenScaffold title="Profile">
-        <ErrorState message={error} onRetry={reload} />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Profile">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold title="Profile">
+    <LightScreenScaffold title="Profile">
       <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
       {avatarError && (
-        <Text style={styles.errorText} accessibilityRole="alert">
+        <Text style={lightStyles.errorText} accessibilityRole="alert">
           {avatarError}
         </Text>
       )}
 
-      <GlassCard style={styles.card}>
-        <SectionHeader title="Your details" />
-        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
-        <TextField
+      <LightCard style={lightStyles.card}>
+        <LightSectionHeader title="Your details" />
+        <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <LightTextField
           placeholder="Phone number"
           value={displayPhone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
           accessibilityLabel="Phone number"
         />
-        <TextField
+        <LightTextField
           placeholder="Emergency contact"
           value={displayEmergency}
           onChangeText={setEmergencyContact}
           accessibilityLabel="Emergency contact"
         />
         {profileError && (
-          <Text style={styles.errorText} accessibilityRole="alert">
+          <Text style={lightStyles.errorText} accessibilityRole="alert">
             {profileError}
           </Text>
         )}
-        {profileSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
+        {profileSaved && <Text style={lightStyles.savedText}>Saved.</Text>}
+        <LightPrimaryButton onPress={onSaveProfile} loading={savingProfile} style={lightStyles.saveButton}>
           Save
-        </PrimaryButton>
-      </GlassCard>
+        </LightPrimaryButton>
+      </LightCard>
 
-      <GlassCard style={styles.card}>
-        <SectionHeader title="Training profile" />
-        <TextField placeholder="Goals (comma-separated)" value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
-        <TextField
+      <LightCard style={lightStyles.card}>
+        <LightSectionHeader title="Training profile" />
+        <LightTextField placeholder="Goals (comma-separated)" value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
+        <LightTextField
           placeholder="Equipment (comma-separated)"
           value={displayEquipment}
           onChangeText={setEquipment}
           accessibilityLabel="Equipment"
         />
-        <TextInput
-          style={styles.multilineInput}
+        <LightTextField
           placeholder="Medical notes"
-          placeholderTextColor="rgba(255,255,255,0.35)"
           value={displayMedicalNotes}
           onChangeText={setMedicalNotes}
           multiline
+          style={lightStyles.multilineInput}
           accessibilityLabel="Medical notes"
         />
         {detailsError && (
-          <Text style={styles.errorText} accessibilityRole="alert">
+          <Text style={lightStyles.errorText} accessibilityRole="alert">
             {detailsError}
           </Text>
         )}
-        {detailsSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <PrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
+        {detailsSaved && <Text style={lightStyles.savedText}>Saved.</Text>}
+        <LightPrimaryButton onPress={onSaveDetails} loading={savingDetails} style={lightStyles.saveButton}>
           Save
-        </PrimaryButton>
-      </GlassCard>
+        </LightPrimaryButton>
+      </LightCard>
 
-      <GlassCard style={styles.card}>
-        <SectionHeader title="Change password" />
-        <TextField
+      <LightCard style={lightStyles.card}>
+        <LightSectionHeader title="Change password" />
+        <LightTextField
           placeholder="New password"
           isPassword
           value={newPassword}
           onChangeText={setNewPassword}
           accessibilityLabel="New password"
         />
-        <TextField
+        <LightTextField
           placeholder="Confirm new password"
           isPassword
           value={confirmPassword}
@@ -388,16 +381,16 @@ function EnrolledProfileScreen() {
           accessibilityLabel="Confirm new password"
         />
         {passwordError && (
-          <Text style={styles.errorText} accessibilityRole="alert">
+          <Text style={lightStyles.errorText} accessibilityRole="alert">
             {passwordError}
           </Text>
         )}
-        {passwordChanged && <Text style={styles.savedText}>Password changed.</Text>}
-        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
+        {passwordChanged && <Text style={lightStyles.savedText}>Password changed.</Text>}
+        <LightPrimaryButton onPress={onChangePassword} loading={changingPassword} style={lightStyles.saveButton}>
           Change password
-        </PrimaryButton>
-      </GlassCard>
-    </ScreenScaffold>
+        </LightPrimaryButton>
+      </LightCard>
+    </LightScreenScaffold>
   );
 }
 
@@ -407,25 +400,9 @@ export default function ClientProfileScreen() {
   return subscription ? <EnrolledProfileScreen /> : <PrePurchaseProfileScreen />;
 }
 
-const styles = StyleSheet.create({
-  card: { gap: 12 },
-  multilineInput: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-    padding: 14,
-    color: '#FFFFFF',
-    minHeight: 80,
-    backgroundColor: Brand.charcoal2,
-    borderRadius: Radius.md,
-    textAlignVertical: 'top',
-  },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
-  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
-  saveButton: { marginTop: 4 },
-});
-
 const lightStyles = StyleSheet.create({
   card: { gap: 12 },
+  multilineInput: { minHeight: 80, textAlignVertical: 'top', paddingTop: 14 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 4 },
   savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 4 },

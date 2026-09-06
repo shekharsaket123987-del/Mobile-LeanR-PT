@@ -1,32 +1,35 @@
 /**
- * Home (Client) — dual-branch (New PRD.md pre-purchase redesign). Before
- * any purchase: light "Your Demo is Scheduled" hero (mockup's Home
- * frames), reusing the same `getUpcomingBookings`/`getMyCoach` data (a
- * demo booking already surfaces here structurally — `getUpcomingBookings`
- * has no session-type filter). After purchase: the existing dark
- * dashboard, unchanged, moved into `EnrolledHomeScreen`.
+ * Home (Client) — dual-branch. Before any purchase: light "Your Demo is
+ * Scheduled" hero (mockup's Home frames), reusing the same
+ * `getUpcomingBookings`/`getMyCoach` data (a demo booking already surfaces
+ * here structurally — `getUpcomingBookings` has no session-type filter).
+ * After purchase: the Active Client Portal's own light Home (mockup frame
+ * 9) — journey/streak card, Next Session card, Today's Tasks checklist.
+ *
+ * Today's Tasks (log water/meal plan/track workout) is shown
+ * disabled/"coming soon": no diet/workout-plan or daily-task-tracking
+ * feature exists anywhere in the schema or PRD, so nothing is wired behind
+ * it — see the redesign plan's "unbacked mockup elements" decision. The
+ * Journey card shows a real, PRD-backed streak-week count
+ * (`computeWeekStreak`, same as the PRD's "sessions/streak/progress-since-
+ * Day-1 summary" dashboard requirement) rather than a fabricated "Week N
+ * of 24" — there's no program-length-in-weeks field anywhere to back that
+ * denominator.
  */
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CelebrationOverlay } from '@/components/celebration-overlay';
-import { StreakChip } from '@/components/streak-chip';
-import { Avatar } from '@/components/ui/avatar';
-import { IconButton, PrimaryButton } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { ProfileButton } from '@/components/ui/profile-menu';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
-import { StatCard } from '@/components/ui/stat-card';
-import { Brand, DisplayFont } from '@/constants/theme';
+import { IconButton } from '@/components/ui/button';
 import { LightAvatar } from '@/components/light/light-avatar';
 import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
 import { LightCard } from '@/components/light/light-card';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { DisplayFont } from '@/constants/theme';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
@@ -141,6 +144,58 @@ function PrePurchaseHomeScreen() {
   );
 }
 
+const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
+  'too-early': 'Join opens 10 min before start',
+  joinable: 'Join session',
+  ended: null,
+};
+
+function EnrolledJoinRow({ booking }: { booking: Booking }) {
+  const state = getJoinState(booking);
+  const label = JOIN_LABEL[state];
+  const [joining, setJoining] = useState(false);
+  if (!label) return null;
+
+  const onJoin = async () => {
+    setJoining(true);
+    try {
+      await openZoomLink(booking);
+    } catch (err) {
+      Alert.alert('Could not join', err instanceof Error ? err.message : String(err));
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  if (state !== 'joinable') {
+    return <Text style={lightStyles.joinHint}>{label}</Text>;
+  }
+
+  return (
+    <LightPrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
+      {joining ? 'Starting…' : label}
+    </LightPrimaryButton>
+  );
+}
+
+function TodaysTasksCard() {
+  const tasks = ['Log your water intake', 'Complete your meal plan', 'Track your workout'];
+  return (
+    <LightCard>
+      <View style={lightStyles.tasksHeader}>
+        <Text style={lightStyles.tasksTitle}>Today&apos;s Tasks</Text>
+        <Text style={lightStyles.comingSoonBadge}>Coming soon</Text>
+      </View>
+      {tasks.map((t) => (
+        <View key={t} style={lightStyles.taskRow}>
+          <Ionicons name="ellipse-outline" size={16} color={LightBrand.textMuted} />
+          <Text style={lightStyles.taskText}>{t}</Text>
+        </View>
+      ))}
+    </LightCard>
+  );
+}
+
 function EnrolledHomeScreen() {
   const { session, profile } = useAuth();
   const [gate, setGate] = useState<'checking' | 'clear'>('checking');
@@ -180,8 +235,7 @@ function EnrolledHomeScreen() {
   const [milestone, setMilestone] = useState<number | null>(null);
 
   const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
-  const { nextBookings, subscription, coach, completedBookings, sessionsUsed } =
-    data ?? { nextBookings: [], subscription: null, coach: null, completedBookings: [], sessionsUsed: null };
+  const { nextBookings, coach, completedBookings } = data ?? { nextBookings: [], subscription: null, coach: null, completedBookings: [], sessionsUsed: null };
   const nextBooking = nextBookings?.[0] ?? null;
   const streakWeeks = completedBookings ? computeWeekStreak(completedBookings) : 0;
 
@@ -202,72 +256,64 @@ function EnrolledHomeScreen() {
   if (gate === 'checking') return null; // launch animation overlay still covers this briefly; avoids flashing dashboard widgets before the gate resolves
 
   return (
-    <View style={styles.root}>
-      <LinearGradient
-        colors={['rgba(245,217,10,0.07)', 'rgba(245,217,10,0)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.glow}
-        pointerEvents="none"
-      />
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.topBar}>
-          <View>
-            <Text style={styles.eyebrow}>WELCOME BACK</Text>
-            <Text style={styles.greeting}>Hi {greetingName} 👋</Text>
-          </View>
-          <View style={styles.topActions}>
-            <IconButton accessibilityLabel="Notifications" onPress={() => router.push('/notifications')}>
-              <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
-            </IconButton>
-            <ProfileButton />
-          </View>
+    <View style={lightStyles.root}>
+      <SafeAreaView style={lightStyles.flex} edges={['top']}>
+        <View style={lightStyles.topBar}>
+          <Text style={lightStyles.greeting}>Good Morning,{'\n'}{greetingName}!</Text>
+          <IconButton accessibilityLabel="Notifications" onPress={() => router.push('/notifications')}>
+            <Ionicons name="notifications-outline" size={19} color={LightBrand.navy} />
+          </IconButton>
         </View>
 
-        <View style={styles.scroll}>
-          {loading && <LoadingState />}
-          {error && <ErrorState message={error} onRetry={reload} />}
+        <View style={lightStyles.scroll}>
+          {loading && <LightLoadingState />}
+          {error && <LightErrorState message={error} onRetry={reload} />}
 
           {!loading && !error && (
             <>
-              <StreakChip weeks={streakWeeks} />
+              <LightCard variant="teal" style={lightStyles.journeyCard}>
+                <View style={lightStyles.journeyRow}>
+                  <Ionicons name="leaf-outline" size={20} color={LightBrand.tealDark} />
+                  <View>
+                    <Text style={lightStyles.journeyTitle}>Your Journey</Text>
+                    <Text style={lightStyles.journeySubtitle}>
+                      {streakWeeks > 0 ? `${streakWeeks}-week streak — stay consistent!` : 'Complete this week to start your streak!'}
+                    </Text>
+                  </View>
+                </View>
+              </LightCard>
 
               {nextBooking ? (
-                <GlassCard variant="yellow" style={styles.heroCard}>
-                  <Text style={styles.heroEyebrow}>NEXT SESSION</Text>
-                  <Text style={styles.heroDay}>{formatSessionDay(nextBooking.scheduled_start)}</Text>
-                  <Text style={styles.heroTime}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
+                <LightCard style={lightStyles.heroCard}>
+                  <Text style={lightStyles.heroEyebrow}>NEXT SESSION</Text>
+                  <Text style={lightStyles.heroDate}>{formatSessionDay(nextBooking.scheduled_start)}</Text>
+                  <Text style={lightStyles.heroTime}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
 
-                  <View style={styles.coachRow}>
-                    <Avatar photoUrl={coach?.photo_url} name={nextBooking.coach_name ?? coach?.full_name} size={36} />
-                    <Text style={styles.coachName} numberOfLines={1}>
+                  <View style={lightStyles.coachRow}>
+                    <LightAvatar photoUrl={coach?.photo_url} name={nextBooking.coach_name ?? coach?.full_name} size={36} />
+                    <Text style={lightStyles.coachName} numberOfLines={1}>
                       with {nextBooking.coach_name ?? coach?.full_name ?? 'your coach'}
                     </Text>
                   </View>
 
-                  <JoinRow booking={nextBooking} />
-                </GlassCard>
+                  <EnrolledJoinRow booking={nextBooking} />
+                </LightCard>
               ) : (
-                <GlassCard>
-                  <EmptyState
+                <LightCard>
+                  <LightEmptyState
                     message="No upcoming sessions booked yet."
                     icon="calendar-outline"
                     actionLabel="Book a session"
                     onAction={() => router.push('/book-session')}
                   />
-                </GlassCard>
+                </LightCard>
               )}
 
-              {subscription && (
-                <StatCard
-                  value={`${sessionsUsed ?? '—'}/${subscription.sessions_total ?? '—'}`}
-                  label="SESSIONS THIS MONTH"
-                />
-              )}
+              <TodaysTasksCard />
 
-              <PrimaryButton size="lg" onPress={() => router.push(nextBooking ? '/sessions' : '/book-session')}>
+              <LightPrimaryButton size="lg" onPress={() => router.push(nextBooking ? '/sessions' : '/book-session')}>
                 {nextBooking ? 'View sessions' : 'Book a session'}
-              </PrimaryButton>
+              </LightPrimaryButton>
             </>
           )}
         </View>
@@ -290,72 +336,6 @@ export default function HomeScreen() {
   return subscription ? <EnrolledHomeScreen /> : <PrePurchaseHomeScreen />;
 }
 
-const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
-  'too-early': 'Join opens 10 min before start',
-  joinable: 'Join session',
-  ended: null,
-};
-
-function JoinRow({ booking }: { booking: Parameters<typeof getJoinState>[0] }) {
-  const state = getJoinState(booking);
-  const label = JOIN_LABEL[state];
-  const [joining, setJoining] = useState(false);
-  if (!label) return null;
-
-  const onJoin = async () => {
-    setJoining(true);
-    try {
-      await openZoomLink(booking);
-    } catch (err) {
-      Alert.alert('Could not join', err instanceof Error ? err.message : String(err));
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  if (state !== 'joinable') {
-    return <Text style={styles.joinHint}>{label}</Text>;
-  }
-
-  return (
-    <PrimaryButton size="md" onPress={onJoin} loading={joining} style={styles.joinButton}>
-      {joining ? 'Starting…' : label}
-    </PrimaryButton>
-  );
-}
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Brand.bg },
-  flex: { flex: 1 },
-  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 1, color: 'rgba(255,255,255,0.4)' },
-  greeting: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 24, color: '#FFFFFF' },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  scroll: { flex: 1, padding: 20, paddingTop: 16, gap: 16 },
-  heroCard: { gap: 4, paddingVertical: 20 },
-  heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 1, color: Brand.yellow },
-  heroDay: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  heroTime: {
-    fontFamily: DisplayFont,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    fontSize: 44,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  coachName: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.8)', flexShrink: 1 },
-  joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 14 },
-  joinButton: { marginTop: 14, alignSelf: 'flex-start' },
-});
-
 const lightStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: LightBrand.bg },
   flex: { flex: 1 },
@@ -365,11 +345,23 @@ const lightStyles = StyleSheet.create({
   heroCard: { gap: 6, paddingVertical: 18 },
   heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.teal },
   heroDate: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },
+  heroTime: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 34, color: LightBrand.navy, letterSpacing: -0.5 },
   modeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   modeText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.textPrimary },
+  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.textPrimary, flexShrink: 1 },
   coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
   calendarButton: { marginTop: 10 },
   coachProfileButton: { marginTop: 8 },
+  joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textMuted, marginTop: 10 },
+  joinButton: { marginTop: 10, alignSelf: 'flex-start' },
+  journeyCard: { gap: 4 },
+  journeyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  journeyTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, color: LightBrand.navy },
+  journeySubtitle: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark },
+  tasksHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  tasksTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  comingSoonBadge: { fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, color: LightBrand.textMuted },
+  taskRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  taskText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
 });

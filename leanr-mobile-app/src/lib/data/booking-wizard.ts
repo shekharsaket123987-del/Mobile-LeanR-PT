@@ -63,7 +63,7 @@ export function istDateKey(date: IstDate): string {
 }
 
 /** Weekday (0=Sun..6=Sat) for an IST calendar date — matches Postgres `extract(dow from ...)`. */
-function istDayOfWeek(date: IstDate): number {
+export function istDayOfWeek(date: IstDate): number {
   return new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay();
 }
 

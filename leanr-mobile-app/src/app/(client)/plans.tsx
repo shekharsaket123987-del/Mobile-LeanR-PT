@@ -9,7 +9,6 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
 import { TextLink } from '@/components/tappable';
 import { PrimaryButton } from '@/components/ui/button';
@@ -23,9 +22,23 @@ import { LightEmptyState, LightErrorState, LightLoadingState } from '@/component
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getMarketingPlans } from '@/lib/data/plans';
-import { purchasePackage } from '@/lib/data/payments';
+import { getMyPayments, purchasePackage } from '@/lib/data/payments';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+
+async function goToPaymentSuccess(planName: string) {
+  const payments = await getMyPayments();
+  const latest = payments[0];
+  router.replace({
+    pathname: '/payment-success',
+    params: {
+      planName,
+      amount: String(latest?.amount ?? ''),
+      paymentId: latest?.razorpay_payment_id ?? '',
+      paidAt: latest?.paid_at ?? '',
+    },
+  });
+}
 
 function formatPrice(price: number) {
   return `₹${price.toLocaleString()}`;
@@ -43,7 +56,6 @@ function PrePurchasePlansScreen() {
   const { data: plans, loading, error, reload } = useAsync(getMarketingPlans, []);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const [celebrating, setCelebrating] = useState(false);
 
   const onPurchase = async (planId: string, planName: string) => {
     setPurchasingId(planId);
@@ -54,7 +66,7 @@ function PrePurchasePlansScreen() {
         contact: session?.user.phone,
         name: profile?.full_name,
       });
-      setCelebrating(true);
+      await goToPaymentSuccess(planName);
     } catch (err) {
       setPurchaseError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -104,17 +116,6 @@ function PrePurchasePlansScreen() {
           {purchaseError}
         </Text>
       )}
-
-      {celebrating && (
-        <CelebrationOverlay
-          title="You're in! 🎉"
-          subtitle="Pick a start date next, then a quick health check."
-          onDismiss={() => {
-            setCelebrating(false);
-            router.replace('/activate');
-          }}
-        />
-      )}
     </LightScreenScaffold>
   );
 }
@@ -124,7 +125,6 @@ function EnrolledPlansScreen() {
   const { data: plans, loading, error, reload } = useAsync(getMarketingPlans, []);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const [celebrating, setCelebrating] = useState(false);
 
   const onPurchase = async (planId: string, planName: string) => {
     setPurchasingId(planId);
@@ -135,7 +135,7 @@ function EnrolledPlansScreen() {
         contact: session?.user.phone,
         name: profile?.full_name,
       });
-      setCelebrating(true);
+      await goToPaymentSuccess(planName);
     } catch (err) {
       setPurchaseError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -174,17 +174,6 @@ function EnrolledPlansScreen() {
         <Text style={styles.errorText} accessibilityRole="alert">
           {purchaseError}
         </Text>
-      )}
-
-      {celebrating && (
-        <CelebrationOverlay
-          title="You're in! 🎉"
-          subtitle="Pick a start date next, then a quick health check."
-          onDismiss={() => {
-            setCelebrating(false);
-            router.replace('/activate');
-          }}
-        />
       )}
     </ScreenScaffold>
   );

@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
 import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
 import { LightCard } from '@/components/light/light-card';
 import { LightChip, LightChipGrid } from '@/components/light/light-chip';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
@@ -26,8 +27,6 @@ import { LightEmptyState, LightLoadingState } from '@/components/light/light-sta
 import { LightBrand } from '@/constants/light-theme';
 import { addIstDays, formatIstDateLabel, formatIstTimeLabel, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { confirmAnonymousDemoBooking, findAnonymousDemoSlots, type AnonymousDemoMatch } from '@/lib/data/anonymous-demo-booking';
-
-const DATE_CHOICES = 14; // tomorrow onward — §13 rule 1: no same-day booking, any type
 
 type Phase = 'pick' | 'details' | 'confirming' | 'success';
 
@@ -147,13 +146,8 @@ export default function BookFreeDemoScreen() {
     <LightScreenScaffold title="Book a Free Demo" subtitle="No account needed — we'll match you with an available coach.">
       <LightCard>
         <LightSectionHeader eyebrow="Step 1" title="Pick a date" />
-        <LightChipGrid>
-          {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i + 1)).map((d) => {
-            const key = `${d.year}-${d.month}-${d.day}`;
-            const isSelected = d.year === selectedDate.year && d.month === selectedDate.month && d.day === selectedDate.day;
-            return <LightChip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
-          })}
-        </LightChipGrid>
+        <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
+        <LightCalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
       </LightCard>
 
       <LightCard>
@@ -186,6 +180,7 @@ export default function BookFreeDemoScreen() {
 }
 
 const styles = StyleSheet.create({
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
   cardLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary, textTransform: 'uppercase' },
   bigStat: { fontFamily: 'Manrope_800ExtraBold', fontSize: 30, color: LightBrand.navy },
   withCoach: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.textSecondary },

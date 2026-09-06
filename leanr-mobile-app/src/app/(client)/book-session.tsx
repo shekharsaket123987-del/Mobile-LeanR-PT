@@ -1,9 +1,9 @@
 /**
  * Book a Session — LEANR_PT_MOBILE_PRD.md §10 "Screen: Book a Session",
- * §13 rules 1-4, LEANR_PT_NEXTGEN_APP_PRD.md §9.2 (chip-based slot
- * picking, one primary action per screen). Hold->confirm ad-hoc booking
- * wizard — see src/lib/data/booking-wizard.ts for the RPC/schema detail
- * this was built against (confirmed live on 2026-08-17).
+ * §13 rules 1-4. Hold->confirm ad-hoc booking wizard — see
+ * src/lib/data/booking-wizard.ts for the RPC/schema detail this was built
+ * against. Relit for the post-purchase light theme (mockup frame 11) —
+ * real month calendar via `LightCalendarGrid` instead of a date-chip row.
  *
  * Reached from Sessions ("+ Book a Session") and Home ("Book a session"
  * when no upcoming booking exists) — not a tab itself, hidden from the
@@ -15,17 +15,19 @@
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { RateSessionSheet } from '@/components/rate-session-sheet';
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { TextLink } from '@/components/tappable';
-import { PrimaryButton } from '@/components/ui/button';
-import { Chip } from '@/components/ui/chip';
-import { GlassCard } from '@/components/ui/glass-card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { Brand } from '@/constants/theme';
+import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
+import { LightCard } from '@/components/light/light-card';
+import { LightChip, LightChipGrid } from '@/components/light/light-chip';
+import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightStatCard } from '@/components/light/light-stat-card';
+import { LightTextLink } from '@/components/light/light-tappable';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import {
   addIstDays,
   confirmHold,
@@ -43,8 +45,6 @@ import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
 import { rateSession } from '@/lib/data/bookings';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
-
-const DATE_CHOICES = 14; // next 14 days, tomorrow onward — §13 rule 1: no same-day booking
 
 type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
@@ -84,12 +84,6 @@ export default function BookSessionScreen() {
   useEffect(() => {
     if (!coachId || !settings) return;
     let cancelled = false;
-    // The reset calls are deferred a microtask so they run inside a
-    // callback rather than synchronously in the effect body (same shape
-    // as the fetch's own .then/.catch below) — an effect kicking off a
-    // real async fetch against Supabase is exactly the "external system"
-    // case effects are for, just written so the linter's static check
-    // (react-hooks/set-state-in-effect) doesn't flag the setup calls.
     Promise.resolve().then(() => {
       if (cancelled) return;
       setSlots(null);
@@ -159,17 +153,17 @@ export default function BookSessionScreen() {
 
   if (loading) {
     return (
-      <ScreenScaffold title="Book a Session">
-        <LoadingState />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Book a Session">
+        <LightLoadingState />
+      </LightScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <ScreenScaffold title="Book a Session">
-        <ErrorState message={error} onRetry={reload} />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Book a Session">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
     );
   }
 
@@ -182,48 +176,48 @@ export default function BookSessionScreen() {
 
   if (!subscription) {
     return (
-      <ScreenScaffold title="Book a Session">
-        <EmptyState message="You need an active plan before you can book a session." icon="lock-closed-outline" />
-        <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
+      <LightScreenScaffold title="Book a Session">
+        <LightEmptyState message="You need an active plan before you can book a session." icon="lock-closed-outline" />
+        <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
           View plans
-        </PrimaryButton>
+        </LightPrimaryButton>
         <RateSessionSheet
           visible={!!unratedDemo}
           title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
           onClose={() => setFeedbackDismissed(true)}
           onSubmit={onSubmitDemoFeedback}
         />
-      </ScreenScaffold>
+      </LightScreenScaffold>
     );
   }
 
   if (!coach && coaches.length === 0) {
     return (
-      <ScreenScaffold title="Book a Session">
-        <EmptyState message="No coaches are available to book right now." />
-      </ScreenScaffold>
+      <LightScreenScaffold title="Book a Session">
+        <LightEmptyState message="No coaches are available to book right now." />
+      </LightScreenScaffold>
     );
   }
 
   if (phase === 'success') {
     return (
-      <ScreenScaffold title="Booked!">
-        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="SESSION CONFIRMED" />
-        <GlassCard>
+      <LightScreenScaffold title="Booked!">
+        <LightStatCard emphasize value={formatIstDateLabel(selectedDate)} label="SESSION CONFIRMED" />
+        <LightCard>
           {selectedSlot && <Text style={styles.metaText}>{formatIstTimeLabel(selectedSlot)}</Text>}
           {activeCoachName && <Text style={styles.metaText}>with {activeCoachName}</Text>}
-        </GlassCard>
-        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+        </LightCard>
+        <LightPrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
           View my sessions
-        </PrimaryButton>
-      </ScreenScaffold>
+        </LightPrimaryButton>
+      </LightScreenScaffold>
     );
   }
 
   if (phase === 'review' || phase === 'confirming') {
     return (
-      <ScreenScaffold title="Confirm your session">
-        <GlassCard variant="yellow">
+      <LightScreenScaffold title="Confirm your session">
+        <LightCard variant="teal">
           <Text style={styles.eyebrow}>{formatIstDateLabel(selectedDate)}</Text>
           <Text style={styles.bigTime}>{selectedSlot ? formatIstTimeLabel(selectedSlot) : ''}</Text>
           {activeCoachName && <Text style={styles.metaText}>with {activeCoachName}</Text>}
@@ -232,65 +226,60 @@ export default function BookSessionScreen() {
               ? `Hold expires in ${Math.floor(holdSecondsLeft / 60)}:${String(holdSecondsLeft % 60).padStart(2, '0')}`
               : 'Hold expired — go back and pick a slot again'}
           </Text>
-        </GlassCard>
+        </LightCard>
         {actionError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {actionError}
           </Text>
         )}
-        <PrimaryButton size="lg" onPress={onConfirm} loading={phase === 'confirming'} disabled={holdSecondsLeft <= 0}>
+        <LightPrimaryButton size="lg" onPress={onConfirm} loading={phase === 'confirming'} disabled={holdSecondsLeft <= 0}>
           Confirm booking
-        </PrimaryButton>
-        <TextLink onPress={onRestart}>Pick a different slot</TextLink>
-      </ScreenScaffold>
+        </LightPrimaryButton>
+        <LightTextLink onPress={onRestart}>Pick a different slot</LightTextLink>
+      </LightScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold title="Book a Session" subtitle={activeCoachName ? `with ${activeCoachName}` : undefined}>
+    <LightScreenScaffold title="Book a Session" subtitle={activeCoachName ? `with ${activeCoachName}` : undefined}>
       {!coach && coaches.length > 0 && (
-        <GlassCard>
-          <SectionHeader title="Choose a coach" />
-          <View style={styles.chipRow}>
+        <LightCard>
+          <LightSectionHeader title="Choose a coach" />
+          <LightChipGrid>
             {coaches.map((c) => (
-              <Chip key={c.id} label={c.full_name} selected={c.id === selectedCoachId} onPress={() => setSelectedCoachId(c.id)} />
+              <LightChip key={c.id} label={c.full_name} selected={c.id === selectedCoachId} onPress={() => setSelectedCoachId(c.id)} />
             ))}
-          </View>
-        </GlassCard>
+          </LightChipGrid>
+        </LightCard>
       )}
 
-      <GlassCard>
-        <SectionHeader title="Pick a date" />
-        <View style={styles.chipRow}>
-          {Array.from({ length: DATE_CHOICES }, (_, i) => addIstDays(todayIst(), i + 1)).map((d) => {
-            const key = `${d.year}-${d.month}-${d.day}`;
-            const isSelected = d.year === selectedDate.year && d.month === selectedDate.month && d.day === selectedDate.day;
-            return <Chip key={key} label={formatIstDateLabel(d)} selected={isSelected} onPress={() => setSelectedDate(d)} />;
-          })}
-        </View>
-      </GlassCard>
+      <LightCard>
+        <LightSectionHeader title="Pick a date" />
+        <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
+        <LightCalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
+      </LightCard>
 
-      <GlassCard>
-        <SectionHeader title="Available times" />
-        {slotsLoading && <LoadingState rows={1} />}
+      <LightCard>
+        <LightSectionHeader title="Available times" />
+        {slotsLoading && <LightLoadingState rows={1} />}
         {!slotsLoading && slots && slots.length === 0 && (
-          <EmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
+          <LightEmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
         )}
         {!slotsLoading && slots && slots.length > 0 && (
-          <View style={styles.chipRow}>
+          <LightChipGrid>
             {slots.map((s) => (
-              <Chip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
+              <LightChip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
             ))}
-          </View>
+          </LightChipGrid>
         )}
-      </GlassCard>
+      </LightCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {actionError}
         </Text>
       )}
-      {phase === 'holding' && <LoadingState rows={1} />}
+      {phase === 'holding' && <LightLoadingState rows={1} />}
 
       <RateSessionSheet
         visible={!!unratedDemo}
@@ -298,19 +287,15 @@ export default function BookSessionScreen() {
         onClose={() => setFeedbackDismissed(true)}
         onSubmit={onSubmitDemoFeedback}
       />
-    </ScreenScaffold>
+    </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.6)' },
-  bigTime: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 34,
-    color: '#FFFFFF',
-  },
-  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.7)' },
-  holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.streakEmberStart, marginTop: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary },
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
+  bigTime: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, color: LightBrand.navy },
+  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
+  holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.amber, marginTop: 8 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
 });

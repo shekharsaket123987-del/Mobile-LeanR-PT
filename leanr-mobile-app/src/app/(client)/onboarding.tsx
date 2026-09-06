@@ -4,19 +4,27 @@
  * (src/lib/data/journey.ts) lets a client through to the normal dashboard.
  * Weight + Fitness Goal are the only two required fields, matching the web
  * app exactly. Not a tab itself, hidden via `href: null` in the layout.
+ *
+ * Relit + restructured into a 3-step wizard for the post-purchase light
+ * theme (mockup frame 5, "Step 1 of 3") — same fields/validation/one-time
+ * submit as before, just paced across 3 screens instead of one long form.
+ *
+ * The mockup's step-1 "Current Fitness Level" (Beginner/Intermediate/
+ * Advanced) selector is deliberately omitted: `client_onboarding` has no
+ * such column (only `fitness_goal` does) — nothing to persist it to, so
+ * showing that control would silently discard whatever the client picked.
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { ScreenScaffold } from '@/components/screen-scaffold';
-import { PrimaryButton } from '@/components/ui/button';
-import { Chip } from '@/components/ui/chip';
-import { ChipGrid } from '@/components/ui/chip-grid';
-import { GlassCard } from '@/components/ui/glass-card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { TextField } from '@/components/ui/text-field';
-import { Brand, Radius } from '@/constants/theme';
+import { LightChip, LightChipGrid } from '@/components/light/light-chip';
+import { LightCard } from '@/components/light/light-card';
+import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightTextField } from '@/components/light/light-text-field';
+import { LightBrand } from '@/constants/light-theme';
 import { submitOnboarding } from '@/lib/data/onboarding';
 import type { FitnessGoal } from '@/lib/data/types';
 
@@ -29,6 +37,7 @@ const FITNESS_GOALS: { value: FitnessGoal; label: string }[] = [
 ];
 
 const GENDERS = ['Male', 'Female', 'Other'];
+const TOTAL_STEPS = 3;
 
 function toNumber(v: string): number | undefined {
   if (!v.trim()) return undefined;
@@ -37,6 +46,7 @@ function toNumber(v: string): number | undefined {
 }
 
 export default function OnboardingScreen() {
+  const [step, setStep] = useState(1);
   const [weight, setWeight] = useState('');
   const [goal, setGoal] = useState<FitnessGoal | null>(null);
   const [age, setAge] = useState('');
@@ -58,6 +68,24 @@ export default function OnboardingScreen() {
 
   const weightNum = toNumber(weight);
   const canSubmit = weightNum !== undefined && goal !== null;
+
+  const onNext = () => {
+    setFormError(null);
+    if (step === 1 && !goal) {
+      setFormError('Pick a fitness goal to continue.');
+      return;
+    }
+    if (step === 2 && weightNum === undefined) {
+      setFormError('Weight is required to continue.');
+      return;
+    }
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  };
+
+  const onBack = () => {
+    setFormError(null);
+    setStep((s) => Math.max(s - 1, 1));
+  };
 
   const onSubmit = async () => {
     if (!canSubmit || weightNum === undefined || !goal) {
@@ -94,75 +122,68 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <ScreenScaffold title="Tell Us About You" subtitle="A quick health check so your coach can build the right plan.">
-      <GlassCard>
-        <SectionHeader title="About you" />
-        <TextField icon="scale-outline" placeholder="Weight (kg) *" keyboardType="numeric" value={weight} onChangeText={setWeight} />
-        <TextField icon="calendar-outline" placeholder="Age" keyboardType="numeric" value={age} onChangeText={setAge} />
-        <TextField icon="resize-outline" placeholder="Height (cm)" keyboardType="numeric" value={height} onChangeText={setHeight} />
-        <Text style={styles.label}>GENDER</Text>
-        <ChipGrid>
-          {GENDERS.map((g) => (
-            <Chip key={g} label={g} selected={gender === g.toLowerCase()} onPress={() => setGender(g.toLowerCase())} />
-          ))}
-        </ChipGrid>
-      </GlassCard>
+    <LightScreenScaffold title="Let's Get Started!" subtitle={`Step ${step} of ${TOTAL_STEPS}`}>
+      {step === 1 && (
+        <LightCard>
+          <LightSectionHeader title="Your fitness goal" />
+          <LightChipGrid>
+            {FITNESS_GOALS.map((g) => (
+              <LightChip key={g.value} label={g.label} selected={goal === g.value} onPress={() => setGoal(g.value)} />
+            ))}
+          </LightChipGrid>
+        </LightCard>
+      )}
 
-      <GlassCard>
-        <SectionHeader title="Fitness goal" />
-        <ChipGrid>
-          {FITNESS_GOALS.map((g) => (
-            <Chip key={g.value} label={g.label} selected={goal === g.value} onPress={() => setGoal(g.value)} />
-          ))}
-        </ChipGrid>
-      </GlassCard>
+      {step === 2 && (
+        <LightCard>
+          <LightSectionHeader title="Baseline measurements" />
+          <LightTextField placeholder="Weight (kg) *" keyboardType="numeric" value={weight} onChangeText={setWeight} />
+          <LightTextField placeholder="Age" keyboardType="numeric" value={age} onChangeText={setAge} />
+          <LightTextField placeholder="Height (cm)" keyboardType="numeric" value={height} onChangeText={setHeight} />
+          <Text style={styles.label}>GENDER</Text>
+          <LightChipGrid>
+            {GENDERS.map((g) => (
+              <LightChip key={g} label={g} selected={gender === g.toLowerCase()} onPress={() => setGender(g.toLowerCase())} />
+            ))}
+          </LightChipGrid>
+          <Text style={[styles.label, styles.optionalLabel]}>OPTIONAL</Text>
+          <LightTextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
+          <LightTextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
+          <LightTextField placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+          <LightTextField placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+          <LightTextField placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+          <LightTextField placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+          <LightTextField placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
+        </LightCard>
+      )}
 
-      <GlassCard>
-        <SectionHeader eyebrow="Optional" title="Baseline measurements" />
-        <TextField icon="body-outline" placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
-        <TextField icon="body-outline" placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
-        <TextField icon="resize-outline" placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
-        <TextField icon="resize-outline" placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
-        <TextField icon="resize-outline" placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
-        <TextField icon="resize-outline" placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
-        <TextField icon="resize-outline" placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
-      </GlassCard>
-
-      <GlassCard>
-        <SectionHeader eyebrow="Optional" title="Medical info" />
-        <TextInput
-          style={styles.multilineInput}
-          placeholder="Medical conditions"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={medicalConditions}
-          onChangeText={setMedicalConditions}
-          multiline
-        />
-        <TextInput
-          style={styles.multilineInput}
-          placeholder="Injuries"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={injuries}
-          onChangeText={setInjuries}
-          multiline
-        />
-        <TextInput
-          style={styles.multilineInput}
-          placeholder="Medications"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={medications}
-          onChangeText={setMedications}
-          multiline
-        />
-        <TextInput
-          style={styles.multilineInput}
-          placeholder="Exercise restrictions"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={exerciseRestrictions}
-          onChangeText={setExerciseRestrictions}
-          multiline
-        />
-      </GlassCard>
+      {step === 3 && (
+        <LightCard>
+          <LightSectionHeader eyebrow="Optional" title="Medical info" />
+          <LightTextField
+            placeholder="Medical conditions"
+            value={medicalConditions}
+            onChangeText={setMedicalConditions}
+            multiline
+            style={styles.multilineInput}
+          />
+          <LightTextField placeholder="Injuries" value={injuries} onChangeText={setInjuries} multiline style={styles.multilineInput} />
+          <LightTextField
+            placeholder="Medications"
+            value={medications}
+            onChangeText={setMedications}
+            multiline
+            style={styles.multilineInput}
+          />
+          <LightTextField
+            placeholder="Exercise restrictions"
+            value={exerciseRestrictions}
+            onChangeText={setExerciseRestrictions}
+            multiline
+            style={styles.multilineInput}
+          />
+        </LightCard>
+      )}
 
       {formError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -170,24 +191,27 @@ export default function OnboardingScreen() {
         </Text>
       )}
 
-      <PrimaryButton size="lg" onPress={onSubmit} loading={submitting} disabled={!canSubmit}>
-        Complete Assessment
-      </PrimaryButton>
-    </ScreenScaffold>
+      {step < TOTAL_STEPS ? (
+        <LightPrimaryButton size="lg" onPress={onNext}>
+          Next
+        </LightPrimaryButton>
+      ) : (
+        <LightPrimaryButton size="lg" onPress={onSubmit} loading={submitting} disabled={!canSubmit}>
+          Complete Assessment
+        </LightPrimaryButton>
+      )}
+      {step > 1 && (
+        <LightSecondaryButton size="lg" onPress={onBack}>
+          Back
+        </LightSecondaryButton>
+      )}
+    </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.5)' },
-  multilineInput: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 15,
-    padding: 14,
-    color: '#FFFFFF',
-    minHeight: 60,
-    backgroundColor: Brand.charcoal2,
-    borderRadius: Radius.md,
-    textAlignVertical: 'top',
-  },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted },
+  optionalLabel: { marginTop: 4 },
+  multilineInput: { minHeight: 70, textAlignVertical: 'top', paddingTop: 14 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
 });

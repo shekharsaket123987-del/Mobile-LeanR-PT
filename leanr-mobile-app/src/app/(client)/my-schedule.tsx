@@ -50,6 +50,7 @@ import {
 import { getMySubscription } from '@/lib/data/subscription';
 import type { CoachProfile } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function formatHourLabel(hour: number) {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -145,7 +146,7 @@ export default function MyScheduleScreen() {
         setMatchedCoach(match?.coach ?? null);
       })
       .catch((err) => {
-        if (!cancelled) setActionError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setActionError(getErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setHoursLoading(false);
@@ -166,7 +167,7 @@ export default function MyScheduleScreen() {
       setAssignedCoach(fullCoach);
       setPhase('success');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('pick');
     }
   };

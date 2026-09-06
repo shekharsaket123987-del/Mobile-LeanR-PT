@@ -11,6 +11,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { Brand } from '@/constants/theme';
 import { getPendingLeaveRequests, resolveLeaveRequest, type AdminLeaveRequest } from '@/lib/data/admin-leave';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 export default function AdminLeaveScreen() {
   const { data: requests, loading, error, reload } = useAsync(getPendingLeaveRequests, []);
@@ -36,7 +37,7 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
       await resolveLeaveRequest(request.id, status);
       onResolved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setBusy(null);
     }

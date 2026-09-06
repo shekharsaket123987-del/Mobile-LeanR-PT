@@ -10,6 +10,12 @@
  * A single sliding yellow indicator (measured off the bar's own layout,
  * not per-icon) animates between evenly-spaced tabs — the one deliberate
  * signature motion in the nav layer.
+ *
+ * Explicitly filters `state.routes` down to `options.href !== null` —
+ * confirmed via web preview that `state.routes` includes every registered
+ * screen regardless of `href` on web (unlike native, where expo-router's
+ * own default tab bar excludes them); a custom `tabBar` render prop can't
+ * assume the navigator already filtered for it.
  */
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,16 +33,24 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
 export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
-  const routes = state.routes;
+  const routes = state.routes.filter(
+    (route) => (descriptors[route.key].options as { href?: unknown }).href !== null
+  );
   const segmentWidth = routes.length > 0 ? barWidth / routes.length : 0;
   const indicatorX = useSharedValue(0);
 
+  // `state.index` indexes the FULL route list (including href:null screens
+  // that never appear below), so the indicator/focus math must re-locate
+  // the focused route within the filtered `routes` array, not reuse it directly.
+  const focusedKey = state.routes[state.index]?.key;
+  const focusedVisibleIndex = routes.findIndex((r) => r.key === focusedKey);
+
   useEffect(() => {
-    indicatorX.value = withTiming(state.index * segmentWidth, {
+    indicatorX.value = withTiming(Math.max(focusedVisibleIndex, 0) * segmentWidth, {
       duration: Motion.base,
       easing: Easing.out(Easing.cubic),
     });
-  }, [state.index, segmentWidth, indicatorX]);
+  }, [focusedVisibleIndex, segmentWidth, indicatorX]);
 
   const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: indicatorX.value }] }));
 
@@ -58,9 +72,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
           </Animated.View>
         )}
 
-        {routes.map((route, index) => {
+        {routes.map((route) => {
           const { options } = descriptors[route.key];
-          const focused = state.index === index;
+          const focused = route.key === focusedKey;
           const label = (options.title ?? route.name) as string;
           const badge = options.tabBarBadge;
 

@@ -17,6 +17,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Brand } from '@/constants/theme';
 import { assignShadowCoach, getActiveCoachOptions, getShadowCoverageGaps, type ShadowGap } from '@/lib/data/admin-shadow';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 export default function AdminShadowScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
@@ -71,7 +72,7 @@ function GapCard({
       });
       onAssigned();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setAssigning(false);
     }

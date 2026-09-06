@@ -46,6 +46,7 @@ import {
 } from '@/lib/data/booking-wizard';
 import { getClientBookingById, rescheduleBooking } from '@/lib/data/bookings';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 const RESCHEDULE_WINDOW_DAYS = 30; // matches §13 rule 7's forward window (not itself server-enforced, but a sane UI bound)
 
@@ -87,7 +88,7 @@ export default function RescheduleScreen() {
         setSlots(eligible);
       })
       .catch((err) => {
-        if (!cancelled) setActionError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setActionError(getErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -106,7 +107,7 @@ export default function RescheduleScreen() {
       await rescheduleBooking(booking.id, slotIso, booking.duration_minutes);
       setPhase('success');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('pick');
     }
   };

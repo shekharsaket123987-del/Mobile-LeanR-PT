@@ -26,6 +26,7 @@ import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { isValidMobile, sendPhoneOtp, verifyPhoneOtp } from '@/lib/data/phone-otp';
 import { updateMyProfile } from '@/lib/data/profile';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type Stage = 'form' | 'email-pending' | 'phone-otp';
 
@@ -80,7 +81,7 @@ export default function SignupScreen() {
     try {
       await sendPhoneOtp(mobile.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err)); // stay on phone-otp stage — Resend/Skip are still available
+      setError(getErrorMessage(err)); // stay on phone-otp stage — Resend/Skip are still available
     }
   };
 
@@ -90,7 +91,7 @@ export default function SignupScreen() {
     try {
       await sendPhoneOtp(mobile.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +106,7 @@ export default function SignupScreen() {
       await updateMyProfile({ phone: mobile.trim() });
       finishSignup();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

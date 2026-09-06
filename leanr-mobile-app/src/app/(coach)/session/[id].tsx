@@ -22,6 +22,7 @@ import { Brand, Radius } from '@/constants/theme';
 import { attendanceEligible, getBookingById, markAttendance, markJoined, submitSessionNotes } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
 import { openZoomLink } from '@/lib/data/zoom';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -59,7 +60,7 @@ export default function SessionWorkflow() {
       if (booking) await openZoomLink(booking);
       reload();
     } catch (err) {
-      Alert.alert('Could not mark joined', err instanceof Error ? err.message : String(err));
+      Alert.alert('Could not mark joined', getErrorMessage(err));
     }
   };
 
@@ -69,7 +70,7 @@ export default function SessionWorkflow() {
       await markAttendance(booking, status);
       setStage(status === 'absent' ? 'absent-closed' : 'notes');
     } catch (err) {
-      Alert.alert('Could not mark attendance', err instanceof Error ? err.message : String(err));
+      Alert.alert('Could not mark attendance', getErrorMessage(err));
     }
   };
 
@@ -84,7 +85,7 @@ export default function SessionWorkflow() {
       await submitSessionNotes(booking, { notes: summary });
       setStage('completed');
     } catch (err) {
-      Alert.alert('Could not save notes', err instanceof Error ? err.message : String(err));
+      Alert.alert('Could not save notes', getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

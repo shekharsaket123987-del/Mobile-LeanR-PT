@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type AsyncState<T> = {
   data: T | null;
@@ -23,7 +24,7 @@ export function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[] = []): As
         if (!cancelled) setData(result);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(getErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

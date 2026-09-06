@@ -39,6 +39,7 @@ import {
   type EscalationStatus,
 } from '@/lib/data/concerns';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 const STATUS_LABEL: Record<EscalationStatus, string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
 const STATUS_TONE: Record<EscalationStatus, 'teal' | 'green' | 'red'> = {
@@ -91,7 +92,7 @@ export default function ConcernsScreen() {
       setShowForm(false);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

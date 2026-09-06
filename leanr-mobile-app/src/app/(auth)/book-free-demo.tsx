@@ -27,6 +27,7 @@ import { LightEmptyState, LightLoadingState } from '@/components/light/light-sta
 import { LightBrand } from '@/constants/light-theme';
 import { addIstDays, formatIstDateLabel, formatIstTimeLabel, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { confirmAnonymousDemoBooking, findAnonymousDemoSlots, type AnonymousDemoMatch } from '@/lib/data/anonymous-demo-booking';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type Phase = 'pick' | 'details' | 'confirming' | 'success';
 
@@ -55,7 +56,7 @@ export default function BookFreeDemoScreen() {
         if (!cancelled) setMatch(res);
       })
       .catch((err) => {
-        if (!cancelled) setActionError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setActionError(getErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setMatchLoading(false);
@@ -94,7 +95,7 @@ export default function BookFreeDemoScreen() {
       setResult({ coachName: res.coachName });
       setPhase('success');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('details');
     }
   };

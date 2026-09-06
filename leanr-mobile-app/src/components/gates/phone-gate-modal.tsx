@@ -15,6 +15,7 @@ import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { isValidMobile, sendPhoneOtp, verifyPhoneOtp } from '@/lib/data/phone-otp';
 import { updateMyProfile } from '@/lib/data/profile';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type Stage = 'phone' | 'otp';
 
@@ -44,7 +45,7 @@ export function PhoneGateModal({ visible, onDismiss }: { visible: boolean; onDis
       await sendPhoneOtp(mobile.trim());
       setStage('otp');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -64,7 +65,7 @@ export function PhoneGateModal({ visible, onDismiss }: { visible: boolean; onDis
       reset();
       onDismiss();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

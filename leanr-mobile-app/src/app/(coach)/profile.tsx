@@ -15,6 +15,7 @@ import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius } from '@/constants/theme';
 import { changeMyPassword, getMyCoachDetails, getMyProfile, updateMyCoachDetails, updateMyProfile } from '@/lib/data/profile';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function joinList(values: string[]) {
   return values.join(', ');
@@ -73,7 +74,7 @@ export default function CoachProfileScreen() {
     try {
       await updateMyProfile({ photo_url: url });
     } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : String(err));
+      setAvatarError(getErrorMessage(err));
     }
   };
 
@@ -85,7 +86,7 @@ export default function CoachProfileScreen() {
       await updateMyProfile({ full_name: displayName, phone: displayPhone || null, emergency_contact: displayEmergency || null });
       setProfileSaved(true);
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : String(err));
+      setProfileError(getErrorMessage(err));
     } finally {
       setSavingProfile(false);
     }
@@ -105,7 +106,7 @@ export default function CoachProfileScreen() {
       });
       setDetailsSaved(true);
     } catch (err) {
-      setDetailsError(err instanceof Error ? err.message : String(err));
+      setDetailsError(getErrorMessage(err));
     } finally {
       setSavingDetails(false);
     }
@@ -129,7 +130,7 @@ export default function CoachProfileScreen() {
       setConfirmPassword('');
       setPasswordChanged(true);
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : String(err));
+      setPasswordError(getErrorMessage(err));
     } finally {
       setChangingPassword(false);
     }

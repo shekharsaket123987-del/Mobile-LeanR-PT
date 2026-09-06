@@ -32,6 +32,7 @@ import { getPackageById } from '@/lib/data/plans';
 import { getMyPayments, type PaymentWithPackage } from '@/lib/data/payments';
 import { getLatestSubscription, getSessionsUsedCount, pauseSubscription, resumeSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function formatDate(iso: string | null) {
   if (!iso) return '—';
@@ -74,7 +75,7 @@ export default function SubscriptionScreen() {
               else await resumeSubscription(subscription.id);
               reload();
             } catch (err) {
-              Alert.alert('Could not update your plan', err instanceof Error ? err.message : String(err));
+              Alert.alert('Could not update your plan', getErrorMessage(err));
             } finally {
               setBusy(false);
             }

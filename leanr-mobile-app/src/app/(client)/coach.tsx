@@ -41,6 +41,7 @@ import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
+import { getErrorMessage } from '@/lib/data/errors';
 
 /** Pre-purchase Coach Profile (mockup #4) — unchanged. */
 function PrePurchaseCoachScreen() {
@@ -103,7 +104,7 @@ function EnrolledChatsScreen() {
         if (!cancelled) setMessages(result);
       })
       .catch((err) => {
-        if (!cancelled) setMessagesError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setMessagesError(getErrorMessage(err));
       });
     markMessagesRead(conversation.id, 'coach').catch(() => {});
 
@@ -140,7 +141,7 @@ function EnrolledChatsScreen() {
       const sent = await sendMessage(conversation.id, { body: body || null, attachmentUrl });
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     } catch (err) {
-      setMessagesError(err instanceof Error ? err.message : String(err));
+      setMessagesError(getErrorMessage(err));
       setDraft(body);
       setPendingImage(image);
     } finally {

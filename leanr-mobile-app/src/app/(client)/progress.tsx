@@ -29,6 +29,7 @@ import { DisplayFont } from '@/constants/theme';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
 import type { ProgressLog } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -118,7 +119,7 @@ export default function ProgressScreen() {
       setThigh('');
       reload();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
+      setSubmitError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

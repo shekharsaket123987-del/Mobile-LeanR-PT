@@ -26,6 +26,7 @@ import {
   updateEscalationAssessment,
 } from '@/lib/data/admin-escalations';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 const FAULT_OPTIONS = ['client', 'coach', 'platform', 'unclear'];
 const ISSUE_TYPE_OPTIONS = ['coach_behavior', 'scheduling', 'billing', 'technical', 'other'];
@@ -71,7 +72,7 @@ export default function AdminEscalationDetailScreen() {
       await fn();
       reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
     } finally {
       setBusy(false);
     }

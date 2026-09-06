@@ -34,6 +34,7 @@ import {
 } from '@/lib/data/booking-wizard';
 import { findDemoMatch, hasExistingAssessment, type DemoMatch } from '@/lib/data/demo-booking';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
@@ -72,7 +73,7 @@ export default function DemoBookingScreen() {
         if (!cancelled) setMatch(result);
       })
       .catch((err) => {
-        if (!cancelled) setActionError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setActionError(getErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setMatchLoading(false);
@@ -93,7 +94,7 @@ export default function DemoBookingScreen() {
       setHoldSecondsLeft(settings.temporaryBookingHoldMinutes * 60);
       setPhase('review');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('pick');
     }
   };
@@ -106,7 +107,7 @@ export default function DemoBookingScreen() {
       await confirmHold(holdId, null, { sessionType: 'assessment', amountPaid: 0 });
       setPhase('success');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('pick');
       setHoldId(null);
     }
@@ -123,7 +124,7 @@ export default function DemoBookingScreen() {
       });
       Alert.alert('Added', 'This session was added to your calendar.');
     } catch (err) {
-      Alert.alert('Could not add to calendar', err instanceof Error ? err.message : String(err));
+      Alert.alert('Could not add to calendar', getErrorMessage(err));
     } finally {
       setAddingToCalendar(false);
     }

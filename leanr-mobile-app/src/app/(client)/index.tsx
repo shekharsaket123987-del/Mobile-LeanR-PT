@@ -41,6 +41,7 @@ import { getLatestSubscription, getMySubscription, getSessionsUsedCount } from '
 import type { Booking } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getJoinState, openZoomLink } from '@/lib/data/zoom';
+import { getErrorMessage } from '@/lib/data/errors';
 
 const LAST_CELEBRATED_KEY = 'leanr.lastCelebratedMilestone';
 
@@ -79,7 +80,7 @@ function PrePurchaseHomeScreen() {
       });
       Alert.alert('Added', 'This session was added to your calendar.');
     } catch (err) {
-      Alert.alert('Could not add to calendar', err instanceof Error ? err.message : String(err));
+      Alert.alert('Could not add to calendar', getErrorMessage(err));
     } finally {
       setAddingToCalendar(false);
     }
@@ -161,7 +162,7 @@ function EnrolledJoinRow({ booking }: { booking: Booking }) {
     try {
       await openZoomLink(booking);
     } catch (err) {
-      Alert.alert('Could not join', err instanceof Error ? err.message : String(err));
+      Alert.alert('Could not join', getErrorMessage(err));
     } finally {
       setJoining(false);
     }

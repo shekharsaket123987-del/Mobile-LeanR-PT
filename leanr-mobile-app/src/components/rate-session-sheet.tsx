@@ -11,6 +11,7 @@ import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { PrimaryButton } from '@/components/ui/button';
 import { StarRating } from '@/components/ui/star-rating';
 import { Brand } from '@/constants/theme';
+import { getErrorMessage } from '@/lib/data/errors';
 
 export function RateSessionSheet({
   visible,
@@ -40,7 +41,7 @@ export function RateSessionSheet({
       setQuality(0);
       setTrainer(0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

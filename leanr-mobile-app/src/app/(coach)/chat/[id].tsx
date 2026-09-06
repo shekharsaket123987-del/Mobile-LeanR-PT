@@ -22,6 +22,7 @@ import { getMyConversations } from '@/lib/data/coach-chat';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
+import { getErrorMessage } from '@/lib/data/errors';
 
 export default function CoachChatThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,7 +45,7 @@ export default function CoachChatThreadScreen() {
         if (!cancelled) setMessages(result);
       })
       .catch((err) => {
-        if (!cancelled) setMessagesError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setMessagesError(getErrorMessage(err));
       });
     markMessagesRead(id, 'client').catch(() => {});
 
@@ -81,7 +82,7 @@ export default function CoachChatThreadScreen() {
       const sent = await sendMessage(id, { body: body || null, attachmentUrl }, 'coach');
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     } catch (err) {
-      setMessagesError(err instanceof Error ? err.message : String(err));
+      setMessagesError(getErrorMessage(err));
       setDraft(body);
       setPendingImage(image);
     } finally {

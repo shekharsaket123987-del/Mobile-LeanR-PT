@@ -26,6 +26,7 @@ import {
   type LeaveType,
 } from '@/lib/data/coach-availability';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function formatTimeRange(start: string, end: string) {
   return `${start.slice(0, 5)} – ${end.slice(0, 5)}`;
@@ -91,7 +92,7 @@ export default function CoachAvailabilityScreen() {
       setPartialEndHour(null);
       reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

@@ -23,6 +23,7 @@ import { LightBrand } from '@/constants/light-theme';
 import { addIstDays, formatIstDateLabel, istDateKey, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { activateSubscription, getPendingActivationSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 export default function ActivatePlanScreen() {
   const { data: subscription, loading, error, reload } = useAsync(getPendingActivationSubscription, []);
@@ -39,7 +40,7 @@ export default function ActivatePlanScreen() {
       await activateSubscription(subscription.id, istDateKey(selectedDate));
       router.replace('/onboarding');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

@@ -45,6 +45,7 @@ import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
 import { rateSession } from '@/lib/data/bookings';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
@@ -98,7 +99,7 @@ export default function BookSessionScreen() {
         if (!cancelled) setSlots(result);
       })
       .catch((err) => {
-        if (!cancelled) setActionError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setActionError(getErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -125,7 +126,7 @@ export default function BookSessionScreen() {
       setHoldSecondsLeft(settings.temporaryBookingHoldMinutes * 60);
       setPhase('review');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('pick');
     }
   };
@@ -138,7 +139,7 @@ export default function BookSessionScreen() {
       await confirmHold(holdId, subscription.id);
       setPhase('success');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(getErrorMessage(err));
       setPhase('pick');
       setHoldId(null);
     }

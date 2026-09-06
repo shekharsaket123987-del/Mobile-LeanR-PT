@@ -12,6 +12,7 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { TextField } from '@/components/ui/text-field';
 import { Brand } from '@/constants/theme';
 import { searchClients, type ClientSearchResult } from '@/lib/data/coach-search';
+import { getErrorMessage } from '@/lib/data/errors';
 
 export default function CoachSearchScreen() {
   const [query, setQuery] = useState('');
@@ -30,7 +31,7 @@ export default function CoachSearchScreen() {
     try {
       setResults(await searchClients(text));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -27,6 +27,7 @@ import {
 } from '@/lib/data/profile';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function joinList(values: string[]) {
   return values.join(', ');
@@ -75,7 +76,7 @@ function PrePurchaseProfileScreen() {
     try {
       await updateMyProfile({ photo_url: url });
     } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : String(err));
+      setAvatarError(getErrorMessage(err));
     }
   };
 
@@ -87,7 +88,7 @@ function PrePurchaseProfileScreen() {
       await updateMyProfile({ full_name: displayName, phone: displayPhone || null, emergency_contact: displayEmergency || null });
       setProfileSaved(true);
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : String(err));
+      setProfileError(getErrorMessage(err));
     } finally {
       setSavingProfile(false);
     }
@@ -111,7 +112,7 @@ function PrePurchaseProfileScreen() {
       setConfirmPassword('');
       setPasswordChanged(true);
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : String(err));
+      setPasswordError(getErrorMessage(err));
     } finally {
       setChangingPassword(false);
     }
@@ -224,7 +225,7 @@ function EnrolledProfileScreen() {
     try {
       await updateMyProfile({ photo_url: url });
     } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : String(err));
+      setAvatarError(getErrorMessage(err));
     }
   };
 
@@ -236,7 +237,7 @@ function EnrolledProfileScreen() {
       await updateMyProfile({ full_name: displayName, phone: displayPhone || null, emergency_contact: displayEmergency || null });
       setProfileSaved(true);
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : String(err));
+      setProfileError(getErrorMessage(err));
     } finally {
       setSavingProfile(false);
     }
@@ -254,7 +255,7 @@ function EnrolledProfileScreen() {
       });
       setDetailsSaved(true);
     } catch (err) {
-      setDetailsError(err instanceof Error ? err.message : String(err));
+      setDetailsError(getErrorMessage(err));
     } finally {
       setSavingDetails(false);
     }
@@ -278,7 +279,7 @@ function EnrolledProfileScreen() {
       setConfirmPassword('');
       setPasswordChanged(true);
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : String(err));
+      setPasswordError(getErrorMessage(err));
     } finally {
       setChangingPassword(false);
     }

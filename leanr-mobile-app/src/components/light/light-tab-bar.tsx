@@ -3,6 +3,13 @@
  * `ui/floating-tab-bar.tsx`) — matches the mockup's flat nav chrome.
  * Same `tabBar` render-prop signature so it drops into `<Tabs tabBar={...}>`
  * exactly like the dark one.
+ *
+ * Explicitly filters out any route registered with `options.href === null`
+ * (the `(client)/_layout.tsx` convention for "reachable by push, not a tab
+ * button") — confirmed via web preview that `state.routes` includes every
+ * registered screen regardless of `href` on web (unlike native, where
+ * expo-router's own default tab bar excludes them), so a custom `tabBar`
+ * render prop must filter itself rather than assume the navigator already did.
  */
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -16,9 +23,14 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
 export function LightTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
+  const visibleRoutes = state.routes.filter(
+    (route) => (descriptors[route.key].options as { href?: unknown }).href !== null
+  );
+
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + 8, height: 60 + insets.bottom }]}>
-      {state.routes.map((route, index) => {
+      {visibleRoutes.map((route) => {
+        const index = state.routes.indexOf(route);
         const { options } = descriptors[route.key];
         const focused = state.index === index;
         const label = (options.title ?? route.name) as string;

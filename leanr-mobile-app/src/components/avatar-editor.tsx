@@ -16,6 +16,7 @@ import { Brand } from '@/constants/theme';
 import { uploadAvatarImage } from '@/lib/data/profile';
 
 import { TextLink } from './tappable';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type Props = {
   photoUrl: string | null;
@@ -43,7 +44,7 @@ export function AvatarEditor({ photoUrl, onUploaded }: Props) {
       const url = await uploadAvatarImage(asset.uri, asset.mimeType);
       onUploaded(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setUploading(false);
     }

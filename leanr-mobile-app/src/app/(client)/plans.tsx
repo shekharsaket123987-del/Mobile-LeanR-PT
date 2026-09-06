@@ -25,6 +25,7 @@ import { getMarketingPlans } from '@/lib/data/plans';
 import { getMyPayments, purchasePackage } from '@/lib/data/payments';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 async function goToPaymentSuccess(planName: string) {
   const payments = await getMyPayments();
@@ -68,7 +69,7 @@ function PrePurchasePlansScreen() {
       });
       await goToPaymentSuccess(planName);
     } catch (err) {
-      setPurchaseError(err instanceof Error ? err.message : String(err));
+      setPurchaseError(getErrorMessage(err));
     } finally {
       setPurchasingId(null);
     }
@@ -137,7 +138,7 @@ function EnrolledPlansScreen() {
       });
       await goToPaymentSuccess(planName);
     } catch (err) {
-      setPurchaseError(err instanceof Error ? err.message : String(err));
+      setPurchaseError(getErrorMessage(err));
     } finally {
       setPurchasingId(null);
     }

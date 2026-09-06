@@ -31,6 +31,7 @@ import { getMyClientProfileId } from '@/lib/data/identity';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Booking, BookingStatus } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 type TabKey = BookingStatus | 'rescheduled';
 
@@ -77,7 +78,7 @@ function PrePurchaseSessionsScreen() {
             await cancelBooking(bookingId, null);
             reload();
           } catch (err) {
-            Alert.alert('Could not cancel', err instanceof Error ? err.message : String(err));
+            Alert.alert('Could not cancel', getErrorMessage(err));
           }
         },
       },
@@ -149,7 +150,7 @@ function EnrolledSessionCard({
             await cancelBooking(booking.id, null);
             onCancelled();
           } catch (err) {
-            Alert.alert('Could not cancel', err instanceof Error ? err.message : String(err));
+            Alert.alert('Could not cancel', getErrorMessage(err));
           }
         },
       },

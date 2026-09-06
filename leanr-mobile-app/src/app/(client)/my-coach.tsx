@@ -34,6 +34,7 @@ import {
 } from '@/lib/data/coach-change';
 import { findCoachForSchedule, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
 import { useAsync } from '@/lib/data/use-async';
+import { getErrorMessage } from '@/lib/data/errors';
 
 function formatHourLabel(hour: number) {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -121,7 +122,7 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
       setShowForm(false);
       onSubmitted();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -229,7 +230,7 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
       }
       setMatch(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setSearching(false);
     }
@@ -251,7 +252,7 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
       setDone(true);
       onCompleted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(getErrorMessage(err));
     } finally {
       setConfirming(false);
     }

@@ -27,6 +27,7 @@ import { LightTextField } from '@/components/light/light-text-field';
 import { LightBrand } from '@/constants/light-theme';
 import { submitOnboarding } from '@/lib/data/onboarding';
 import type { FitnessGoal } from '@/lib/data/types';
+import { getErrorMessage } from '@/lib/data/errors';
 
 const FITNESS_GOALS: { value: FitnessGoal; label: string }[] = [
   { value: 'fat_loss', label: 'Fat Loss' },
@@ -115,7 +116,7 @@ export default function OnboardingScreen() {
       });
       router.replace('/(client)');
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      setFormError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

@@ -33,6 +33,11 @@ import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Brand, Radius, Shadow } from '@/constants/theme';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightAvatar } from '@/components/light/light-avatar';
+import { LightCard } from '@/components/light/light-card';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { getBookingSettings } from '@/lib/data/booking-wizard';
 import {
   getMyActiveConversation,
@@ -51,6 +56,7 @@ import {
   type CoachChangeStatus,
 } from '@/lib/data/coach-change';
 import { findCoachForSchedule, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
+import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
@@ -64,7 +70,46 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export default function CoachScreen() {
+/**
+ * Pre-purchase Coach Profile (mockup #4) — read-only, no chat composer:
+ * matches both the mockup's "Not Available (Until Plan Purchase): Client
+ * chat with coach" and New PRD.md §6 ("chat is gated on 'has ever
+ * purchased', not on having a coach"). No coach-change section either —
+ * that flow only makes sense once a coach is a persistent assignment,
+ * which a demo booking never is.
+ */
+function PrePurchaseCoachScreen() {
+  const { data: coach, loading, error, reload } = useAsync(getMyCoach, []);
+
+  return (
+    <LightScreenScaffold title="Coach Profile">
+      {loading && <LightLoadingState />}
+      {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && !coach && <LightEmptyState message="No coach assigned yet." icon="person-outline" />}
+      {!loading && !error && coach && (
+        <LightCard style={lightStyles.coachCard}>
+          <View style={lightStyles.coachRow}>
+            <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
+            <View style={lightStyles.coachInfo}>
+              <Text style={lightStyles.coachName} numberOfLines={1}>
+                {coach.full_name}
+              </Text>
+              {coach.specialization && (
+                <Text style={lightStyles.coachSpecialty} numberOfLines={1}>
+                  {coach.specialization}
+                </Text>
+              )}
+              {coach.rating != null && <Text style={lightStyles.coachRating}>★ {coach.rating.toFixed(1)}</Text>}
+            </View>
+          </View>
+          {coach.bio && <Text style={lightStyles.coachBio}>{coach.bio}</Text>}
+        </LightCard>
+      )}
+    </LightScreenScaffold>
+  );
+}
+
+function EnrolledCoachScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const [coach, conversation, changeRequests] = await Promise.all([
       getMyCoach(),
@@ -206,6 +251,12 @@ export default function CoachScreen() {
       )}
     </ScreenScaffold>
   );
+}
+
+export default function CoachScreen() {
+  const { data: subscription, loading } = useAsync(getLatestSubscription, []);
+  if (loading) return null;
+  return subscription ? <EnrolledCoachScreen /> : <PrePurchaseCoachScreen />;
 }
 
 const CHANGE_STATUS_LABEL: Record<CoachChangeStatus, string> = {
@@ -465,4 +516,14 @@ const styles = StyleSheet.create({
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   completionCard: { gap: 8 },
   findCoachButton: { marginTop: 8 },
+});
+
+const lightStyles = StyleSheet.create({
+  coachCard: { gap: 10 },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  coachInfo: { flexShrink: 1, gap: 3 },
+  coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: LightBrand.navy },
+  coachSpecialty: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  coachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
+  coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, lineHeight: 20 },
 });

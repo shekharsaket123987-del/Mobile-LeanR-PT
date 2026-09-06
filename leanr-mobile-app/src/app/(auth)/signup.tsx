@@ -18,11 +18,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { AuthShell } from '@/components/ui/auth-shell';
-import { GhostButton, PrimaryButton } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { TextLink } from '@/components/tappable';
-import { Brand } from '@/constants/theme';
+import { LightAuthShell } from '@/components/light/light-auth-shell';
+import { LightGhostButton, LightPrimaryButton } from '@/components/light/light-button';
+import { LightTextField } from '@/components/light/light-text-field';
+import { LightTextLink } from '@/components/light/light-tappable';
+import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { isValidMobile, sendPhoneOtp, verifyPhoneOtp } from '@/lib/data/phone-otp';
 import { updateMyProfile } from '@/lib/data/profile';
@@ -113,18 +113,18 @@ export default function SignupScreen() {
 
   if (stage === 'email-pending') {
     return (
-      <AuthShell title="Check your email" subtitle={`We sent a confirmation link to ${email.trim()}. Verify it, then log in.`}>
-        <PrimaryButton size="lg" onPress={() => router.replace('/login')}>
+      <LightAuthShell title="Check your email" subtitle={`We sent a confirmation link to ${email.trim()}. Verify it, then log in.`}>
+        <LightPrimaryButton size="lg" onPress={() => router.replace('/login')}>
           Go to login
-        </PrimaryButton>
-      </AuthShell>
+        </LightPrimaryButton>
+      </LightAuthShell>
     );
   }
 
   if (stage === 'phone-otp') {
     return (
-      <AuthShell title="Verify your phone" subtitle={`Enter the code we sent to ${mobile.trim()}.`}>
-        <TextField
+      <LightAuthShell title="Verify your phone" subtitle={`Enter the code we sent to ${mobile.trim()}.`}>
+        <LightTextField
           icon="keypad-outline"
           placeholder="6-digit code"
           keyboardType="number-pad"
@@ -139,23 +139,23 @@ export default function SignupScreen() {
           </Text>
         )}
 
-        <PrimaryButton onPress={onVerifyOtp} loading={submitting} size="lg">
+        <LightPrimaryButton onPress={onVerifyOtp} loading={submitting} size="lg">
           Verify & continue
-        </PrimaryButton>
-        <GhostButton size="sm" onPress={onResend} disabled={submitting} style={styles.centerBtn}>
+        </LightPrimaryButton>
+        <LightGhostButton size="sm" onPress={onResend} disabled={submitting} style={styles.centerBtn}>
           Resend code
-        </GhostButton>
-        <TextLink onPress={finishSignup} style={styles.skipLink}>
+        </LightGhostButton>
+        <LightTextLink onPress={finishSignup} style={styles.skipLink}>
           Skip for now (demo — phone unverified)
-        </TextLink>
-      </AuthShell>
+        </LightTextLink>
+      </LightAuthShell>
     );
   }
 
   return (
-    <AuthShell title="Create your account" subtitle="Get matched with your coach in minutes.">
-      <TextField icon="person-outline" placeholder="Full name" autoComplete="name" value={fullName} onChangeText={setFullName} />
-      <TextField
+    <LightAuthShell title="Create your account" subtitle="Get matched with your coach in minutes.">
+      <LightTextField icon="person-outline" placeholder="Full name" autoComplete="name" value={fullName} onChangeText={setFullName} />
+      <LightTextField
         icon="mail-outline"
         placeholder="Email"
         autoCapitalize="none"
@@ -164,7 +164,7 @@ export default function SignupScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <TextField
+      <LightTextField
         icon="call-outline"
         placeholder="Mobile number"
         keyboardType="phone-pad"
@@ -172,7 +172,7 @@ export default function SignupScreen() {
         value={mobile}
         onChangeText={setMobile}
       />
-      <TextField
+      <LightTextField
         icon="lock-closed-outline"
         placeholder="Password (min. 8 characters)"
         isPassword
@@ -187,25 +187,25 @@ export default function SignupScreen() {
         </Text>
       )}
 
-      <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+      <LightPrimaryButton onPress={onSubmit} loading={submitting} size="lg">
         Create account
-      </PrimaryButton>
+      </LightPrimaryButton>
 
-      <TextLink onPress={() => router.replace('/login')} style={styles.link}>
+      <LightTextLink onPress={() => router.replace('/login')} style={styles.link}>
         Already have an account? Log in
-      </TextLink>
-    </AuthShell>
+      </LightTextLink>
+    </LightAuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
   centerBtn: { alignSelf: 'center' },
   link: { alignSelf: 'center', marginTop: 8 },
   skipLink: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 13,
-    color: 'rgba(255,255,255,0.45)',
+    color: LightBrand.textMuted,
     textAlign: 'center',
     marginTop: 12,
   },

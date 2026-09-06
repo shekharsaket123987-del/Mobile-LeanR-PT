@@ -44,6 +44,7 @@ export type CoachProfile = {
   profile_id: string; // FK -> profiles.id (the auth uid)
   bio: string | null;
   specialization: string | null;
+  rating: number | null;
   full_name?: string; // present when joined via profiles(full_name)
   photo_url?: string | null; // present when joined via profiles(photo_url)
 };

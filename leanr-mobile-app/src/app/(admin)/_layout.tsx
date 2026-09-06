@@ -33,7 +33,7 @@ export default function AdminLayout() {
   const { session, profile, loading } = useAuth();
 
   if (loading) return null;
-  if (!session) return <Redirect href="/login" />;
+  if (!session) return <Redirect href="/welcome" />;
   if (profile && profile.role !== 'admin') return <Redirect href={getHomeRouteForRole(profile.role)} />;
 
   return (

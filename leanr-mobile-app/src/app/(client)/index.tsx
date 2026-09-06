@@ -1,9 +1,10 @@
 /**
- * Home (Client) — LEANR_PT_NEXTGEN_APP_PRD.md §9.1, wired to real data,
- * carrying the motivation layer (§8): streak chip + milestone celebration,
- * both computed client-side from bookings already fetched. Premium visual
- * pass: hero glass card (coach photo, countdown, join CTA), StatCard for
- * this month's sessions, ProfileButton + notification bell up top.
+ * Home (Client) — dual-branch (New PRD.md pre-purchase redesign). Before
+ * any purchase: light "Your Demo is Scheduled" hero (mockup's Home
+ * frames), reusing the same `getUpcomingBookings`/`getMyCoach` data (a
+ * demo booking already surfaces here structurally — `getUpcomingBookings`
+ * has no session-type filter). After purchase: the existing dark
+ * dashboard, unchanged, moved into `EnrolledHomeScreen`.
  */
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,12 +23,19 @@ import { ProfileButton } from '@/components/ui/profile-menu';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { StatCard } from '@/components/ui/stat-card';
 import { Brand, DisplayFont } from '@/constants/theme';
+import { LightAvatar } from '@/components/light/light-avatar';
+import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
+import { LightCard } from '@/components/light/light-card';
+import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
 import { getUpcomingBookings } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
 import { getClientJourneyGate } from '@/lib/data/journey';
 import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
-import { getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
+import { getLatestSubscription, getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
+import type { Booking } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getJoinState, openZoomLink } from '@/lib/data/zoom';
 
@@ -41,7 +49,99 @@ function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export default function HomeScreen() {
+function formatSessionDateTime(iso: string) {
+  return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function PrePurchaseHomeScreen() {
+  const { session, profile } = useAuth();
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [nextBookings, coach] = await Promise.all([getUpcomingBookings(1), getMyCoach()]);
+    return { nextBookings, coach };
+  }, []);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
+
+  const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
+  const nextBooking = data?.nextBookings?.[0] ?? null;
+  const coach = data?.coach ?? null;
+
+  const onAddToCalendar = async (booking: Booking) => {
+    setAddingToCalendar(true);
+    try {
+      await addToDeviceCalendar({
+        title: 'LEANR Demo Session',
+        startDate: new Date(booking.scheduled_start),
+        durationMinutes: booking.duration_minutes,
+        notes: booking.zoom_join_url ?? undefined,
+      });
+      Alert.alert('Added', 'This session was added to your calendar.');
+    } catch (err) {
+      Alert.alert('Could not add to calendar', err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddingToCalendar(false);
+    }
+  };
+
+  return (
+    <View style={lightStyles.root}>
+      <SafeAreaView style={lightStyles.flex} edges={['top']}>
+        <View style={lightStyles.topBar}>
+          <Text style={lightStyles.greeting}>Good Morning,{'\n'}{greetingName}!</Text>
+          <IconButton accessibilityLabel="Notifications" onPress={() => router.push('/notifications')}>
+            <Ionicons name="notifications-outline" size={19} color={LightBrand.navy} />
+          </IconButton>
+        </View>
+
+        <View style={lightStyles.scroll}>
+          {loading && <LightLoadingState />}
+          {error && <LightErrorState message={error} onRetry={reload} />}
+
+          {!loading && !error && nextBooking && (
+            <LightCard style={lightStyles.heroCard}>
+              <Text style={lightStyles.heroEyebrow}>YOUR DEMO IS SCHEDULED</Text>
+              <Text style={lightStyles.heroDate}>{formatSessionDateTime(nextBooking.scheduled_start)}</Text>
+              <View style={lightStyles.modeRow}>
+                <Ionicons name="videocam-outline" size={15} color={LightBrand.teal} />
+                <Text style={lightStyles.modeText}>Online (Zoom)</Text>
+              </View>
+
+              {coach && (
+                <View style={lightStyles.coachRow}>
+                  <LightAvatar photoUrl={coach.photo_url} name={nextBooking.coach_name ?? coach.full_name} size={40} />
+                  <View>
+                    <Text style={lightStyles.coachName}>{nextBooking.coach_name ?? coach.full_name}</Text>
+                    {coach.rating != null && <Text style={lightStyles.coachMeta}>★ {coach.rating.toFixed(1)}</Text>}
+                  </View>
+                </View>
+              )}
+
+              <LightSecondaryButton size="md" onPress={() => onAddToCalendar(nextBooking)} loading={addingToCalendar} style={lightStyles.calendarButton}>
+                Add to Calendar
+              </LightSecondaryButton>
+              {coach && (
+                <LightPrimaryButton size="md" onPress={() => router.push('/coach')} style={lightStyles.coachProfileButton}>
+                  View Coach Profile
+                </LightPrimaryButton>
+              )}
+            </LightCard>
+          )}
+
+          {!loading && !error && !nextBooking && (
+            <LightCard>
+              <LightEmptyState message="No demo booked yet." icon="calendar-outline" actionLabel="Book a Free Demo" onAction={() => router.push('/demo-booking')} />
+            </LightCard>
+          )}
+
+          <LightPrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
+            Choose Your Plan
+          </LightPrimaryButton>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+function EnrolledHomeScreen() {
   const { session, profile } = useAuth();
   const [gate, setGate] = useState<'checking' | 'clear'>('checking');
 
@@ -184,6 +284,12 @@ export default function HomeScreen() {
   );
 }
 
+export default function HomeScreen() {
+  const { data: subscription, loading } = useAsync(getLatestSubscription, []);
+  if (loading) return null;
+  return subscription ? <EnrolledHomeScreen /> : <PrePurchaseHomeScreen />;
+}
+
 const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
   'too-early': 'Join opens 10 min before start',
   joinable: 'Join session',
@@ -248,4 +354,22 @@ const styles = StyleSheet.create({
   coachName: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.8)', flexShrink: 1 },
   joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 14 },
   joinButton: { marginTop: 14, alignSelf: 'flex-start' },
+});
+
+const lightStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: LightBrand.bg },
+  flex: { flex: 1 },
+  topBar: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
+  greeting: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 22, color: LightBrand.navy, lineHeight: 26 },
+  scroll: { flex: 1, padding: 20, paddingTop: 16, gap: 16 },
+  heroCard: { gap: 6, paddingVertical: 18 },
+  heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.teal },
+  heroDate: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },
+  modeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  modeText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
+  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.textPrimary },
+  coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  calendarButton: { marginTop: 10 },
+  coachProfileButton: { marginTop: 8 },
 });

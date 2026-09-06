@@ -9,10 +9,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { AuthShell } from '@/components/ui/auth-shell';
-import { GhostButton, PrimaryButton } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { Brand } from '@/constants/theme';
+import { LightAuthShell } from '@/components/light/light-auth-shell';
+import { LightGhostButton, LightPrimaryButton } from '@/components/light/light-button';
+import { LightTextField } from '@/components/light/light-text-field';
+import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function ForgotPasswordScreen() {
@@ -39,7 +39,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <AuthShell
+    <LightAuthShell
       compact
       title={sent ? 'Check your email' : 'Reset your password'}
       subtitle={
@@ -49,7 +49,7 @@ export default function ForgotPasswordScreen() {
       }>
       {!sent && (
         <>
-          <TextField
+          <LightTextField
             icon="mail-outline"
             placeholder="Email"
             autoCapitalize="none"
@@ -65,20 +65,20 @@ export default function ForgotPasswordScreen() {
             </Text>
           )}
 
-          <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+          <LightPrimaryButton onPress={onSubmit} loading={submitting} size="lg">
             Send reset link
-          </PrimaryButton>
+          </LightPrimaryButton>
         </>
       )}
 
-      <GhostButton size="sm" onPress={() => router.replace('/login')} style={styles.centerBtn}>
+      <LightGhostButton size="sm" onPress={() => router.replace('/login')} style={styles.centerBtn}>
         {sent ? 'Back to login' : 'Cancel'}
-      </GhostButton>
-    </AuthShell>
+      </LightGhostButton>
+    </LightAuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
   centerBtn: { alignSelf: 'center', marginTop: 4 },
 });

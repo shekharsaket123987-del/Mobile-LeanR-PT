@@ -8,7 +8,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "leanrmobileapp",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#000000",
+    "backgroundColor": "#F4F8FA",
     "ios": {
       "bundleIdentifier": "com.fitelo.leanr",
       "infoPlist": {
@@ -16,20 +16,23 @@
           "tez",
           "phonepe",
           "paytmmp"
-        ]
+        ],
+        "NSCalendarsUsageDescription": "LEANR needs access to your calendar to add your session as an event."
       }
     },
     "android": {
       "package": "com.fitelo.leanr",
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#F4F8FA",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ]
     },
     "web": {
@@ -41,7 +44,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#000000",
+          "backgroundColor": "#F4F8FA",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 1
         }
@@ -57,6 +60,12 @@
         {
           "photosPermission": "LEANR needs access to your photos to send images to your coach in chat.",
           "cameraPermission": "LEANR needs access to your camera to take a photo to send to your coach in chat."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "LEANR needs access to your calendar to add your session as an event."
         }
       ]
     ],

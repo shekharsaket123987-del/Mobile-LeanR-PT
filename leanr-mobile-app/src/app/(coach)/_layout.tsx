@@ -34,7 +34,7 @@ export default function CoachLayout() {
   }, [session]);
 
   if (loading) return null;
-  if (!session) return <Redirect href="/login" />;
+  if (!session) return <Redirect href="/welcome" />;
   if (profile && profile.role !== 'coach') return <Redirect href={getHomeRouteForRole(profile.role)} />;
 
   return (

@@ -17,6 +17,13 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius } from '@/constants/theme';
+import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { LightCard } from '@/components/light/light-card';
+import { LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightTextField } from '@/components/light/light-text-field';
+import { LightBrand } from '@/constants/light-theme';
 import {
   changeMyPassword,
   getMyClientDetails,
@@ -24,6 +31,7 @@ import {
   updateMyClientDetails,
   updateMyProfile,
 } from '@/lib/data/profile';
+import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 
 function joinList(values: string[]) {
@@ -36,7 +44,150 @@ function splitList(text: string) {
     .filter(Boolean);
 }
 
-export default function ClientProfileScreen() {
+/**
+ * Pre-purchase Profile (mockup #6) — same edit fields/save logic as the
+ * enrolled screen, light-styled, minus the "Training profile" (goals/
+ * equipment/medical notes) card — that's onboarding data a demo-only
+ * client hasn't submitted yet (Onboarding only runs post-purchase) and
+ * isn't shown in this mockup frame either.
+ */
+function PrePurchaseProfileScreen() {
+  const { data, loading, error, reload } = useAsync(getMyProfile, []);
+
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+  const [emergencyContact, setEmergencyContact] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+
+  const displayPhotoUrl = photoUrl ?? data?.photo_url ?? null;
+  const displayName = fullName ?? data?.full_name ?? '';
+  const displayPhone = phone ?? data?.phone ?? '';
+  const displayEmergency = emergencyContact ?? data?.emergency_contact ?? '';
+
+  const onAvatarUploaded = async (url: string) => {
+    setPhotoUrl(url);
+    setAvatarError(null);
+    try {
+      await updateMyProfile({ photo_url: url });
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const onSaveProfile = async () => {
+    setSavingProfile(true);
+    setProfileError(null);
+    setProfileSaved(false);
+    try {
+      await updateMyProfile({ full_name: displayName, phone: displayPhone || null, emergency_contact: displayEmergency || null });
+      setProfileSaved(true);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const onChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordChanged(false);
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changeMyPassword(newPassword);
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordChanged(true);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <LightScreenScaffold title="My Profile">
+        <LightLoadingState />
+      </LightScreenScaffold>
+    );
+  }
+  if (error) {
+    return (
+      <LightScreenScaffold title="My Profile">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
+    );
+  }
+
+  return (
+    <LightScreenScaffold title="My Profile">
+      <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
+      {avatarError && (
+        <Text style={lightStyles.errorText} accessibilityRole="alert">
+          {avatarError}
+        </Text>
+      )}
+
+      <LightCard style={lightStyles.card}>
+        <LightSectionHeader title="Your details" />
+        <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <LightTextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
+        <LightTextField placeholder="Emergency contact" value={displayEmergency} onChangeText={setEmergencyContact} accessibilityLabel="Emergency contact" />
+        {profileError && (
+          <Text style={lightStyles.errorText} accessibilityRole="alert">
+            {profileError}
+          </Text>
+        )}
+        {profileSaved && <Text style={lightStyles.savedText}>Saved.</Text>}
+        <LightPrimaryButton onPress={onSaveProfile} loading={savingProfile} style={lightStyles.saveButton}>
+          Save
+        </LightPrimaryButton>
+      </LightCard>
+
+      <LightCard style={lightStyles.card}>
+        <LightSectionHeader title="Change password" />
+        <LightTextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
+        <LightTextField
+          placeholder="Confirm new password"
+          isPassword
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          accessibilityLabel="Confirm new password"
+        />
+        {passwordError && (
+          <Text style={lightStyles.errorText} accessibilityRole="alert">
+            {passwordError}
+          </Text>
+        )}
+        {passwordChanged && <Text style={lightStyles.savedText}>Password changed.</Text>}
+        <LightPrimaryButton onPress={onChangePassword} loading={changingPassword} style={lightStyles.saveButton}>
+          Change password
+        </LightPrimaryButton>
+      </LightCard>
+    </LightScreenScaffold>
+  );
+}
+
+function EnrolledProfileScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const [profile, details] = await Promise.all([getMyProfile(), getMyClientDetails()]);
     return { profile, details };
@@ -250,6 +401,12 @@ export default function ClientProfileScreen() {
   );
 }
 
+export default function ClientProfileScreen() {
+  const { data: subscription, loading } = useAsync(getLatestSubscription, []);
+  if (loading) return null;
+  return subscription ? <EnrolledProfileScreen /> : <PrePurchaseProfileScreen />;
+}
+
 const styles = StyleSheet.create({
   card: { gap: 12 },
   multilineInput: {
@@ -264,5 +421,12 @@ const styles = StyleSheet.create({
   },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
   savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
+  saveButton: { marginTop: 4 },
+});
+
+const lightStyles = StyleSheet.create({
+  card: { gap: 12 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 4 },
+  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 4 },
 });

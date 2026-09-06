@@ -32,6 +32,7 @@
  * (recurring-schedule.ts) since it doesn't use the hold->confirm
  * mechanism at all — see leanr-mobile-app/README.md for both.
  */
+import { assertMeasurementsFresh } from '@/lib/data/measurement-status';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 
@@ -273,6 +274,8 @@ export async function confirmHold(
   subscriptionId: string | null,
   options?: { sessionType?: 'regular' | 'assessment'; amountPaid?: number }
 ): Promise<string> {
+  await assertMeasurementsFresh(); // New PRD.md §6 — applies to regular AND demo bookings, both funnel through here
+
   const params: Record<string, unknown> = {
     p_temp_booking_id: tempBookingId,
     p_subscription_id: subscriptionId,

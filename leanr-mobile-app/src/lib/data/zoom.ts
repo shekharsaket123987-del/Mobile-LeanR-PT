@@ -20,6 +20,7 @@
 import * as Linking from 'expo-linking';
 
 import { extractFunctionErrorMessage } from '@/lib/data/edge-functions';
+import { assertMeasurementsFresh } from '@/lib/data/measurement-status';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking } from './types';
 
@@ -47,6 +48,7 @@ export async function ensureZoomMeeting(bookingId: string): Promise<string> {
 }
 
 export async function openZoomLink(booking: Booking): Promise<void> {
+  await assertMeasurementsFresh(); // New PRD.md §6 — join is one of the three gated entry points
   const joinUrl = booking.zoom_join_url ?? (await ensureZoomMeeting(booking.id));
   await Linking.openURL(joinUrl);
 }

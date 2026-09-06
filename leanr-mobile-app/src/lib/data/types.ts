@@ -102,6 +102,13 @@ export type ProgressLog = {
   logged_at: string;
   weight: number | null;
   notes: string | null;
+  body_fat_pct: number | null;
+  muscle_pct: number | null;
+  waist: number | null;
+  chest: number | null;
+  hip: number | null;
+  arms: number | null;
+  thigh: number | null;
 };
 
 export type Plan = {

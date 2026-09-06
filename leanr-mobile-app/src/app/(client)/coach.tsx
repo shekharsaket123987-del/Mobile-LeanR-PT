@@ -27,9 +27,13 @@ import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/componen
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PrimaryButton } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
 import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
 import { GlassCard } from '@/components/ui/glass-card';
+import { SectionHeader } from '@/components/ui/section-header';
 import { Brand, Radius, Shadow } from '@/constants/theme';
+import { getBookingSettings } from '@/lib/data/booking-wizard';
 import {
   getMyActiveConversation,
   getMessages,
@@ -40,14 +44,21 @@ import {
 } from '@/lib/data/chat';
 import { getMyCoach } from '@/lib/data/coach';
 import {
+  completeCoachChange,
   getMyCoachChangeRequests,
   requestCoachChange,
   type CoachChangeRequest,
   type CoachChangeStatus,
 } from '@/lib/data/coach-change';
+import { findCoachForSchedule, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
 import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
+
+function formatHourLabel(hour: number) {
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:00 ${hour >= 12 ? 'PM' : 'AM'} IST`;
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -254,12 +265,15 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
           <Badge label={CHANGE_STATUS_LABEL[r.status]} tone={CHANGE_STATUS_TONE[r.status]} />
         </View>
       ))}
-      {requests.some((r) => r.status === 'approved') && (
-        <Text style={styles.changeNote}>
-          Approved — your coach change is finalized by our team; you&apos;ll be notified once your new coach and
-          schedule are set.
-        </Text>
+      {requests.some((r) => r.status === 'approved' && r.new_coach_id) && (
+        <Text style={styles.changeNote}>Your coach change is complete.</Text>
       )}
+
+      {requests
+        .filter((r) => r.status === 'approved' && !r.new_coach_id)
+        .map((r) => (
+          <CoachChangeCompletionCard key={r.id} requestId={r.id} onCompleted={onSubmitted} />
+        ))}
 
       {showForm && (
         <View style={styles.changeForm}>
@@ -296,6 +310,115 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
             Submit request
           </PrimaryButton>
         </View>
+      )}
+    </GlassCard>
+  );
+}
+
+function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: string; onCompleted: () => void }) {
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [match, setMatch] = useState<{ coach: CoachMatchCandidate; hours: number[] } | null>(null);
+  const [selectedHour, setSelectedHour] = useState<number | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const toggleDay = (dow: number) => {
+    setMatch(null);
+    setSelectedHour(null);
+    setSelectedDays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)));
+  };
+
+  const onFindCoach = async () => {
+    if (selectedDays.length < 2) {
+      setError('Pick at least 2 days.');
+      return;
+    }
+    setError(null);
+    setSearching(true);
+    try {
+      const settings = await getBookingSettings();
+      const result = await findCoachForSchedule(
+        selectedDays,
+        settings.defaultSessionDurationMinutes,
+        { startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour },
+        'new',
+        'no_preference'
+      );
+      if (!result) {
+        setError('No available coach found for those days — try different days.');
+        return;
+      }
+      setMatch(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const onConfirm = async () => {
+    if (!match || selectedHour === null) return;
+    setConfirming(true);
+    setError(null);
+    try {
+      const settings = await getBookingSettings();
+      await completeCoachChange({
+        requestId,
+        newCoachId: match.coach.id,
+        days: selectedDays,
+        hour: selectedHour,
+        durationMinutes: settings.defaultSessionDurationMinutes,
+      });
+      setDone(true);
+      onCompleted();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  if (done) return null; // onCompleted() reloads the parent's requests list, which will drop this card once new_coach_id is set
+
+  return (
+    <GlassCard style={styles.completionCard}>
+      <SectionHeader eyebrow="Approved" title="Pick your new schedule" />
+      <Text style={styles.metaLabel}>DAYS</Text>
+      <ChipGrid>
+        {WEEKDAYS.map((d) => (
+          <Chip key={d.dow} label={d.short} selected={selectedDays.includes(d.dow)} onPress={() => toggleDay(d.dow)} />
+        ))}
+      </ChipGrid>
+
+      {!match && (
+        <PrimaryButton onPress={onFindCoach} loading={searching} style={styles.findCoachButton}>
+          Find available coach
+        </PrimaryButton>
+      )}
+
+      {match && (
+        <>
+          <Text style={styles.changeNote}>Matched with {match.coach.full_name}</Text>
+          <Text style={styles.metaLabel}>TIME</Text>
+          <ChipGrid>
+            {match.hours.map((h) => (
+              <Chip key={h} label={formatHourLabel(h)} selected={h === selectedHour} onPress={() => setSelectedHour(h)} />
+            ))}
+          </ChipGrid>
+          {selectedHour !== null && (
+            <PrimaryButton onPress={onConfirm} loading={confirming} style={styles.findCoachButton}>
+              Confirm {match.coach.full_name}
+            </PrimaryButton>
+          )}
+        </>
+      )}
+
+      {error && (
+        <Text style={styles.errorText} accessibilityRole="alert">
+          {error}
+        </Text>
       )}
     </GlassCard>
   );
@@ -340,4 +463,6 @@ const styles = StyleSheet.create({
   ratingChipTextSelected: { color: Brand.black },
   thread: { gap: 8 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  completionCard: { gap: 8 },
+  findCoachButton: { marginTop: 8 },
 });

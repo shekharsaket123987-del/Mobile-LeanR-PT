@@ -32,6 +32,8 @@ export type Profile = {
   id: string;
   role: UserRole;
   full_name: string;
+  /** Null for most Google OAuth signups and any client who skipped the phone-OTP step — the trigger for PhoneGateModal (New PRD.md §4.A). */
+  phone: string | null;
 };
 
 type AuthState = {
@@ -49,8 +51,29 @@ type AuthState = {
    * use it.
    */
   recoveryInProgress: boolean;
+  /**
+   * Signup's phone-OTP step (New PRD.md §3.1 step 3) needs the user to stay
+   * on the signup screen for a moment AFTER `signUpWithPassword` has
+   * already established a real session — otherwise `(auth)/_layout.tsx`'s
+   * normal "session exists -> redirect home" guard fires the instant
+   * signup succeeds, yanking the user away before they ever see the phone
+   * step. Same escape-hatch shape as `recoveryInProgress`. `signup.tsx`
+   * sets this true BEFORE calling `signUpWithPassword` (not after it
+   * resolves) so there's no race with the session-state update landing
+   * first.
+   */
+  signupPhoneStepInProgress: boolean;
+  setSignupPhoneStepInProgress: (inProgress: boolean) => void;
+  /** Re-fetches `profiles` for the current session — needed after a direct table write (e.g. PhoneGateModal setting `phone`) that `onAuthStateChange` would never fire for. */
+  refreshProfile: () => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
+  /** `needsEmailConfirmation` is true when this Supabase project has "Confirm email" enabled and no session was returned yet (New PRD.md §3.1 signup step 2) — the caller can't sign the user in until they click the emailed link. */
+  signUpWithPassword: (
+    email: string,
+    password: string,
+    fullName: string,
+    phone?: string
+  ) => Promise<{ error: string | null; needsEmailConfirmation: boolean }>;
   /**
    * Web-based Google OAuth (Supabase's recommended Expo/RN pattern — see
    * README.md "Open items" #1): GoTrue holds the actual Google OAuth
@@ -137,7 +160,7 @@ async function applyAuthCallback(link: AuthCallbackLink) {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').select('id, role, full_name').eq('id', userId).single();
+  const { data, error } = await supabase.from('profiles').select('id, role, full_name, phone').eq('id', userId).single();
 
   if (error || !data) {
     console.warn('[auth] failed to load profile role', error?.message);
@@ -151,6 +174,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [recoveryInProgress, setRecoveryInProgress] = useState(false);
+  const [signupPhoneStepInProgress, setSignupPhoneStepInProgress] = useState(false);
   const incomingUrl = Linking.useURL();
 
   // Detect a password-recovery deep link (cold start via getInitialURL,
@@ -200,14 +224,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { error: error?.message ?? null };
   };
 
-  const signUpWithPassword: AuthState['signUpWithPassword'] = async (email, password) => {
+  const signUpWithPassword: AuthState['signUpWithPassword'] = async (email, password, fullName, phone) => {
     // Client-only self-serve signup — matches the web app exactly (§3):
     // coach/admin accounts are ops-provisioned only, never self-registered.
     // No role passed in options.data, so the handle_new_user() trigger's
-    // default ('client') applies — it also creates the client_profiles
-    // row automatically, so there's nothing left for this app to insert.
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error?.message ?? null };
+    // default ('client') applies. full_name/phone ARE read by that same
+    // trigger (raw_user_meta_data->>'full_name'/'phone') and written to
+    // the new profiles row directly — nothing left for this app to insert.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName, phone: phone || undefined } },
+    });
+    return { error: error?.message ?? null, needsEmailConfirmation: !error && !data.session };
   };
 
   // OTP is the same client<->account relationship as password signup — a
@@ -260,8 +289,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const completePasswordRecovery = () => setRecoveryInProgress(false);
 
+  const refreshProfile: AuthState['refreshProfile'] = async () => {
+    if (!session) return;
+    setProfile(await fetchProfile(session.user.id));
+  };
+
   const signOut = async () => {
     setRecoveryInProgress(false);
+    setSignupPhoneStepInProgress(false);
     await supabase.auth.signOut();
   };
 
@@ -272,6 +307,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         profile,
         loading,
         recoveryInProgress,
+        signupPhoneStepInProgress,
+        setSignupPhoneStepInProgress,
+        refreshProfile,
         signInWithPassword,
         signUpWithPassword,
         signInWithGoogle,

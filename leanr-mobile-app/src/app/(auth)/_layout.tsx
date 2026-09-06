@@ -11,13 +11,16 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
 
 export default function AuthLayout() {
-  const { session, profile, loading, recoveryInProgress } = useAuth();
+  const { session, profile, loading, recoveryInProgress, signupPhoneStepInProgress } = useAuth();
 
   if (loading) return null;
   // A password-recovery deep link establishes a real session too — don't
   // let that bounce the user home before they've actually set a new
-  // password on /reset-password (see auth-context.tsx).
-  if (recoveryInProgress) return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Brand.black } }} />;
+  // password on /reset-password (see auth-context.tsx). Same reasoning for
+  // signup's phone-OTP step, which also runs after a session already exists.
+  if (recoveryInProgress || signupPhoneStepInProgress) {
+    return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Brand.black } }} />;
+  }
   // Session exists but the role lookup (profiles.role) hasn't resolved yet
   // — wait rather than redirecting on a still-null role, which would
   // briefly send everyone (including coaches) to /unsupported-role before

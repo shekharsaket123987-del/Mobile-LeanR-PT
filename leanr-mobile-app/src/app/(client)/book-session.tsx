@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
 import { TextLink } from '@/components/tappable';
 import { PrimaryButton } from '@/components/ui/button';
@@ -38,6 +39,8 @@ import {
   type IstDate,
 } from '@/lib/data/booking-wizard';
 import { getMyCoach } from '@/lib/data/coach';
+import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
+import { rateSession } from '@/lib/data/bookings';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -47,14 +50,16 @@ type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
 export default function BookSessionScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [coach, subscription, coaches, settings] = await Promise.all([
+    const [coach, subscription, coaches, settings, unratedDemo] = await Promise.all([
       getMyCoach(),
       getMySubscription(),
       getAvailableCoaches(),
       getBookingSettings(),
+      getUnratedCompletedDemo(),
     ]);
-    return { coach, subscription, coaches, settings };
+    return { coach, subscription, coaches, settings, unratedDemo };
   }, []);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
 
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<IstDate>(() => addIstDays(todayIst(), 1));
@@ -168,6 +173,13 @@ export default function BookSessionScreen() {
     );
   }
 
+  const unratedDemo = !feedbackDismissed ? (data?.unratedDemo ?? null) : null;
+  const onSubmitDemoFeedback = async (rating: { qualityRating: number; trainerRating: number; note: string }) => {
+    if (!unratedDemo) return;
+    await rateSession(unratedDemo.bookingId, rating);
+    setFeedbackDismissed(true);
+  };
+
   if (!subscription) {
     return (
       <ScreenScaffold title="Book a Session">
@@ -175,6 +187,12 @@ export default function BookSessionScreen() {
         <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
           View plans
         </PrimaryButton>
+        <RateSessionSheet
+          visible={!!unratedDemo}
+          title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+          onClose={() => setFeedbackDismissed(true)}
+          onSubmit={onSubmitDemoFeedback}
+        />
       </ScreenScaffold>
     );
   }
@@ -273,6 +291,13 @@ export default function BookSessionScreen() {
         </Text>
       )}
       {phase === 'holding' && <LoadingState rows={1} />}
+
+      <RateSessionSheet
+        visible={!!unratedDemo}
+        title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+        onClose={() => setFeedbackDismissed(true)}
+        onSubmit={onSubmitDemoFeedback}
+      />
     </ScreenScaffold>
   );
 }

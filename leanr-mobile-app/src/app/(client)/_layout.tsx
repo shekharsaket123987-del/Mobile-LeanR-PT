@@ -15,6 +15,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { ColorValue, useColorScheme } from 'react-native';
 
+import { GlobalGates } from '@/components/gates/global-gates';
 import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { Brand, Colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -48,7 +49,9 @@ export default function ClientLayout() {
   if (profile && profile.role !== 'client') return <Redirect href={getHomeRouteForRole(profile.role)} />;
 
   return (
-    <Tabs
+    <>
+      <GlobalGates />
+      <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
@@ -123,6 +126,7 @@ export default function ClientLayout() {
       <Tabs.Screen name="activate" options={{ href: null, title: 'Activate Your Plan' }} />
       <Tabs.Screen name="onboarding" options={{ href: null, title: 'Onboarding' }} />
       <Tabs.Screen name="subscription" options={{ href: null, title: 'Subscription' }} />
-    </Tabs>
+      </Tabs>
+    </>
   );
 }

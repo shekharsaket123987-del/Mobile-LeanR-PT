@@ -1,29 +1,36 @@
 /**
- * My Concerns (client-raised escalations) — LEANR_PT_MOBILE_PRD.md §10
- * "My Concerns" row, §3 "Restricted: cannot resolve escalations... can
- * only raise/request them", §13 rule 22 (the admin-only resolution gate
- * — not reproduced here since a client can never edit an escalation
- * after raising it). Confirmed against the real schema/RLS on
- * 2026-08-18: clients can INSERT/SELECT their own `escalations` rows and
- * SELECT (never write) `escalation_notes` for them.
+ * My Concerns (client-raised escalations) — New PRD.md §4.A "My Concerns",
+ * §3 "Restricted: cannot resolve escalations... can only raise/request
+ * them" — not reproduced here since a client can never edit an escalation
+ * after raising it. Confirmed against the real schema/RLS: clients can
+ * INSERT/SELECT their own `escalations` rows and SELECT (never write)
+ * `escalation_notes` for them.
  *
- * `category` is a free-text column, not a DB enum — only two values
- * exist in the live data ('technical_issue', 'other'). The chip set
- * below is a reasonable inferred vocabulary (Design Principle #4: chips
- * over free text), not a confirmed canonical list; being free text, an
- * unexpected value here can't fail a constraint either way.
+ * `category` DOES have a DB CHECK constraint (`escalations_category_check`,
+ * confirmed directly via `pg_constraint` — an earlier pass here believed
+ * it was free-text based on incomplete live data and shipped an invented
+ * 5-value set instead; corrected to the real, DB-enforced 7 values below).
  */
 import { getMyCoach } from '@/lib/data/coach';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 
-export type ConcernCategory = 'coach' | 'scheduling' | 'billing' | 'technical_issue' | 'other';
+export type ConcernCategory =
+  | 'slot_not_available'
+  | 'coach_missed_session'
+  | 'need_schedule_change'
+  | 'payment_issue'
+  | 'technical_issue'
+  | 'want_coach_change'
+  | 'other';
 
 export const CONCERN_CATEGORIES: { value: ConcernCategory; label: string }[] = [
-  { value: 'coach', label: 'Coach' },
-  { value: 'scheduling', label: 'Scheduling' },
-  { value: 'billing', label: 'Billing' },
+  { value: 'slot_not_available', label: 'Slot not available' },
+  { value: 'coach_missed_session', label: 'Coach missed session' },
+  { value: 'need_schedule_change', label: 'Need schedule change' },
+  { value: 'payment_issue', label: 'Payment issue' },
   { value: 'technical_issue', label: 'Technical issue' },
+  { value: 'want_coach_change', label: 'Want coach change' },
   { value: 'other', label: 'Other' },
 ];
 

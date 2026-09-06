@@ -85,3 +85,28 @@ export async function hasExistingAssessment(): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+export type UnratedDemo = { bookingId: string; coachName: string | null };
+
+/** New PRD.md §4.A Book Session screen: "demo_completed -> DemoFeedbackGateClient (rate-or-skip)" — the most recent completed, not-yet-rated assessment booking, if any. */
+export async function getUnratedCompletedDemo(): Promise<UnratedDemo | null> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return null;
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('id, quality_rating, coach_profiles(profiles(full_name))')
+    .eq('client_id', clientId)
+    .eq('session_type', 'assessment')
+    .eq('status', 'completed')
+    .is('quality_rating', null)
+    .order('scheduled_start', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const coachProfile = data.coach_profiles as { profiles?: { full_name?: string } | { full_name?: string }[] } | null;
+  const profile = coachProfile ? (Array.isArray(coachProfile.profiles) ? coachProfile.profiles[0] : coachProfile.profiles) : null;
+  return { bookingId: data.id as string, coachName: profile?.full_name ?? null };
+}
+

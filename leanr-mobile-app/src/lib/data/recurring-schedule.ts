@@ -153,13 +153,86 @@ export async function getCommonAvailableHours(
   return computeCommonHours((data ?? []) as AvailabilityRow[], daysOfWeek, durationMinutes, window);
 }
 
+/**
+ * Trainer Preference / Gender — New PRD.md §4.A Schedule Setup screen.
+ * Simplified matching, same spirit as `getCommonAvailableHours`'s own
+ * simplified fallback ladder (see file header): rather than a scored
+ * candidate ranking, this returns the first active coach (matching the
+ * gender filter, if any) whose weekly template covers every selected day
+ * at some common hour — an honored, actually-available match, not a
+ * "best" one.
+ */
+export type TrainerPreference = 'same' | 'new' | 'no_preference';
+export type TrainerGenderPreference = 'male' | 'female' | 'no_preference';
+
+export type CoachMatchCandidate = { id: string; full_name: string };
+
+async function listCandidateCoaches(
+  genderPreference: TrainerGenderPreference,
+  excludeCoachId?: string
+): Promise<CoachMatchCandidate[]> {
+  let query = supabase.from('coach_profiles').select('id, gender, profiles(full_name)').eq('status', 'active');
+  if (genderPreference !== 'no_preference') query = query.eq('gender', genderPreference);
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data ?? [])
+    .filter((row) => row.id !== excludeCoachId)
+    .map((row) => {
+      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+      return { id: row.id as string, full_name: profile?.full_name ?? 'Coach' };
+    });
+}
+
+/**
+ * Finds a coach + common available hour for the selected days, honoring
+ * Trainer Preference/Gender. `preference: 'same'` never searches other
+ * coaches — a no-match there is reported as such, exactly like today's
+ * plain (pre-preference) behavior.
+ */
+export async function findCoachForSchedule(
+  daysOfWeek: number[],
+  durationMinutes: number,
+  window: { startHour: number; endHour: number },
+  preference: TrainerPreference,
+  genderPreference: TrainerGenderPreference
+): Promise<{ coach: CoachMatchCandidate; hours: number[] } | null> {
+  const myCoach = await getMyCoach();
+
+  if (preference === 'same') {
+    if (!myCoach) return null;
+    const hours = await getCommonAvailableHours(myCoach.id, daysOfWeek, durationMinutes, window);
+    return hours.length > 0 ? { coach: { id: myCoach.id, full_name: myCoach.full_name ?? 'Coach' }, hours } : null;
+  }
+
+  const candidates =
+    preference === 'no_preference' && myCoach
+      ? [{ id: myCoach.id, full_name: myCoach.full_name ?? 'Coach' }, ...(await listCandidateCoaches(genderPreference, myCoach.id))]
+      : await listCandidateCoaches(genderPreference, preference === 'new' ? myCoach?.id : undefined);
+
+  for (const candidate of candidates) {
+    const hours = await getCommonAvailableHours(candidate.id, daysOfWeek, durationMinutes, window);
+    if (hours.length > 0) return { coach: candidate, hours };
+  }
+  return null;
+}
+
 export type SetupResult = { dayOfWeek: number; requested: number; confirmed: number };
 
-export async function setUpRecurringSchedule(daysOfWeek: number[], hour: number, durationMinutes: number): Promise<SetupResult[]> {
+export async function setUpRecurringSchedule(
+  daysOfWeek: number[],
+  hour: number,
+  durationMinutes: number,
+  coachId?: string
+): Promise<SetupResult[]> {
   const clientId = await getMyClientProfileId();
   if (!clientId) throw new Error('Could not resolve your client profile.');
-  const coach = await getMyCoach();
-  if (!coach) throw new Error('No coach assigned yet.');
+  let targetCoachId = coachId;
+  if (!targetCoachId) {
+    const coach = await getMyCoach();
+    if (!coach) throw new Error('No coach assigned yet.');
+    targetCoachId = coach.id;
+  }
   const subscription = await getMySubscription();
   if (!subscription) throw new Error('You need an active plan first.');
 
@@ -178,7 +251,7 @@ export async function setUpRecurringSchedule(daysOfWeek: number[], hour: number,
       .from('recurring_slots')
       .insert({
         client_id: clientId,
-        coach_id: coach.id,
+        coach_id: targetCoachId,
         subscription_id: subscription.id,
         day_of_week: dayOfWeek,
         start_time: startTime,

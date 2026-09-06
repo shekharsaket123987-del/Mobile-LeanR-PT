@@ -5,7 +5,7 @@
  * column — see src/lib/data/progress.ts and subscription.ts).
  */
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ProgressRing } from '@/components/progress-ring';
 import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
@@ -13,13 +13,19 @@ import { PrimaryButton } from '@/components/ui/button';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { TextField } from '@/components/ui/text-field';
-import { DisplayFont } from '@/constants/theme';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
 import { getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function toNumber(v: string): number | undefined {
+  if (!v.trim()) return undefined;
+  const n = Number(v);
+  return Number.isNaN(n) ? undefined : n;
 }
 
 export default function ProgressScreen() {
@@ -29,7 +35,15 @@ export default function ProgressScreen() {
     return { logs, subscription, sessionsUsed };
   }, []);
   const [weight, setWeight] = useState('');
+  const [bodyFat, setBodyFat] = useState('');
+  const [muscle, setMuscle] = useState('');
+  const [waist, setWaist] = useState('');
+  const [chest, setChest] = useState('');
+  const [hip, setHip] = useState('');
+  const [arms, setArms] = useState('');
+  const [thigh, setThigh] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { logs, subscription, sessionsUsed } = data ?? { logs: [], subscription: null, sessionsUsed: 0 };
   const latest = logs?.[0] ?? null;
@@ -37,18 +51,30 @@ export default function ProgressScreen() {
   const ringProgress = total > 0 ? sessionsUsed / total : 0;
 
   const onSubmit = async () => {
-    const weightNum = weight ? Number(weight) : undefined;
-    if (weight && Number.isNaN(weightNum)) {
-      Alert.alert('Enter a valid number');
-      return;
-    }
+    setSubmitError(null);
     setSubmitting(true);
     try {
-      await logProgress({ weight: weightNum });
+      await logProgress({
+        weight: toNumber(weight),
+        bodyFatPct: toNumber(bodyFat),
+        musclePct: toNumber(muscle),
+        waist: toNumber(waist),
+        chest: toNumber(chest),
+        hip: toNumber(hip),
+        arms: toNumber(arms),
+        thigh: toNumber(thigh),
+      });
       setWeight('');
+      setBodyFat('');
+      setMuscle('');
+      setWaist('');
+      setChest('');
+      setHip('');
+      setArms('');
+      setThigh('');
       reload();
     } catch (err) {
-      Alert.alert('Could not save update', err instanceof Error ? err.message : String(err));
+      setSubmitError(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }
@@ -78,14 +104,21 @@ export default function ProgressScreen() {
 
           <GlassCard>
             <SectionHeader eyebrow="Weekly check-in" title="Log this week" />
-            <TextField
-              icon="scale-outline"
-              placeholder="Weight (kg)"
-              keyboardType="numeric"
-              value={weight}
-              onChangeText={setWeight}
-            />
+            <TextField icon="scale-outline" placeholder="Weight (kg)" keyboardType="numeric" value={weight} onChangeText={setWeight} />
+            <TextField icon="body-outline" placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
+            <TextField icon="body-outline" placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
+            <TextField icon="resize-outline" placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+            <TextField icon="resize-outline" placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+            <TextField icon="resize-outline" placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+            <TextField icon="resize-outline" placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+            <TextField icon="resize-outline" placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
           </GlassCard>
+
+          {submitError && (
+            <Text style={styles.errorText} accessibilityRole="alert">
+              {submitError}
+            </Text>
+          )}
 
           <PrimaryButton size="lg" onPress={onSubmit} loading={submitting}>
             Log this week&apos;s update
@@ -107,4 +140,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

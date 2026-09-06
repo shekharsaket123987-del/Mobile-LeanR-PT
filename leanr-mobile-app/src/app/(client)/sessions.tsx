@@ -8,6 +8,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
 import { TextLink } from '@/components/tappable';
 import { PrimaryButton } from '@/components/ui/button';
@@ -15,16 +16,24 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Brand } from '@/constants/theme';
-import { cancelBooking, getSessionsByStatus } from '@/lib/data/bookings';
+import { cancelBooking, canRateThisWeek, getRescheduledSessions, getSessionsByStatus, rateSession } from '@/lib/data/bookings';
+import { getMyClientProfileId } from '@/lib/data/identity';
 import type { Booking, BookingStatus } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 
-const TABS: { key: BookingStatus; label: string }[] = [
+type TabKey = BookingStatus | 'rescheduled';
+
+const TABS: { key: TabKey; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
   { key: 'missed', label: 'Missed' },
+  { key: 'rescheduled', label: 'Rescheduled' },
 ];
+
+function getSessionsForTab(tab: TabKey) {
+  return tab === 'rescheduled' ? getRescheduledSessions() : getSessionsByStatus(tab);
+}
 
 function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -36,7 +45,20 @@ function formatSessionTime(iso: string) {
   });
 }
 
-function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: () => void }) {
+function SessionCard({
+  booking,
+  canRate,
+  onCancelled,
+  onRated,
+}: {
+  booking: Booking;
+  canRate: boolean;
+  onCancelled: () => void;
+  onRated: () => void;
+}) {
+  const [rateSheetOpen, setRateSheetOpen] = useState(false);
+  const alreadyRated = booking.quality_rating != null || booking.trainer_rating != null;
+
   const onCancel = () => {
     Alert.alert('Cancel session?', 'This cannot be undone.', [
       { text: 'Keep session', style: 'cancel' },
@@ -75,13 +97,35 @@ function SessionCard({ booking, onCancelled }: { booking: Booking; onCancelled: 
           </TextLink>
         </View>
       )}
+      {booking.status === 'completed' && !alreadyRated && (
+        <View style={styles.actionRow}>
+          <TextLink
+            onPress={() => (canRate ? setRateSheetOpen(true) : Alert.alert("Can't rate yet", 'You can rate one session every 7 days.'))}
+            style={styles.rescheduleLink}>
+            Rate session
+          </TextLink>
+        </View>
+      )}
+      <RateSessionSheet
+        visible={rateSheetOpen}
+        onClose={() => setRateSheetOpen(false)}
+        onSubmit={async (rating) => {
+          await rateSession(booking.id, { qualityRating: rating.qualityRating, trainerRating: rating.trainerRating, note: rating.note });
+          setRateSheetOpen(false);
+          onRated();
+        }}
+      />
     </GlassCard>
   );
 }
 
 export default function SessionsScreen() {
-  const [activeTab, setActiveTab] = useState<BookingStatus>('upcoming');
-  const { data, loading, error, reload } = useAsync(() => getSessionsByStatus(activeTab), [activeTab]);
+  const [activeTab, setActiveTab] = useState<TabKey>('upcoming');
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [sessions, clientId] = await Promise.all([getSessionsForTab(activeTab), getMyClientProfileId()]);
+    const canRate = clientId ? await canRateThisWeek(clientId) : false;
+    return { sessions, canRate };
+  }, [activeTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -107,12 +151,14 @@ export default function SessionsScreen() {
 
       {loading && <LoadingState />}
       {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (data?.length ?? 0) === 0 && (
+      {!loading && !error && (data?.sessions.length ?? 0) === 0 && (
         <EmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />
       )}
       {!loading &&
         !error &&
-        data?.map((booking) => <SessionCard key={booking.id} booking={booking} onCancelled={reload} />)}
+        data?.sessions.map((booking) => (
+          <SessionCard key={booking.id} booking={booking} canRate={data.canRate} onCancelled={reload} onRated={reload} />
+        ))}
     </ScreenScaffold>
   );
 }

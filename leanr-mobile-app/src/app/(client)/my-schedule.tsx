@@ -24,13 +24,16 @@ import { Brand } from '@/constants/theme';
 import { getBookingSettings } from '@/lib/data/booking-wizard';
 import { getMyCoach } from '@/lib/data/coach';
 import {
-  getCommonAvailableHours,
+  findCoachForSchedule,
   getMyActiveRecurringSlots,
   PATTERN_PRESETS,
   setUpRecurringSchedule,
   WEEKDAYS,
+  type CoachMatchCandidate,
   type RecurringSlot,
   type SetupResult,
+  type TrainerGenderPreference,
+  type TrainerPreference,
 } from '@/lib/data/recurring-schedule';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
@@ -63,7 +66,10 @@ export default function MyScheduleScreen() {
   const settings = data?.settings ?? null;
 
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [trainerPreference, setTrainerPreference] = useState<TrainerPreference>('same');
+  const [trainerGender, setTrainerGender] = useState<TrainerGenderPreference>('no_preference');
   const [hours, setHours] = useState<number[] | null>(null);
+  const [matchedCoach, setMatchedCoach] = useState<CoachMatchCandidate | null>(null);
   const [hoursLoading, setHoursLoading] = useState(false);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>('pick');
@@ -80,7 +86,10 @@ export default function MyScheduleScreen() {
 
     if (!coach || !settings || selectedDays.length === 0) {
       Promise.resolve().then(() => {
-        if (!cancelled) setHours(null);
+        if (!cancelled) {
+          setHours(null);
+          setMatchedCoach(null);
+        }
       });
       return () => {
         cancelled = true;
@@ -90,15 +99,21 @@ export default function MyScheduleScreen() {
     Promise.resolve().then(() => {
       if (cancelled) return;
       setHours(null);
+      setMatchedCoach(null);
       setSelectedHour(null);
       setHoursLoading(true);
     });
-    getCommonAvailableHours(coach.id, selectedDays, settings.defaultSessionDurationMinutes, {
-      startHour: settings.bookingWindowStartHour,
-      endHour: settings.bookingWindowEndHour,
-    })
-      .then((result) => {
-        if (!cancelled) setHours(result);
+    findCoachForSchedule(
+      selectedDays,
+      settings.defaultSessionDurationMinutes,
+      { startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour },
+      trainerPreference,
+      trainerGender
+    )
+      .then((match) => {
+        if (cancelled) return;
+        setHours(match?.hours ?? []);
+        setMatchedCoach(match?.coach ?? null);
       })
       .catch((err) => {
         if (!cancelled) setActionError(err instanceof Error ? err.message : String(err));
@@ -109,14 +124,19 @@ export default function MyScheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [coach, settings, selectedDays]);
+  }, [coach, settings, selectedDays, trainerPreference, trainerGender]);
 
   const onConfirm = async () => {
-    if (!settings || selectedHour === null || selectedDays.length === 0) return;
+    if (!settings || selectedHour === null || selectedDays.length === 0 || !matchedCoach) return;
     setPhase('saving');
     setActionError(null);
     try {
-      const setupResults = await setUpRecurringSchedule(selectedDays, selectedHour, settings.defaultSessionDurationMinutes);
+      const setupResults = await setUpRecurringSchedule(
+        selectedDays,
+        selectedHour,
+        settings.defaultSessionDurationMinutes,
+        matchedCoach.id
+      );
       setResults(setupResults);
       setPhase('success');
     } catch (err) {
@@ -226,17 +246,52 @@ export default function MyScheduleScreen() {
 
       {selectedDays.length >= 2 && (
         <GlassCard>
+          <SectionHeader title="Trainer preference" />
+          <View style={styles.chipRow}>
+            <Chip label="Same trainer" selected={trainerPreference === 'same'} onPress={() => setTrainerPreference('same')} />
+            <Chip label="New trainer" selected={trainerPreference === 'new'} onPress={() => setTrainerPreference('new')} />
+            <Chip
+              label="No preference"
+              selected={trainerPreference === 'no_preference'}
+              onPress={() => setTrainerPreference('no_preference')}
+            />
+          </View>
+
+          {trainerPreference !== 'same' && (
+            <>
+              <SectionHeader title="Trainer gender" />
+              <View style={styles.chipRow}>
+                <Chip label="Male" selected={trainerGender === 'male'} onPress={() => setTrainerGender('male')} />
+                <Chip label="Female" selected={trainerGender === 'female'} onPress={() => setTrainerGender('female')} />
+                <Chip
+                  label="No preference"
+                  selected={trainerGender === 'no_preference'}
+                  onPress={() => setTrainerGender('no_preference')}
+                />
+              </View>
+            </>
+          )}
+        </GlassCard>
+      )}
+
+      {selectedDays.length >= 2 && (
+        <GlassCard>
           <SectionHeader title="Time (same every day)" />
           {hoursLoading && <LoadingState rows={1} />}
           {!hoursLoading && hours && hours.length === 0 && (
-            <EmptyState message="No single time works for your coach across all those days — try different days." />
+            <EmptyState message="No single time works across all those days — try different days, or a different trainer preference." />
           )}
           {!hoursLoading && hours && hours.length > 0 && (
-            <View style={styles.chipRow}>
-              {hours.map((h) => (
-                <Chip key={h} label={formatHourLabel(h)} selected={h === selectedHour} onPress={() => setSelectedHour(h)} />
-              ))}
-            </View>
+            <>
+              {matchedCoach && trainerPreference !== 'same' && (
+                <Text style={styles.matchedCoachText}>Matched with {matchedCoach.full_name}</Text>
+              )}
+              <View style={styles.chipRow}>
+                {hours.map((h) => (
+                  <Chip key={h} label={formatHourLabel(h)} selected={h === selectedHour} onPress={() => setSelectedHour(h)} />
+                ))}
+              </View>
+            </>
           )}
         </GlassCard>
       )}
@@ -272,4 +327,5 @@ const styles = StyleSheet.create({
   slotRow: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   warningText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.streakEmberStart, marginTop: 8 },
+  matchedCoachText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.7)', marginBottom: 4 },
 });

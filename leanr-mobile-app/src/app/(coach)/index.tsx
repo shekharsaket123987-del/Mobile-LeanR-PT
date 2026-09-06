@@ -20,6 +20,7 @@ import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightStatCard } from '@/components/light/light-stat-card';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
+import { useAuth } from '@/lib/auth/auth-context';
 import {
   getAttendanceMap,
   getCoachBookings,
@@ -39,6 +40,7 @@ function formatSessionTime(iso: string) {
 }
 
 export default function CoachDashboard() {
+  const { session } = useAuth();
   const { data, loading, error, reload } = useAsync(async () => {
     const [today, thisWeekCount, performance, utilization, escalations, pendingTasks, upcoming3Days, cancelled, rescheduled, clients] =
       await Promise.all([
@@ -111,7 +113,7 @@ export default function CoachDashboard() {
 
       <Pressable onPress={() => router.push('/pending-tasks')} accessibilityRole="button">
         <LightCard style={styles.linkCard}>
-          <LightSectionHeader title="Pending Tasks" actionLabel="View all" onAction={() => router.push('/pending-tasks')} />
+          <LightSectionHeader title="Pending Tasks" />
           <Text style={styles.linkBody}>
             {data.pendingTasks.length === 0
               ? 'Nothing owed — you’re all caught up.'
@@ -135,7 +137,7 @@ export default function CoachDashboard() {
           {data.cancelled.map((b) => (
             <LightCard key={b.id} style={styles.simpleRow}>
               <Text style={styles.simpleRowTime}>{formatSessionTime(b.scheduled_start)}</Text>
-              <LightBadge label={`Cancelled by ${b.cancelled_by ?? 'unknown'}`} tone="red" />
+              <LightBadge label={`Cancelled by ${b.cancelled_by === session?.user.id ? 'you' : 'client'}`} tone="red" />
             </LightCard>
           ))}
         </>

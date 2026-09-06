@@ -18,6 +18,14 @@ import { useNotificationTapRouting } from '@/lib/notifications/use-notification-
 
 SplashScreen.preventAutoHideAsync();
 
+// useNotificationTapRouting() reads the coach/client role from AuthContext,
+// so it must run inside <AuthProvider> — not in RootLayout's body, which is
+// outside that subtree.
+function NotificationTapRouter() {
+  useNotificationTapRouting();
+  return null;
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded] = useFonts({
@@ -28,7 +36,6 @@ export default function RootLayout() {
     Manrope_700Bold,
     Manrope_800ExtraBold,
   });
-  useNotificationTapRouting();
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
@@ -42,6 +49,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthProvider>
+          <NotificationTapRouter />
           <Slot />
         </AuthProvider>
       </ThemeProvider>

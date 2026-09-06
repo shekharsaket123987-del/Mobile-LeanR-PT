@@ -11,6 +11,16 @@
  * Modal: Pending Tasks Gate" — the coach portal's equivalent of the
  * client portal's `GlobalGates`, which had no coach-side counterpart at
  * all before this pass (a real gap, not a stylistic one).
+ *
+ * `profile`/`notifications`/`more` are registered here under the file
+ * names `coach-profile`/`coach-notifications`/`coach-more` (tab labels
+ * are unaffected) because expo-router resolves route groups' children
+ * against the same flat URL space — a same-named file in `(client)`
+ * wins path resolution on a hard reload/deep link, bouncing a coach
+ * through the client layout's role redirect before this group ever
+ * mounts. Giving these three coach-only names keeps every other
+ * `href: null` screen on its natural name since only these three clash
+ * with `(client)`.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
@@ -100,7 +110,7 @@ export default function CoachLayout() {
           }}
         />
         <Tabs.Screen
-          name="more"
+          name="coach-more"
           options={{ title: 'More', tabBarIcon: ({ focused, color }) => <TabIcon name={focused ? 'menu' : 'menu-outline'} color={color} /> }}
         />
         {/* Every other route in this group stays reachable (pushed, not
@@ -114,8 +124,8 @@ export default function CoachLayout() {
         <Tabs.Screen name="escalations" options={{ href: null, title: 'Escalations' }} />
         <Tabs.Screen name="renewals" options={{ href: null, title: 'Renewals' }} />
         <Tabs.Screen name="performance" options={{ href: null, title: 'Performance' }} />
-        <Tabs.Screen name="notifications" options={{ href: null, title: 'Notifications' }} />
-        <Tabs.Screen name="profile" options={{ href: null, title: 'Profile' }} />
+        <Tabs.Screen name="coach-notifications" options={{ href: null, title: 'Notifications' }} />
+        <Tabs.Screen name="coach-profile" options={{ href: null, title: 'Profile' }} />
         <Tabs.Screen name="chat/[id]" options={{ href: null, title: 'Chat' }} />
         <Tabs.Screen name="search" options={{ href: null, title: 'Search' }} />
       </Tabs>

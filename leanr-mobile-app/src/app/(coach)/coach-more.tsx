@@ -18,7 +18,7 @@ import { useAuth } from '@/lib/auth/auth-context';
 
 const LINKED_ROWS: {
   label: string;
-  href: '/search' | '/availability' | '/leave-requests' | '/renewals' | '/escalations' | '/performance' | '/notifications' | '/profile';
+  href: '/search' | '/availability' | '/leave-requests' | '/renewals' | '/escalations' | '/performance' | '/coach-notifications' | '/coach-profile';
   icon:
     | 'search-outline'
     | 'calendar-outline'
@@ -35,8 +35,8 @@ const LINKED_ROWS: {
   { label: 'Renewals', href: '/renewals', icon: 'trending-up-outline' },
   { label: 'Escalations', href: '/escalations', icon: 'alert-circle-outline' },
   { label: 'Performance', href: '/performance', icon: 'bar-chart-outline' },
-  { label: 'Notifications', href: '/notifications', icon: 'notifications-outline' },
-  { label: 'Profile', href: '/profile', icon: 'person-outline' },
+  { label: 'Notifications', href: '/coach-notifications', icon: 'notifications-outline' },
+  { label: 'Profile', href: '/coach-profile', icon: 'person-outline' },
 ];
 
 export default function CoachMore() {

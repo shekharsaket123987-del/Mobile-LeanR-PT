@@ -5,20 +5,29 @@
  * Profile. "Chats" dropped from this list since it's now a real tab
  * (Stage A) — no need for a duplicate entry point. No "Activity Log"/
  * "Notification Settings"/"Help & Support" rows — admin-only or
- * non-existent anywhere in the PRD for the coach role.
+ * non-existent anywhere in the PRD for the coach role. Grouped into
+ * headed sections (Workflow/Business/Account) for scannability.
  */
 import { router } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
 import { LightDestructiveButton } from '@/components/light/light-button';
 import { LightMenuRow } from '@/components/light/light-menu-row';
+import { LightMoreSection } from '@/components/light/light-more-section';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { useAuth } from '@/lib/auth/auth-context';
 
-const LINKED_ROWS: {
+type Row = {
   label: string;
-  href: '/search' | '/availability' | '/leave-requests' | '/renewals' | '/escalations' | '/performance' | '/coach-notifications' | '/coach-profile';
+  href:
+    | '/search'
+    | '/availability'
+    | '/leave-requests'
+    | '/renewals'
+    | '/escalations'
+    | '/performance'
+    | '/coach-notifications'
+    | '/coach-profile';
   icon:
     | 'search-outline'
     | 'calendar-outline'
@@ -28,36 +37,72 @@ const LINKED_ROWS: {
     | 'bar-chart-outline'
     | 'notifications-outline'
     | 'person-outline';
-}[] = [
-  { label: 'Global Client Search', href: '/search', icon: 'search-outline' },
-  { label: 'Availability Management', href: '/availability', icon: 'calendar-outline' },
-  { label: 'Leave Requests', href: '/leave-requests', icon: 'airplane-outline' },
-  { label: 'Renewals', href: '/renewals', icon: 'trending-up-outline' },
-  { label: 'Escalations', href: '/escalations', icon: 'alert-circle-outline' },
-  { label: 'Performance', href: '/performance', icon: 'bar-chart-outline' },
-  { label: 'Notifications', href: '/coach-notifications', icon: 'notifications-outline' },
-  { label: 'Profile', href: '/coach-profile', icon: 'person-outline' },
+};
+
+const GROUPS: { section: string; rows: Row[] }[] = [
+  {
+    section: 'Workflow',
+    rows: [
+      { label: 'Global Client Search', href: '/search', icon: 'search-outline' },
+      { label: 'Availability Management', href: '/availability', icon: 'calendar-outline' },
+      { label: 'Leave Requests', href: '/leave-requests', icon: 'airplane-outline' },
+    ],
+  },
+  {
+    section: 'Business',
+    rows: [
+      { label: 'Renewals', href: '/renewals', icon: 'trending-up-outline' },
+      { label: 'Escalations', href: '/escalations', icon: 'alert-circle-outline' },
+      { label: 'Performance', href: '/performance', icon: 'bar-chart-outline' },
+    ],
+  },
+  {
+    section: 'Account',
+    rows: [
+      { label: 'Notifications', href: '/coach-notifications', icon: 'notifications-outline' },
+      { label: 'Profile', href: '/coach-profile', icon: 'person-outline' },
+    ],
+  },
 ];
 
-export default function CoachMore() {
-  const { session, signOut } = useAuth();
+/** Row list + sign-out button, no outer page chrome — shared by the routed screen below and `(coach)/_layout.tsx`'s More sheet. */
+export function CoachMoreContent({ onNavigate }: { onNavigate?: (href: string) => void }) {
+  const { signOut } = useAuth();
+  const go = (href: Row['href']) => (onNavigate ? onNavigate(href) : router.push(href));
 
   return (
-    <LightScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
-      <LightCard style={styles.card}>
-        {LINKED_ROWS.map((row, i) => (
-          <LightMenuRow key={row.label} label={row.label} icon={row.icon} onPress={() => router.push(row.href)} last={i === LINKED_ROWS.length - 1} />
-        ))}
-      </LightCard>
+    <>
+      {GROUPS.map((group) => (
+        <LightMoreSection key={group.section} title={group.section}>
+          {group.rows.map((row, i) => (
+            <LightMenuRow
+              key={row.label}
+              label={row.label}
+              icon={row.icon}
+              onPress={() => go(row.href)}
+              last={i === group.rows.length - 1}
+            />
+          ))}
+        </LightMoreSection>
+      ))}
 
       <LightDestructiveButton size="lg" onPress={signOut} style={styles.signOut}>
         Sign out
       </LightDestructiveButton>
+    </>
+  );
+}
+
+export default function CoachMore() {
+  const { session } = useAuth();
+
+  return (
+    <LightScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
+      <CoachMoreContent />
     </LightScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { paddingVertical: 4 },
   signOut: { marginTop: 4 },
 });

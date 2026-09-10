@@ -7,10 +7,17 @@
  * calendar) rather than creating a dedicated "LEANR" calendar, since a
  * one-off event doesn't warrant a whole new calendar.
  */
-import * as Calendar from 'expo-calendar';
 import { Platform } from 'react-native';
 
+// Imported lazily (not at module scope) so that merely importing this file — which
+// happens whenever Expo Router evaluates the screens that reference it — can't crash
+// the whole app bundle if the expo-calendar native module isn't linked into the build.
+async function getCalendarModule() {
+  return import('expo-calendar');
+}
+
 async function getWritableCalendarId(): Promise<string> {
+  const Calendar = await getCalendarModule();
   const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
   const writable = calendars.find((c) => c.allowsModifications);
   if (writable) return writable.id;
@@ -33,6 +40,7 @@ async function getWritableCalendarId(): Promise<string> {
 }
 
 export async function addToDeviceCalendar(event: { title: string; startDate: Date; durationMinutes: number; notes?: string }): Promise<void> {
+  const Calendar = await getCalendarModule();
   const { status } = await Calendar.requestCalendarPermissionsAsync();
   if (status !== 'granted') throw new Error('Calendar permission was not granted.');
 

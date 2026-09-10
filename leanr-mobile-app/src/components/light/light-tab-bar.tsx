@@ -20,12 +20,17 @@ import { LightBrand } from '@/constants/light-theme';
 
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => unknown ? P : never;
 
-export function LightTabBar({ state, descriptors, navigation }: TabBarProps) {
+type Props = TabBarProps & {
+  /** Route name (e.g. `"more"`, `"coach-more"`, `"admin-more"`) whose tab press should open a sheet instead of navigating. */
+  moreRouteName?: string;
+  /** Called instead of navigating when `moreRouteName`'s tab is pressed. */
+  onMorePress?: () => void;
+};
+
+export function LightTabBar({ state, descriptors, navigation, moreRouteName, onMorePress }: Props) {
   const insets = useSafeAreaInsets();
 
-  const visibleRoutes = state.routes.filter(
-    (route) => (descriptors[route.key].options as { href?: unknown }).href !== null
-  );
+  const visibleRoutes = state.routes.filter((route) => (descriptors[route.key].options as { href?: unknown }).href !== null);
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + 8, height: 60 + insets.bottom }]}>
@@ -37,7 +42,15 @@ export function LightTabBar({ state, descriptors, navigation }: TabBarProps) {
         const badge = options.tabBarBadge;
 
         const onPress = () => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          if (route.name === moreRouteName && onMorePress) {
+            onMorePress();
+            return;
+          }
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
           if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
         };
 
@@ -48,9 +61,14 @@ export function LightTabBar({ state, descriptors, navigation }: TabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-            style={styles.tabButton}>
+            style={styles.tabButton}
+          >
             <View style={styles.iconWrap}>
-              {options.tabBarIcon?.({ focused, color: focused ? LightBrand.teal : LightBrand.textMuted, size: 22 })}
+              {options.tabBarIcon?.({
+                focused,
+                color: focused ? LightBrand.teal : LightBrand.textSecondary,
+                size: 22,
+              })}
               {badge != null && badge !== '' && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText} numberOfLines={1}>
@@ -72,14 +90,29 @@ export function LightTabBar({ state, descriptors, navigation }: TabBarProps) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
+    width: '100%',
     backgroundColor: '#FFFFFF',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: LightBrand.border,
     paddingTop: 8,
   },
-  tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  iconWrap: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  label: { fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, color: LightBrand.textMuted },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 11.5,
+    color: LightBrand.textSecondary,
+  },
   labelActive: { color: LightBrand.teal, fontFamily: 'Manrope_700Bold' },
   badge: {
     position: 'absolute',

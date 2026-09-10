@@ -23,17 +23,19 @@
  * with `(client)`.
  */
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, router, Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ColorValue } from 'react-native';
 
 import { CoachPendingTasksGateModal } from '@/components/gates/coach-pending-tasks-gate-modal';
+import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
 import { LightTabBar } from '@/components/light/light-tab-bar';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
 import { getCoachPendingTasks } from '@/lib/data/coach-portal';
 import type { Booking } from '@/lib/data/types';
 import { registerPushToken } from '@/lib/notifications/register-push-token';
+import { CoachMoreContent } from './coach-more';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -66,6 +68,7 @@ function CoachGlobalGates() {
 
 export default function CoachLayout() {
   const { session, profile, loading } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -81,10 +84,16 @@ export default function CoachLayout() {
   return (
     <>
       <CoachGlobalGates />
-      <Tabs tabBar={(props) => <LightTabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tabs
+        tabBar={(props) => <LightTabBar {...props} moreRouteName="coach-more" onMorePress={() => setMoreOpen(true)} />}
+        screenOptions={{ headerShown: false }}
+      >
         <Tabs.Screen
           name="index"
-          options={{ title: 'Home', tabBarIcon: ({ focused, color }) => <TabIcon name={focused ? 'home' : 'home-outline'} color={color} /> }}
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ focused, color }) => <TabIcon name={focused ? 'home' : 'home-outline'} color={color} />,
+          }}
         />
         <Tabs.Screen
           name="clients"
@@ -111,7 +120,10 @@ export default function CoachLayout() {
         />
         <Tabs.Screen
           name="coach-more"
-          options={{ title: 'More', tabBarIcon: ({ focused, color }) => <TabIcon name={focused ? 'menu' : 'menu-outline'} color={color} /> }}
+          options={{
+            title: 'More',
+            tabBarIcon: ({ focused, color }) => <TabIcon name={focused ? 'menu' : 'menu-outline'} color={color} />,
+          }}
         />
         {/* Every other route in this group stays reachable (pushed, not
             tabbed). `href: null` is expo-router's documented way to keep a
@@ -129,6 +141,14 @@ export default function CoachLayout() {
         <Tabs.Screen name="chat/[id]" options={{ href: null, title: 'Chat' }} />
         <Tabs.Screen name="search" options={{ href: null, title: 'Search' }} />
       </Tabs>
+      <LightBottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
+        <CoachMoreContent
+          onNavigate={(href) => {
+            setMoreOpen(false);
+            router.push(href as Parameters<typeof router.push>[0]);
+          }}
+        />
+      </LightBottomSheet>
     </>
   );
 }

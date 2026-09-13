@@ -11,11 +11,15 @@
  * not per-icon) animates between evenly-spaced tabs — the one deliberate
  * signature motion in the nav layer.
  *
- * Explicitly filters `state.routes` down to `options.href !== null` —
- * confirmed via web preview that `state.routes` includes every registered
- * screen regardless of `href` on web (unlike native, where expo-router's
- * own default tab bar excludes them); a custom `tabBar` render prop can't
- * assume the navigator already filtered for it.
+ * Filters `state.routes` down to hidden (`href: null`) screens. IMPORTANT:
+ * `href` itself is never readable via `descriptors[key].options` — expo-router's
+ * `<Tabs>` wrapper (`expo-router/build/layouts/TabsClient.js`) destructures
+ * `href` OFF of `options` before the screen reaches React Navigation,
+ * replacing it with `tabBarItemStyle: { display: 'none' }` instead. Checking
+ * `options.href !== null` silently matches nothing (the key is always
+ * `undefined` by the time a custom `tabBar` reads it) — every route renders
+ * unfiltered. `tabBarItemStyle.display` is the actual mechanism expo-router
+ * itself uses, and the only reliable way to replicate it here.
  */
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,9 +37,10 @@ type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (p
 export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
-  const routes = state.routes.filter(
-    (route) => (descriptors[route.key].options as { href?: unknown }).href !== null
-  );
+  const routes = state.routes.filter((route) => {
+    const itemStyle = descriptors[route.key].options.tabBarItemStyle as { display?: string } | undefined;
+    return itemStyle?.display !== 'none';
+  });
   const segmentWidth = routes.length > 0 ? barWidth / routes.length : 0;
   const indicatorX = useSharedValue(0);
 

@@ -7,7 +7,7 @@
  * to a separate full-page screen.
  */
 import { PropsWithChildren, useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -82,7 +82,7 @@ export function LightBottomSheet({ visible, onClose, title, subtitle, children }
 
         <GestureDetector gesture={pan}>
           <Animated.View style={[styles.sheetWrap, { paddingBottom: insets.bottom + 16 }, sheetStyle]}>
-            <View style={[styles.panel, LightShadow.raised]}>
+            <View style={[styles.panel, { maxHeight: height * 0.82 }, LightShadow.raised]}>
               <View style={styles.grabber} />
               {title && (
                 <View style={styles.header}>
@@ -95,7 +95,9 @@ export function LightBottomSheet({ visible, onClose, title, subtitle, children }
                   </Pressable>
                 </View>
               )}
-              {children}
+              <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {children}
+              </ScrollView>
             </View>
           </Animated.View>
         </GestureDetector>
@@ -114,6 +116,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: LightBrand.card,
   },
+  scrollArea: { flexShrink: 1 },
+  scrollContent: { paddingBottom: 4 },
   grabber: {
     alignSelf: 'center',
     width: 36,

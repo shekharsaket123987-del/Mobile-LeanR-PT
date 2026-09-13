@@ -4,12 +4,19 @@
  * Same `tabBar` render-prop signature so it drops into `<Tabs tabBar={...}>`
  * exactly like the dark one.
  *
- * Explicitly filters out any route registered with `options.href === null`
- * (the `(client)/_layout.tsx` convention for "reachable by push, not a tab
- * button") — confirmed via web preview that `state.routes` includes every
- * registered screen regardless of `href` on web (unlike native, where
- * expo-router's own default tab bar excludes them), so a custom `tabBar`
- * render prop must filter itself rather than assume the navigator already did.
+ * Filters out any route registered with `options.href === null` (the
+ * `(client)/_layout.tsx` convention for "reachable by push, not a tab
+ * button"). IMPORTANT: `href` itself is never readable here — confirmed by
+ * reading `expo-router/build/layouts/TabsClient.js` directly: expo-router's
+ * `<Tabs>` wrapper destructures `href` OFF of `options` before the screen
+ * ever reaches React Navigation (`const { href, ...options } = screen.options`),
+ * replacing it with `tabBarItemStyle: { display: 'none' }` instead. A
+ * previous version of this filter checked `options.href !== null`, which
+ * silently never matched anything (the key had already been stripped, so it
+ * read as `undefined`, not `null`) — every route rendered, unfiltered, on
+ * every platform. Checking `tabBarItemStyle.display` is the actual
+ * mechanism expo-router itself uses to hide a tab, so this is the only
+ * reliable way for a custom `tabBar` render prop to replicate it.
  */
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -30,7 +37,10 @@ type Props = TabBarProps & {
 export function LightTabBar({ state, descriptors, navigation, moreRouteName, onMorePress }: Props) {
   const insets = useSafeAreaInsets();
 
-  const visibleRoutes = state.routes.filter((route) => (descriptors[route.key].options as { href?: unknown }).href !== null);
+  const visibleRoutes = state.routes.filter((route) => {
+    const itemStyle = descriptors[route.key].options.tabBarItemStyle as { display?: string } | undefined;
+    return itemStyle?.display !== 'none';
+  });
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom + 8, height: 60 + insets.bottom }]}>

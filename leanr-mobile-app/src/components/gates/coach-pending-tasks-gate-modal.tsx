@@ -10,9 +10,10 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BottomSheet } from '@/components/ui/bottom-sheet';
-import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
-import { TextLink } from '@/components/tappable';
+import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
+import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
+import { LightTextLink } from '@/components/light/light-tappable';
+import { LightBrand } from '@/constants/light-theme';
 import type { Booking } from '@/lib/data/types';
 
 function formatSessionTime(iso: string) {
@@ -31,7 +32,7 @@ export function CoachPendingTasksGateModal({
   const shown = tasks.slice(0, 5);
 
   return (
-    <BottomSheet visible={visible} onClose={onDismiss} title="Pending tasks">
+    <LightBottomSheet visible={visible} onClose={onDismiss} title="Pending tasks">
       <Text style={styles.body}>
         You have {tasks.length} past session{tasks.length === 1 ? '' : 's'} still missing attendance or notes.
       </Text>
@@ -39,17 +40,17 @@ export function CoachPendingTasksGateModal({
       {shown.map((booking) => (
         <View key={booking.id} style={styles.row}>
           <Text style={styles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
-          <TextLink
+          <LightTextLink
             onPress={() => {
               onDismiss();
               router.push({ pathname: '/session/[id]', params: { id: booking.id } });
             }}>
             Resolve
-          </TextLink>
+          </LightTextLink>
         </View>
       ))}
 
-      <PrimaryButton
+      <LightPrimaryButton
         size="lg"
         onPress={() => {
           onDismiss();
@@ -57,25 +58,25 @@ export function CoachPendingTasksGateModal({
         }}
         style={styles.button}>
         Review Now
-      </PrimaryButton>
-      <SecondaryButton size="lg" onPress={onDismiss} style={styles.skipButton}>
+      </LightPrimaryButton>
+      <LightSecondaryButton size="lg" onPress={onDismiss} style={styles.skipButton}>
         Skip for now
-      </SecondaryButton>
-    </BottomSheet>
+      </LightSecondaryButton>
+    </LightBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { fontFamily: 'Manrope_500Medium', fontSize: 14.5, color: 'rgba(255,255,255,0.75)', lineHeight: 21 },
+  body: { fontFamily: 'Manrope_500Medium', fontSize: 14.5, color: LightBrand.textSecondary, lineHeight: 21 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: LightBrand.border,
   },
-  time: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: '#FFFFFF' },
+  time: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textPrimary },
   button: { marginTop: 14 },
   skipButton: { marginTop: 8 },
 });

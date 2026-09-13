@@ -7,10 +7,10 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { BottomSheet } from '@/components/ui/bottom-sheet';
-import { PrimaryButton } from '@/components/ui/button';
+import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
+import { LightPrimaryButton } from '@/components/light/light-button';
 import { StarRating } from '@/components/ui/star-rating';
-import { Brand } from '@/constants/theme';
+import { LightBrand } from '@/constants/light-theme';
 import { getErrorMessage } from '@/lib/data/errors';
 
 export function RateSessionSheet({
@@ -48,7 +48,7 @@ export function RateSessionSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={title}>
+    <LightBottomSheet visible={visible} onClose={onClose} title={title}>
       <Text style={styles.label}>SESSION QUALITY</Text>
       <StarRating value={quality} onChange={setQuality} />
       <Text style={[styles.label, styles.labelSpacing]}>TRAINER</Text>
@@ -60,16 +60,16 @@ export function RateSessionSheet({
         </Text>
       )}
 
-      <PrimaryButton size="lg" onPress={submit} loading={submitting} style={styles.button}>
+      <LightPrimaryButton size="lg" onPress={submit} loading={submitting} style={styles.button}>
         Submit rating
-      </PrimaryButton>
-    </BottomSheet>
+      </LightPrimaryButton>
+    </LightBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.5)' },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted },
   labelSpacing: { marginTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 8 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 8 },
   button: { marginTop: 14 },
 });

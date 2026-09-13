@@ -220,8 +220,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const signInWithPassword: AuthState['signInWithPassword'] = async (email, password) => {
+    // ClientPortal.md §4.2 describes a client-only login page rejecting wrong-role accounts —
+    // doesn't apply here. This app has ONE unified login screen for all three roles
+    // ((auth)/login.tsx), with role-based routing handled after sign-in by each portal's own
+    // _layout.tsx (role !== expected -> redirect to that role's actual home). A previous version
+    // of this function rejected any non-client login here, which broke Coach/Admin sign-in
+    // entirely since they share this same screen — reverted.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+
+    return { error: null };
   };
 
   const signUpWithPassword: AuthState['signUpWithPassword'] = async (email, password, fullName, phone) => {

@@ -54,6 +54,7 @@ export type CoachProfile = {
   rating: number | null;
   full_name?: string; // present when joined via profiles(full_name)
   photo_url?: string | null; // present when joined via profiles(photo_url)
+  source?: 'recurring' | 'demo'; // set by getMyCoach() — which relationship this coach came from
 };
 
 export type SubscriptionStatus = 'active' | 'inactive' | 'paused' | 'awaiting_activation';

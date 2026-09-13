@@ -2,11 +2,13 @@
  * Reschedule Session — LEANR_PT_MOBILE_PRD.md §10 "My Sessions" Reschedule
  * row, §8e. Single-step (no hold): `reschedule_booking` mutates the
  * existing booking directly, unlike the hold->confirm new-booking path
- * (src/app/(client)/book-session.tsx). Reuses the same slot-availability
- * logic (src/lib/data/booking-wizard.ts) against the booking's existing
- * coach — this build doesn't offer "fastest available"/substitute-coach
- * rescheduling (§10 mentions both; out of scope here, same as the rest
- * of the recurring-schedule/coach-matching machinery — see README).
+ * (src/app/(client)/book-session.tsx). Three coach-mode paths per §10:
+ * "My Coach" (own coach's open-slot grid, the original/default path),
+ * "Fastest Available" (soonest open slot across every active coach,
+ * utilization-ranked), and "Substitute Coach" (up to 3 alternates free at
+ * the client's chosen date, for that one session only — updates
+ * `bookings.coach_id` directly, leaves `recurring_slot_id` untouched so
+ * later occurrences revert to the original coach).
  *
  * Unlike a fresh booking, same-day is allowed: the live `reschedule_booking`
  * RPC only enforces a 1-hour (configurable) cutoff against the CURRENT
@@ -23,7 +25,7 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
 import { LightCard } from '@/components/light/light-card';
@@ -31,6 +33,7 @@ import { LightChip, LightChipGrid } from '@/components/light/light-chip';
 import { LightPrimaryButton } from '@/components/light/light-button';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightSegmentedControl } from '@/components/light/light-segmented-control';
 import { LightStatCard } from '@/components/light/light-stat-card';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
@@ -45,12 +48,17 @@ import {
   type IstDate,
 } from '@/lib/data/booking-wizard';
 import { getClientBookingById, rescheduleBooking } from '@/lib/data/bookings';
+import { getActiveCoachesByUtilization, type UtilizationRankedCoach } from '@/lib/data/coach-utilization';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
 
 const RESCHEDULE_WINDOW_DAYS = 30; // matches §13 rule 7's forward window (not itself server-enforced, but a sane UI bound)
+const MAX_SUBSTITUTE_COACHES = 3; // §10: "falls back to up to 3 substitute coaches for that one session only"
 
 type Phase = 'pick' | 'saving' | 'success';
+type CoachMode = 'own' | 'fastest' | 'substitute';
+type FastestResult = { coachId: string; coachName: string; slotIso: string };
+type SubstituteCandidate = { coachId: string; coachName: string; slots: string[] };
 
 export default function RescheduleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -59,6 +67,7 @@ export default function RescheduleScreen() {
     return { booking, settings };
   }, [id]);
 
+  const [mode, setMode] = useState<CoachMode>('own');
   const [selectedDate, setSelectedDate] = useState<IstDate>(() => todayIst());
   const [slots, setSlots] = useState<string[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -66,11 +75,19 @@ export default function RescheduleScreen() {
   const [phase, setPhase] = useState<Phase>('pick');
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const [fastestResult, setFastestResult] = useState<FastestResult | null>(null);
+  const [fastestSearching, setFastestSearching] = useState(false);
+  const [fastestError, setFastestError] = useState<string | null>(null);
+
+  const [substituteCandidates, setSubstituteCandidates] = useState<SubstituteCandidate[] | null>(null);
+  const [substituteLoading, setSubstituteLoading] = useState(false);
+
   const booking = data?.booking ?? null;
   const settings = data?.settings ?? null;
 
+  // "My Coach" path — the original/default behavior, unchanged.
   useEffect(() => {
-    if (!booking || !settings) return;
+    if (mode !== 'own' || !booking || !settings) return;
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
@@ -96,19 +113,94 @@ export default function RescheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [booking, settings, selectedDate]);
+  }, [mode, booking, settings, selectedDate]);
 
-  const onPickSlot = async (slotIso: string) => {
+  // "Substitute Coach" path — up to 3 alternates (excluding the current coach) free on the chosen date.
+  useEffect(() => {
+    if (mode !== 'substitute' || !booking || !settings) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setSubstituteCandidates(null);
+      setSubstituteLoading(true);
+    });
+    (async () => {
+      const ranked = await getActiveCoachesByUtilization();
+      const alternates = ranked.filter((c) => c.id !== booking.coach_id);
+      const found: SubstituteCandidate[] = [];
+      for (const coach of alternates) {
+        if (found.length >= MAX_SUBSTITUTE_COACHES) break;
+        const result = await getOpenSlotsForCoachOnDate(coach.id, selectedDate, booking.duration_minutes, {
+          startHour: settings.bookingWindowStartHour,
+          endHour: settings.bookingWindowEndHour,
+        });
+        const eligible = result.filter((s) => isAfterRescheduleCutoff(s, settings.rescheduleCutoffHours));
+        if (eligible.length > 0) found.push({ coachId: coach.id, coachName: coach.full_name, slots: eligible });
+      }
+      if (!cancelled) {
+        setSubstituteCandidates(found);
+        setSubstituteLoading(false);
+      }
+    })().catch((err) => {
+      if (!cancelled) {
+        setActionError(getErrorMessage(err));
+        setSubstituteLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, booking, settings, selectedDate]);
+
+  const onChangeMode = (next: CoachMode) => {
+    setMode(next);
+    setActionError(null);
+    setFastestResult(null);
+    setFastestError(null);
+    setSubstituteCandidates(null);
+  };
+
+  const onPickSlot = async (slotIso: string, coachId?: string) => {
     if (!booking) return;
     setSelectedSlot(slotIso);
     setActionError(null);
     setPhase('saving');
     try {
-      await rescheduleBooking(booking.id, slotIso, booking.duration_minutes);
+      await rescheduleBooking(booking.id, slotIso, booking.duration_minutes, true, coachId && coachId !== booking.coach_id ? coachId : undefined);
       setPhase('success');
     } catch (err) {
       setActionError(getErrorMessage(err));
       setPhase('pick');
+    }
+  };
+
+  const onFindFastest = async () => {
+    if (!booking || !settings) return;
+    setFastestSearching(true);
+    setFastestError(null);
+    setFastestResult(null);
+    try {
+      const coaches: UtilizationRankedCoach[] = await getActiveCoachesByUtilization();
+      for (let n = 0; n <= RESCHEDULE_WINDOW_DAYS; n++) {
+        const date = addIstDays(todayIst(), n);
+        for (const coach of coaches) {
+          const result = await getOpenSlotsForCoachOnDate(coach.id, date, booking.duration_minutes, {
+            startHour: settings.bookingWindowStartHour,
+            endHour: settings.bookingWindowEndHour,
+          });
+          const eligible = result.filter((s) => isAfterRescheduleCutoff(s, settings.rescheduleCutoffHours));
+          if (eligible.length > 0) {
+            setFastestResult({ coachId: coach.id, coachName: coach.full_name, slotIso: eligible[0] });
+            setFastestSearching(false);
+            return;
+          }
+        }
+      }
+      setFastestError(`No open slots found in the next ${RESCHEDULE_WINDOW_DAYS} days.`);
+    } catch (err) {
+      setFastestError(getErrorMessage(err));
+    } finally {
+      setFastestSearching(false);
     }
   };
 
@@ -171,31 +263,113 @@ export default function RescheduleScreen() {
         minute: '2-digit',
       })}`}>
       <LightCard>
-        <LightSectionHeader title="New date" />
-        <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
-        <LightCalendarGrid
-          selected={selectedDate}
-          onSelect={setSelectedDate}
-          minDate={todayIst()}
-          maxDate={addIstDays(todayIst(), RESCHEDULE_WINDOW_DAYS)}
-          initialMonth={selectedDate}
+        <LightSegmentedControl
+          options={[
+            { key: 'own', label: 'My Coach' },
+            { key: 'fastest', label: 'Fastest Available' },
+            { key: 'substitute', label: 'Substitute Coach' },
+          ]}
+          value={mode}
+          onChange={onChangeMode}
         />
       </LightCard>
 
-      <LightCard>
-        <LightSectionHeader title="New time" />
-        {slotsLoading && <LightLoadingState rows={1} />}
-        {!slotsLoading && slots && slots.length === 0 && (
-          <LightEmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
-        )}
-        {!slotsLoading && slots && slots.length > 0 && (
-          <LightChipGrid>
-            {slots.map((s) => (
-              <LightChip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
-            ))}
-          </LightChipGrid>
-        )}
-      </LightCard>
+      {mode === 'own' && (
+        <>
+          <LightCard>
+            <LightSectionHeader title="New date" />
+            <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
+            <LightCalendarGrid
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              minDate={todayIst()}
+              maxDate={addIstDays(todayIst(), RESCHEDULE_WINDOW_DAYS)}
+              initialMonth={selectedDate}
+            />
+          </LightCard>
+
+          <LightCard>
+            <LightSectionHeader title="New time" />
+            {slotsLoading && <LightLoadingState rows={1} />}
+            {!slotsLoading && slots && slots.length === 0 && (
+              <LightEmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
+            )}
+            {!slotsLoading && slots && slots.length > 0 && (
+              <LightChipGrid>
+                {slots.map((s) => (
+                  <LightChip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
+                ))}
+              </LightChipGrid>
+            )}
+          </LightCard>
+        </>
+      )}
+
+      {mode === 'fastest' && (
+        <LightCard>
+          <LightSectionHeader title="Soonest open slot, any coach" />
+          {!fastestResult && (
+            <LightPrimaryButton size="lg" onPress={onFindFastest} loading={fastestSearching}>
+              Find fastest available
+            </LightPrimaryButton>
+          )}
+          {fastestError && (
+            <Text style={styles.errorText} accessibilityRole="alert">
+              {fastestError}
+            </Text>
+          )}
+          {fastestResult && (
+            <>
+              <Text style={styles.metaText}>
+                {fastestResult.coachName} — {formatIstDateLabel(selectedDate)} {formatIstTimeLabel(fastestResult.slotIso)}
+              </Text>
+              <LightPrimaryButton size="lg" onPress={() => onPickSlot(fastestResult.slotIso, fastestResult.coachId)}>
+                Confirm this slot
+              </LightPrimaryButton>
+            </>
+          )}
+        </LightCard>
+      )}
+
+      {mode === 'substitute' && (
+        <>
+          <LightCard>
+            <LightSectionHeader title="Date" />
+            <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
+            <LightCalendarGrid
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              minDate={todayIst()}
+              maxDate={addIstDays(todayIst(), RESCHEDULE_WINDOW_DAYS)}
+              initialMonth={selectedDate}
+            />
+          </LightCard>
+          <LightCard>
+            <LightSectionHeader title="Available substitute coaches" />
+            {substituteLoading && <LightLoadingState rows={1} />}
+            {!substituteLoading && substituteCandidates && substituteCandidates.length === 0 && (
+              <LightEmptyState message="No coach is available for that day — try a different date." icon="calendar-clear-outline" />
+            )}
+            {!substituteLoading &&
+              substituteCandidates &&
+              substituteCandidates.map((c) => (
+                <View key={c.coachId} style={styles.substituteBlock}>
+                  <Text style={styles.metaText}>{c.coachName}</Text>
+                  <LightChipGrid>
+                    {c.slots.map((s) => (
+                      <LightChip
+                        key={s}
+                        label={formatIstTimeLabel(s)}
+                        selected={s === selectedSlot}
+                        onPress={() => onPickSlot(s, c.coachId)}
+                      />
+                    ))}
+                  </LightChipGrid>
+                </View>
+              ))}
+          </LightCard>
+        </>
+      )}
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -211,4 +385,5 @@ const styles = StyleSheet.create({
   metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
   selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  substituteBlock: { gap: 6, marginBottom: 12 },
 });

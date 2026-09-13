@@ -13,6 +13,7 @@
  */
 import { getMyCoach } from '@/lib/data/coach';
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { notifyProfile, resolveProfileIdForCoach } from '@/lib/data/notify';
 import { supabase } from '@/lib/supabase/client';
 
 export type ConcernCategory =
@@ -108,4 +109,11 @@ export async function raiseConcern(input: {
     category: input.category,
   });
   if (error) throw error;
+
+  // ClientPortal.md §15: "Escalation raised (with a linked coach)" notifies that coach —
+  // same template key the admin-initiated path already uses, for consistency.
+  if (coach) {
+    const coachProfileId = await resolveProfileIdForCoach(coach.id);
+    await notifyProfile(coachProfileId, 'feedback', 'Concern raised', `A client raised a concern: ${input.reason}`, 'escalation_raised_to_coach');
+  }
 }

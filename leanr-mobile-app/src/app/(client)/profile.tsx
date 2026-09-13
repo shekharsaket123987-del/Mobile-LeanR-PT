@@ -8,7 +8,7 @@
  * `href: null` in the (client) layout.
  */
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
@@ -18,6 +18,7 @@ import { LightPrimaryButton } from '@/components/light/light-button';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightTextField } from '@/components/light/light-text-field';
 import { LightBrand } from '@/constants/light-theme';
+import { getMyOnboarding } from '@/lib/data/onboarding';
 import {
   changeMyPassword,
   getMyClientDetails,
@@ -51,7 +52,6 @@ function PrePurchaseProfileScreen() {
 
   const [fullName, setFullName] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
-  const [emergencyContact, setEmergencyContact] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -68,7 +68,6 @@ function PrePurchaseProfileScreen() {
   const displayPhotoUrl = photoUrl ?? data?.photo_url ?? null;
   const displayName = fullName ?? data?.full_name ?? '';
   const displayPhone = phone ?? data?.phone ?? '';
-  const displayEmergency = emergencyContact ?? data?.emergency_contact ?? '';
 
   const onAvatarUploaded = async (url: string) => {
     setPhotoUrl(url);
@@ -85,7 +84,7 @@ function PrePurchaseProfileScreen() {
     setProfileError(null);
     setProfileSaved(false);
     try {
-      await updateMyProfile({ full_name: displayName, phone: displayPhone || null, emergency_contact: displayEmergency || null });
+      await updateMyProfile({ full_name: displayName, phone: displayPhone || null });
       setProfileSaved(true);
     } catch (err) {
       setProfileError(getErrorMessage(err));
@@ -146,7 +145,6 @@ function PrePurchaseProfileScreen() {
         <LightSectionHeader title="Your details" />
         <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
         <LightTextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
-        <LightTextField placeholder="Emergency contact" value={displayEmergency} onChangeText={setEmergencyContact} accessibilityLabel="Emergency contact" />
         {profileError && (
           <Text style={lightStyles.errorText} accessibilityRole="alert">
             {profileError}
@@ -184,13 +182,12 @@ function PrePurchaseProfileScreen() {
 
 function EnrolledProfileScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [profile, details] = await Promise.all([getMyProfile(), getMyClientDetails()]);
-    return { profile, details };
+    const [profile, details, onboarding] = await Promise.all([getMyProfile(), getMyClientDetails(), getMyOnboarding()]);
+    return { profile, details, onboarding };
   }, []);
 
   const [fullName, setFullName] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
-  const [emergencyContact, setEmergencyContact] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -214,10 +211,14 @@ function EnrolledProfileScreen() {
   const displayPhotoUrl = photoUrl ?? data?.profile?.photo_url ?? null;
   const displayName = fullName ?? data?.profile?.full_name ?? '';
   const displayPhone = phone ?? data?.profile?.phone ?? '';
-  const displayEmergency = emergencyContact ?? data?.profile?.emergency_contact ?? '';
   const displayGoals = goals ?? (data?.details ? joinList(data.details.goals) : '');
   const displayEquipment = equipment ?? (data?.details ? joinList(data.details.equipment) : '');
   const displayMedicalNotes = medicalNotes ?? data?.details?.medical_notes ?? '';
+
+  // Height/weight — set once via Onboarding, correctable afterward only by an admin (ClientPortal.md §13). Read-only here; BMI is derived, never editable.
+  const heightCm = data?.onboarding?.height_cm ?? null;
+  const weightKg = data?.onboarding?.weight_kg ?? null;
+  const bmi = heightCm && weightKg ? weightKg / (heightCm / 100) ** 2 : null;
 
   const onAvatarUploaded = async (url: string) => {
     setPhotoUrl(url);
@@ -234,7 +235,7 @@ function EnrolledProfileScreen() {
     setProfileError(null);
     setProfileSaved(false);
     try {
-      await updateMyProfile({ full_name: displayName, phone: displayPhone || null, emergency_contact: displayEmergency || null });
+      await updateMyProfile({ full_name: displayName, phone: displayPhone || null });
       setProfileSaved(true);
     } catch (err) {
       setProfileError(getErrorMessage(err));
@@ -320,12 +321,6 @@ function EnrolledProfileScreen() {
           keyboardType="phone-pad"
           accessibilityLabel="Phone number"
         />
-        <LightTextField
-          placeholder="Emergency contact"
-          value={displayEmergency}
-          onChangeText={setEmergencyContact}
-          accessibilityLabel="Emergency contact"
-        />
         {profileError && (
           <Text style={lightStyles.errorText} accessibilityRole="alert">
             {profileError}
@@ -339,6 +334,28 @@ function EnrolledProfileScreen() {
 
       <LightCard style={lightStyles.card}>
         <LightSectionHeader title="Training profile" />
+        {(heightCm != null || weightKg != null) && (
+          <View style={lightStyles.metricsRow}>
+            {heightCm != null && (
+              <View style={lightStyles.metric}>
+                <Text style={lightStyles.metricLabel}>Height</Text>
+                <Text style={lightStyles.metricValue}>{heightCm} cm</Text>
+              </View>
+            )}
+            {weightKg != null && (
+              <View style={lightStyles.metric}>
+                <Text style={lightStyles.metricLabel}>Weight</Text>
+                <Text style={lightStyles.metricValue}>{weightKg} kg</Text>
+              </View>
+            )}
+            {bmi != null && (
+              <View style={lightStyles.metric}>
+                <Text style={lightStyles.metricLabel}>BMI</Text>
+                <Text style={lightStyles.metricValue}>{bmi.toFixed(1)}</Text>
+              </View>
+            )}
+          </View>
+        )}
         <LightTextField placeholder="Goals (comma-separated)" value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
         <LightTextField
           placeholder="Equipment (comma-separated)"
@@ -407,4 +424,8 @@ const lightStyles = StyleSheet.create({
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 4 },
   savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 4 },
+  metricsRow: { flexDirection: 'row', gap: 20 },
+  metric: { gap: 2 },
+  metricLabel: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  metricValue: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
 });

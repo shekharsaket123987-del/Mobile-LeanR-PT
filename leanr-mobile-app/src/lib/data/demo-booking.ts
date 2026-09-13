@@ -28,32 +28,9 @@
  *   open slot is used.
  */
 import { getOpenSlotsForCoachOnDate, type IstDate } from '@/lib/data/booking-wizard';
+import { getActiveCoachesByUtilization, type UtilizationRankedCoach } from '@/lib/data/coach-utilization';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
-
-type UtilizationRankedCoach = { id: string; full_name: string };
-
-async function getActiveCoachesByUtilization(): Promise<UtilizationRankedCoach[]> {
-  const [{ data: coaches, error: coachError }, { data: bookings, error: bookingError }] = await Promise.all([
-    supabase.from('coach_profiles').select('id, status, profiles(full_name)').eq('status', 'active'),
-    supabase.from('bookings').select('coach_id').eq('status', 'upcoming'),
-  ]);
-  if (coachError) throw coachError;
-  if (bookingError) throw bookingError;
-
-  const utilization = new Map<string, number>();
-  for (const b of bookings ?? []) {
-    utilization.set(b.coach_id, (utilization.get(b.coach_id) ?? 0) + 1);
-  }
-
-  return (coaches ?? [])
-    .map((c) => {
-      const profile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
-      return { id: c.id as string, full_name: profile?.full_name ?? 'Coach', utilization: utilization.get(c.id as string) ?? 0 };
-    })
-    .sort((a, b) => a.utilization - b.utilization)
-    .map(({ id, full_name }) => ({ id, full_name }));
-}
 
 export type DemoMatch = { coach: UtilizationRankedCoach; slots: string[] };
 
@@ -70,6 +47,26 @@ export async function findDemoMatch(
     if (slots.length > 0) return { coach, slots };
   }
   return null;
+}
+
+export type LatestDemoBooking = { status: string; scheduledStart: string };
+
+/** Most recent assessment booking regardless of status — used to distinguish demo_booked/demo_completed journey stages and the Subscription screen's pre-purchase "Demo Package" card. */
+export async function getLatestDemoBooking(): Promise<LatestDemoBooking | null> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return null;
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('status, scheduled_start')
+    .eq('client_id', clientId)
+    .eq('session_type', 'assessment')
+    .order('scheduled_start', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { status: data.status as string, scheduledStart: data.scheduled_start as string };
 }
 
 export async function hasExistingAssessment(): Promise<boolean> {

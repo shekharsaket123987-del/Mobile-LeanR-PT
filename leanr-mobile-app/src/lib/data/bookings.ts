@@ -7,6 +7,7 @@
  * have failed outright).
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { notifyAdmins, notifyProfile, resolveProfileIdForCoach } from '@/lib/data/notify';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking, BookingStatus } from './types';
 
@@ -20,7 +21,16 @@ function withCoachName(row: Record<string, unknown>): Booking {
   return { ...rest, coach_name: profile?.full_name ?? null } as Booking;
 }
 
+/** Opportunistic sweep, fire-and-forget — flips any `upcoming` booking whose time has passed to `missed` if attendance was never marked. Not a cron; runs on every booking-list read, same as the web app (ClientPortal.md §10). */
+function sweepMissedBookings(): void {
+  supabase.rpc('mark_missed_bookings').then(
+    () => {},
+    () => {}
+  );
+}
+
 export async function getUpcomingBookings(limit = 5) {
+  sweepMissedBookings();
   const clientId = await getMyClientProfileId();
   if (!clientId) return [];
 
@@ -36,6 +46,7 @@ export async function getUpcomingBookings(limit = 5) {
 }
 
 export async function getSessionsByStatus(status: BookingStatus) {
+  sweepMissedBookings();
   const clientId = await getMyClientProfileId();
   if (!clientId) return [];
 
@@ -66,6 +77,8 @@ export async function getClientBookingById(bookingId: string): Promise<Booking |
 /** §8f: RPC cancel_booking(p_booking_id, p_cancelled_by, p_reason, p_enforce_cutoff). */
 export async function cancelBooking(bookingId: string, reason: string | null, enforceCutoff = true) {
   const { data: userData } = await supabase.auth.getUser();
+  const { data: booking } = await supabase.from('bookings').select('coach_id, scheduled_start').eq('id', bookingId).maybeSingle();
+
   const { error } = await supabase.rpc('cancel_booking', {
     p_booking_id: bookingId,
     p_cancelled_by: userData.user?.id,
@@ -73,6 +86,15 @@ export async function cancelBooking(bookingId: string, reason: string | null, en
     p_enforce_cutoff: enforceCutoff,
   });
   if (error) throw error;
+
+  // ClientPortal.md §15: cancelled-by-client notifies the coach + all admins (the cancelling
+  // client is not re-notified of their own action).
+  const when = booking?.scheduled_start ? new Date(booking.scheduled_start as string).toLocaleString() : 'their session';
+  if (booking?.coach_id) {
+    const coachProfileId = await resolveProfileIdForCoach(booking.coach_id as string);
+    await notifyProfile(coachProfileId, 'booking', 'Session cancelled', `Your client cancelled ${when}.`, 'session_cancelled_coach');
+  }
+  await notifyAdmins('Session cancelled', `A client cancelled ${when}.`, 'session_cancelled_admin');
 }
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -127,15 +149,21 @@ async function hasAnotherUpcomingBookingOnDate(clientId: string, dateIso: string
 
 /**
  * §8e: `reschedule_booking` has two live overloads — a 4-arg one (used
- * here) that sets `was_rescheduled`/`original_scheduled_start` (confirmed
- * live via direct introspection — still correctly tracked in THIS
- * project's schema, unlike New PRD.md's note about a regression on the
- * web app's own database), and a 5-arg one (adds `p_new_coach_id`) that
- * changes the coach instead and does NOT track `was_rescheduled` at all.
- * This client never does a coach-swap reschedule, so the second overload
- * is intentionally unused.
+ * whenever `newCoachId` is omitted) that sets
+ * `was_rescheduled`/`original_scheduled_start`, and a 5-arg one (adds
+ * `p_new_coach_id`) used for the substitute-coach reschedule path (§10):
+ * it changes `bookings.coach_id` directly on this one row while leaving
+ * `recurring_slot_id` untouched, so later occurrences of the same
+ * recurring pattern keep going back to the original coach with no
+ * separate "revert" step.
  */
-export async function rescheduleBooking(bookingId: string, newStart: string, newDurationMinutes: number, enforceCutoff = true) {
+export async function rescheduleBooking(
+  bookingId: string,
+  newStart: string,
+  newDurationMinutes: number,
+  enforceCutoff = true,
+  newCoachId?: string
+) {
   const clientId = await getMyClientProfileId();
   if (!clientId) throw new Error('Could not resolve your client profile.');
 
@@ -155,13 +183,31 @@ export async function rescheduleBooking(bookingId: string, newStart: string, new
     }
   }
 
-  const { error } = await supabase.rpc('reschedule_booking', {
+  const { data: booking } = await supabase.from('bookings').select('coach_id').eq('id', bookingId).maybeSingle();
+
+  const rpcArgs: Record<string, unknown> = {
     p_booking_id: bookingId,
     p_new_start: newStart,
     p_new_duration_minutes: newDurationMinutes,
     p_enforce_cutoff: enforceCutoff,
-  });
+  };
+  if (newCoachId) rpcArgs.p_new_coach_id = newCoachId;
+
+  const { error } = await supabase.rpc('reschedule_booking', rpcArgs);
   if (error) throw error;
+
+  // ClientPortal.md §15: rescheduled-by-client notifies the coach(es) + admins (the client
+  // already knows — it's their own action, surfaced in-app via the screen itself).
+  const newWhen = new Date(newStart).toLocaleString();
+  if (booking?.coach_id) {
+    const coachProfileId = await resolveProfileIdForCoach(booking.coach_id as string);
+    await notifyProfile(coachProfileId, 'booking', 'Session rescheduled', `Your client moved their session to ${newWhen}.`, 'session_rescheduled_coach');
+  }
+  if (newCoachId && newCoachId !== booking?.coach_id) {
+    const newCoachProfileId = await resolveProfileIdForCoach(newCoachId);
+    await notifyProfile(newCoachProfileId, 'booking', 'New session assigned', `You've been assigned a client's session on ${newWhen}.`, 'session_substitute_coach');
+  }
+  await notifyAdmins('Session rescheduled', `A client rescheduled their session to ${newWhen}.`, 'session_rescheduled_admin');
 }
 
 export async function getRescheduledSessions() {

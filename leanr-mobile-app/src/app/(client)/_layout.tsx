@@ -67,6 +67,7 @@ export default function ClientLayout() {
   if (!hasEverPurchased) {
     return (
       <>
+        <GlobalGates />
         <Tabs
           tabBar={(props) => <LightTabBar {...props} moreRouteName="more" onMorePress={() => setMoreOpen(true)} />}
           screenOptions={{ headerShown: false }}
@@ -114,6 +115,8 @@ export default function ClientLayout() {
           <Tabs.Screen name="payment-success" options={{ href: null, title: 'Payment Successful' }} />
           <Tabs.Screen name="activate" options={{ href: null, title: 'Activate Your Plan' }} />
           <Tabs.Screen name="onboarding" options={{ href: null, title: 'Onboarding' }} />
+          <Tabs.Screen name="renewal-checkin" options={{ href: null, title: 'Welcome Back' }} />
+          <Tabs.Screen name="renewal-scheduling" options={{ href: null, title: 'Your Schedule' }} />
           <Tabs.Screen name="subscription" options={{ href: null, title: 'Subscription' }} />
         </Tabs>
         <LightBottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
@@ -182,6 +185,8 @@ export default function ClientLayout() {
         <Tabs.Screen name="payment-success" options={{ href: null, title: 'Payment Successful' }} />
         <Tabs.Screen name="activate" options={{ href: null, title: 'Activate Your Plan' }} />
         <Tabs.Screen name="onboarding" options={{ href: null, title: 'Onboarding' }} />
+        <Tabs.Screen name="renewal-checkin" options={{ href: null, title: 'Welcome Back' }} />
+        <Tabs.Screen name="renewal-scheduling" options={{ href: null, title: 'Your Schedule' }} />
         <Tabs.Screen name="plans" options={{ href: null, title: 'Plans' }} />
         <Tabs.Screen name="reviews" options={{ href: null, title: 'Reviews' }} />
       </Tabs>

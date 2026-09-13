@@ -6,11 +6,11 @@
  * §9.2: `submitOnboardingAction` DB effect is listed as
  * "`client_onboarding`, `progress_logs` insert", not `client_onboarding`
  * alone). RLS (`client_onboarding_insert_own`, `progress_logs_manage_own`)
- * lets a client insert/read only their own rows directly. There's no DB
- * unique constraint enforcing "one row per client" on `client_onboarding`
- * (confirmed via information_schema) — the "already submitted" one-time
- * lock is enforced here, client-side, by checking for an existing row
- * first, mirroring the web app's own one-time-insert UX.
+ * lets a client insert/read only their own rows directly. The "already
+ * submitted" one-time lock is enforced both here (a pre-insert check, for a
+ * fast/friendly error) and at the DB layer (a unique index on `client_id`,
+ * migration `20260912090000` — closes the double-tap/retry race the
+ * pre-check alone can't catch), mirroring the web app's one-time-insert UX.
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
@@ -67,7 +67,13 @@ export async function submitOnboarding(input: OnboardingInput): Promise<void> {
     medications: input.medications ?? null,
     exercise_restrictions: input.exerciseRestrictions ?? null,
   });
-  if (error) throw error;
+  if (error) {
+    // Postgres unique-violation on the client_id index — a race the pre-check above can't catch.
+    if (error.code === '23505') {
+      throw new Error('Onboarding has already been submitted — contact support to make changes.');
+    }
+    throw error;
+  }
 
   // Day-1 baseline — the Home screen's "Progress Since Day 1" grid and the
   // Progress tab's chart both read the earliest progress_logs row.

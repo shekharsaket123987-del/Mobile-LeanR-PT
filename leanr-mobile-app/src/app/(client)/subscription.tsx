@@ -5,14 +5,12 @@
  * reachable from More, matching how several other screens in this app
  * already have more than one entry point.
  *
- * Relit for the post-purchase light theme. The mockup shows a "Start
- * Date"/"End Date" pair under Plan Details — `subscriptions` has no end-
- * date column anywhere in the schema (session-count-based plans, not
- * time-bound), so only Start Date (real: `activated_at`/`started_at`) is
- * shown; inventing an end date would be showing data that doesn't exist.
- * "View Invoice" opens the existing payment record's own real fields
- * (amount/date/payment ID/status) rather than generating a fake PDF — no
- * client-facing invoice/PDF generation exists anywhere in the web app.
+ * Relit for the post-purchase light theme. Web's Subscription screen
+ * (ClientPortal.md §9) renders neither a start date nor an invoice view —
+ * both were mobile-only additions, removed to match documented web
+ * behavior. Pre-purchase branch is now journey-stage-aware, matching web's
+ * three distinct states: `demo_completed` gets a "Demo Package — Expired"
+ * summary card, `marketing`/`demo_booked` get "No Subscription Found".
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -28,6 +26,8 @@ import { LightStatusBadge } from '@/components/light/light-badge';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { DisplayFont } from '@/constants/theme';
+import { getLatestDemoBooking } from '@/lib/data/demo-booking';
+import { getClientJourneyStage } from '@/lib/data/journey';
 import { getPackageById } from '@/lib/data/plans';
 import { getMyPayments, type PaymentWithPackage } from '@/lib/data/payments';
 import { getLatestSubscription, getSessionsUsedCount, pauseSubscription, resumeSubscription } from '@/lib/data/subscription';
@@ -46,16 +46,25 @@ function formatPrice(amount: number) {
 export default function SubscriptionScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const subscription = await getLatestSubscription();
-    const [pkg, sessionsUsed, payments] = await Promise.all([
+    const [pkg, sessionsUsed, payments, stage, demo] = await Promise.all([
       subscription ? getPackageById(subscription.package_id) : Promise.resolve(null),
       subscription ? getSessionsUsedCount(subscription.id) : Promise.resolve(0),
       getMyPayments(),
+      subscription ? Promise.resolve(null) : getClientJourneyStage(),
+      subscription ? Promise.resolve(null) : getLatestDemoBooking(),
     ]);
-    return { subscription, pkg, sessionsUsed, payments };
+    return { subscription, pkg, sessionsUsed, payments, stage, demo };
   }, []);
   const [busy, setBusy] = useState(false);
 
-  const { subscription, pkg, sessionsUsed, payments } = data ?? { subscription: null, pkg: null, sessionsUsed: 0, payments: [] };
+  const {
+    subscription,
+    pkg,
+    sessionsUsed,
+    payments,
+    stage,
+    demo,
+  } = data ?? { subscription: null, pkg: null, sessionsUsed: 0, payments: [], stage: null, demo: null };
 
   const onTogglePause = () => {
     if (!subscription) return;
@@ -85,18 +94,6 @@ export default function SubscriptionScreen() {
     );
   };
 
-  const onViewInvoice = () => {
-    const latest = payments[0];
-    if (!latest) {
-      Alert.alert('No payments yet');
-      return;
-    }
-    Alert.alert(
-      latest.package_tiers?.name ?? 'Package purchase',
-      `Amount: ${formatPrice(latest.amount)}\nDate: ${formatDate(latest.paid_at ?? latest.created_at)}\nPayment ID: ${latest.razorpay_payment_id ?? '—'}\nStatus: ${latest.status}`
-    );
-  };
-
   if (loading) {
     return (
       <LightScreenScaffold title="My Plan">
@@ -115,7 +112,23 @@ export default function SubscriptionScreen() {
 
   return (
     <LightScreenScaffold title="My Plan">
-      {!subscription && (
+      {!subscription && stage === 'demo_completed' && (
+        <>
+          <LightCard variant="teal">
+            <View style={styles.headerRow}>
+              <Text style={styles.planName}>Demo Package</Text>
+              <LightStatusBadge status="expired" />
+            </View>
+            {demo && <Text style={styles.planMeta}>Session: {formatDate(demo.scheduledStart)}</Text>}
+            <Text style={styles.planMeta}>Amount: Free</Text>
+          </LightCard>
+          <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
+            Choose Your Plan
+          </LightPrimaryButton>
+        </>
+      )}
+
+      {!subscription && stage !== 'demo_completed' && (
         <>
           <LightEmptyState message="You haven't purchased a plan yet." icon="card-outline" />
           <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
@@ -147,27 +160,25 @@ export default function SubscriptionScreen() {
 
           <LightCard>
             <LightSectionHeader title="Plan details" />
-            <Row label="Start Date" value={formatDate(subscription.activated_at ?? subscription.started_at)} />
             <Row label="Sessions Used" value={String(sessionsUsed)} />
             <Row label="Sessions Remaining" value={String(Math.max(subscription.sessions_total - sessionsUsed, 0))} />
             {subscription.pause_days_allowed > 0 && <Row label="Pause Days Included" value={String(subscription.pause_days_allowed)} />}
           </LightCard>
 
-          <LightCard style={styles.actionsCard}>
-            <LightMenuRow label="View Invoice" icon="receipt-outline" onPress={onViewInvoice} />
-            {subscription.status === 'awaiting_activation' ? (
-              <LightMenuRow label="Activate this plan" icon="play-circle-outline" onPress={() => router.push('/activate')} last />
-            ) : (
-              (subscription.status === 'active' || subscription.status === 'paused') && (
+          {(subscription.status === 'awaiting_activation' || subscription.status === 'active' || subscription.status === 'paused') && (
+            <LightCard style={styles.actionsCard}>
+              {subscription.status === 'awaiting_activation' ? (
+                <LightMenuRow label="Activate this plan" icon="play-circle-outline" onPress={() => router.push('/activate')} last />
+              ) : (
                 <LightMenuRow
                   label={subscription.status === 'active' ? 'Pause Plan (if eligible)' : 'Resume Plan'}
                   icon={subscription.status === 'active' ? 'pause-circle-outline' : 'play-circle-outline'}
                   onPress={busy ? undefined : onTogglePause}
                   last
                 />
-              )
-            )}
-          </LightCard>
+              )}
+            </LightCard>
+          )}
         </>
       )}
 

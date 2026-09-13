@@ -47,18 +47,27 @@ export async function getMyCoach(): Promise<CoachProfile | null> {
     .eq('status', 'active')
     .limit(1)
     .maybeSingle();
-  if (slot?.coach_id) return getCoachProfileById(slot.coach_id);
+  if (slot?.coach_id) {
+    const coach = await getCoachProfileById(slot.coach_id);
+    return coach ? { ...coach, source: 'recurring' } : null;
+  }
 
-  // No recurring coach — fall back to the most recent assessment booking's coach.
+  // No recurring coach — fall back to the coach of a still-*upcoming* demo booking only.
+  // Once the demo lapses (completed/missed) with no plan purchased, this correctly reverts
+  // to no-coach (ClientPortal.md §12: "a deliberate design choice per code comments, not a bug").
   const { data: demoBooking } = await supabase
     .from('bookings')
     .select('coach_id')
     .eq('client_id', clientId)
     .eq('session_type', 'assessment')
+    .eq('status', 'upcoming')
     .order('scheduled_start', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (demoBooking?.coach_id) return getCoachProfileById(demoBooking.coach_id);
+  if (demoBooking?.coach_id) {
+    const coach = await getCoachProfileById(demoBooking.coach_id);
+    return coach ? { ...coach, source: 'demo' } : null;
+  }
 
   return null;
 }

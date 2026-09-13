@@ -34,6 +34,7 @@
  *   the existing client call site unchanged.
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { notifyProfile, resolveProfileIdForClient, resolveProfileIdForCoach } from '@/lib/data/notify';
 import { supabase } from '@/lib/supabase/client';
 import type { Conversation, Message } from './types';
 
@@ -51,6 +52,27 @@ export async function getMyActiveConversation(): Promise<Conversation | null> {
     .maybeSingle();
   if (error) throw error;
   return data as Conversation | null;
+}
+
+export type PastConversation = { id: string; coachName: string | null; coachPhotoUrl: string | null };
+
+/** Closed conversations (a coach change froze the old thread, read-only forever) — ClientPortal.md §16 "Past Coaches". */
+export async function getMyPastConversations(): Promise<PastConversation[]> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return [];
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id, coach_profiles(profiles(full_name, photo_url))')
+    .eq('client_id', clientId)
+    .eq('status', 'closed');
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const coachProfile = row.coach_profiles as { profiles?: { full_name?: string; photo_url?: string } | { full_name?: string; photo_url?: string }[] } | null;
+    const profile = coachProfile ? (Array.isArray(coachProfile.profiles) ? coachProfile.profiles[0] : coachProfile.profiles) : null;
+    return { id: row.id as string, coachName: profile?.full_name ?? null, coachPhotoUrl: profile?.photo_url ?? null };
+  });
 }
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
@@ -83,6 +105,23 @@ export async function sendMessage(
     .select('*')
     .single();
   if (error) throw error;
+
+  // ClientPortal.md §15/§16: every sent message notifies the other participant, in-app only,
+  // preview truncated to 80 chars — best-effort, never blocks the send.
+  try {
+    const { data: conversation } = await supabase.from('conversations').select('client_id, coach_id').eq('id', conversationId).maybeSingle();
+    if (conversation) {
+      const preview = (content.body?.trim() || (content.attachmentUrl ? 'Sent an image' : '')).slice(0, 80);
+      const recipientProfileId =
+        senderRole === 'client'
+          ? await resolveProfileIdForCoach(conversation.coach_id as string)
+          : await resolveProfileIdForClient(conversation.client_id as string);
+      await notifyProfile(recipientProfileId, 'system', 'New message', preview || 'Sent a message.', 'new_chat_message');
+    }
+  } catch {
+    // swallow — a notification failure must never surface as a send error.
+  }
+
   return data as Message;
 }
 

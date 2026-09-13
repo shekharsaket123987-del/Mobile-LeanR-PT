@@ -35,7 +35,7 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
 import { getUpcomingBookings } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
-import { getClientJourneyGate } from '@/lib/data/journey';
+import { getClientJourneyStage } from '@/lib/data/journey';
 import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
 import { getLatestSubscription, getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
 import type { Booking } from '@/lib/data/types';
@@ -203,17 +203,33 @@ function EnrolledHomeScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    // The journey gate — New PRD.md §4.A calls the web app's Dashboard "the
-    // master gate": a client with a pending activation or missing
-    // onboarding (src/lib/data/journey.ts) must be routed there before this
-    // screen's normal widgets render, not just left to fail against a
-    // client who has neither yet.
-    getClientJourneyGate()
-      .then((result) => {
+    // The journey stage — New PRD.md §4.A calls the web app's Dashboard "the
+    // master gate": a client mid-funnel (pending activation, missing
+    // onboarding, or a renewal that hasn't checked in / rescheduled yet)
+    // must be routed there before this screen's normal widgets render, not
+    // just left to fail against a client who hasn't finished the funnel.
+    getClientJourneyStage()
+      .then((stage) => {
         if (cancelled) return;
-        if (result === 'needs_activation') router.replace('/activate');
-        else if (result === 'needs_onboarding') router.replace('/onboarding');
-        else setGate('clear');
+        switch (stage) {
+          case 'awaiting_activation':
+            router.replace('/activate');
+            break;
+          case 'onboarding':
+            router.replace('/onboarding');
+            break;
+          case 'renewal_checkin':
+            router.replace('/renewal-checkin');
+            break;
+          case 'renewal_scheduling':
+            router.replace('/renewal-scheduling');
+            break;
+          case 'slot_selection':
+            router.replace('/my-schedule');
+            break;
+          default:
+            setGate('clear');
+        }
       })
       .catch(() => {
         if (!cancelled) setGate('clear'); // fail open — never trap a client on a blank screen over a gate-check error

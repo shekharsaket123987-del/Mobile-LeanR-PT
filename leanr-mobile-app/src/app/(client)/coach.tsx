@@ -18,23 +18,28 @@
  * anywhere in the web app or PRD — only the async, written My Concerns
  * flow does — so wiring it to anything would be inventing functionality.
  */
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightAvatar } from '@/components/light/light-avatar';
+import { LightPrimaryButton } from '@/components/light/light-button';
 import { LightCard } from '@/components/light/light-card';
 import { LightMessageBubble, LightMessageInput } from '@/components/light/light-chat-thread';
 import { LightSegmentedControl } from '@/components/light/light-segmented-control';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
+import { LightMenuRow } from '@/components/light/light-menu-row';
 import {
   getMyActiveConversation,
+  getMyPastConversations,
   getMessages,
   markMessagesRead,
   sendMessage,
   subscribeToConversation,
   uploadChatImage,
+  type PastConversation,
 } from '@/lib/data/chat';
 import { getMyCoach } from '@/lib/data/coach';
 import { getLatestSubscription } from '@/lib/data/subscription';
@@ -43,7 +48,12 @@ import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
 import { getErrorMessage } from '@/lib/data/errors';
 
-/** Pre-purchase Coach Profile (mockup #4) — unchanged. */
+/**
+ * Pre-purchase Coach Profile — three states per ClientPortal.md §12:
+ * no-coach (never demoed / demo lapsed with no plan), demo-coach
+ * (simplified card — no bio grid, no change-request, temporary-assignment
+ * copy), full profile card is enrolled-only (EnrolledChatsScreen below).
+ */
 function PrePurchaseCoachScreen() {
   const { data: coach, loading, error, reload } = useAsync(getMyCoach, []);
 
@@ -51,8 +61,35 @@ function PrePurchaseCoachScreen() {
     <LightScreenScaffold title="Coach Profile">
       {loading && <LightLoadingState />}
       {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && !coach && <LightEmptyState message="No coach assigned yet." icon="person-outline" />}
-      {!loading && !error && coach && (
+      {!loading && !error && !coach && (
+        <>
+          <LightEmptyState
+            message="You'll be matched with a coach automatically once you book a free demo session or choose a plan."
+            icon="person-outline"
+          />
+          <LightPrimaryButton size="lg" onPress={() => router.push('/demo-booking')}>
+            Book Free Demo Session
+          </LightPrimaryButton>
+        </>
+      )}
+      {!loading && !error && coach && coach.source === 'demo' && (
+        <LightCard style={lightStyles.coachCard}>
+          <View style={lightStyles.coachRow}>
+            <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
+            <View style={lightStyles.coachInfo}>
+              <Text style={lightStyles.coachName} numberOfLines={1}>
+                {coach.full_name}
+              </Text>
+              <Text style={lightStyles.coachSpecialty}>Assigned for your demo session</Text>
+            </View>
+          </View>
+          <Text style={lightStyles.coachBio}>
+            This is a temporary assignment for your demo only — you&apos;ll be matched with your ongoing coach once you
+            choose a plan.
+          </Text>
+        </LightCard>
+      )}
+      {!loading && !error && coach && coach.source !== 'demo' && (
         <LightCard style={lightStyles.coachCard}>
           <View style={lightStyles.coachRow}>
             <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
@@ -81,12 +118,32 @@ type ChatTab = 'coach' | 'support';
 function EnrolledChatsScreen() {
   const [tab, setTab] = useState<ChatTab>('coach');
   const { data, loading, error, reload } = useAsync(async () => {
-    const [coach, conversation] = await Promise.all([getMyCoach(), getMyActiveConversation()]);
-    return { coach, conversation };
+    const [coach, conversation, pastConversations] = await Promise.all([
+      getMyCoach(),
+      getMyActiveConversation(),
+      getMyPastConversations(),
+    ]);
+    return { coach, conversation, pastConversations };
   }, []);
 
   const coach = data?.coach ?? null;
   const conversation = data?.conversation ?? null;
+  const pastConversations = data?.pastConversations ?? [];
+
+  const [pastOpen, setPastOpen] = useState(false);
+  const [viewingPast, setViewingPast] = useState<PastConversation | null>(null);
+  const [pastMessages, setPastMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    if (!viewingPast) return;
+    let cancelled = false;
+    getMessages(viewingPast.id).then((result) => {
+      if (!cancelled) setPastMessages(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewingPast]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -226,6 +283,41 @@ function EnrolledChatsScreen() {
               />
             </>
           )}
+
+          {!loading && !error && pastConversations.length > 0 && (
+            <LightCard>
+              <LightMenuRow
+                label={`Past Coaches (${pastConversations.length})`}
+                icon={pastOpen ? 'chevron-up-outline' : 'chevron-down-outline'}
+                onPress={() => setPastOpen((v) => !v)}
+                last={!pastOpen}
+              />
+              {pastOpen &&
+                pastConversations.map((pc, i) => (
+                  <LightMenuRow
+                    key={pc.id}
+                    label={pc.coachName ?? 'Former coach'}
+                    icon="person-outline"
+                    onPress={() => setViewingPast(pc)}
+                    last={i === pastConversations.length - 1}
+                  />
+                ))}
+            </LightCard>
+          )}
+
+          {viewingPast && (
+            <LightCard>
+              <Text style={lightStyles.pastNotice}>
+                This coach is no longer assigned to you — you can still see this history.
+              </Text>
+              <View style={lightStyles.thread}>
+                {pastMessages.map((m) => (
+                  <LightMessageBubble key={m.id} message={m} mine={m.sender_role === 'client'} />
+                ))}
+              </View>
+              <LightMenuRow label="Close" icon="close-outline" onPress={() => setViewingPast(null)} last />
+            </LightCard>
+          )}
         </>
       )}
     </LightScreenScaffold>
@@ -253,4 +345,5 @@ const lightStyles = StyleSheet.create({
   onlineText: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted },
   thread: { gap: 8 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  pastNotice: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginBottom: 8 },
 });

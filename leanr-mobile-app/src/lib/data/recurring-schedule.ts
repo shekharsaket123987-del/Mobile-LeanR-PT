@@ -36,9 +36,10 @@
  *   substitution step. The "same-trio 2-day pairs" fallback (steps 3-4)
  *   isn't reproduced; if nothing overlaps, the client is told to try
  *   different days.
- * - Coach matching for a client with no coach yet is out of scope here,
- *   same simplification as the ad-hoc booking wizard (Phase 5) — this
- *   sets up a schedule with the client's already-assigned coach only.
+ * - First-time coach matching (a client with no coach yet) is handled by
+ *   `findCoachForSchedule` with `preference: 'no_preference'` or `'new'` —
+ *   it falls straight through to `listCandidateCoaches`'s
+ *   utilization-ranked search, same as the coach-change/renewal path.
  * - Changing an existing schedule cancels the old `recurring_slots` rows
  *   and inserts new ones — it does NOT cancel bookings already generated
  *   under the old pattern (no cascade spec found for this in the PRD);
@@ -49,6 +50,7 @@
  *   silently risked — the UI surfaces exactly what succeeded.
  */
 import { getMyCoach } from '@/lib/data/coach';
+import { getActiveCoachesByUtilization } from '@/lib/data/coach-utilization';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { getMySubscription } from '@/lib/data/subscription';
 import { supabase } from '@/lib/supabase/client';
@@ -155,12 +157,11 @@ export async function getCommonAvailableHours(
 
 /**
  * Trainer Preference / Gender — New PRD.md §4.A Schedule Setup screen.
- * Simplified matching, same spirit as `getCommonAvailableHours`'s own
- * simplified fallback ladder (see file header): rather than a scored
- * candidate ranking, this returns the first active coach (matching the
- * gender filter, if any) whose weekly template covers every selected day
- * at some common hour — an honored, actually-available match, not a
- * "best" one.
+ * Candidates are ordered lowest-utilization-first (ClientPortal.md §10
+ * `findAvailableCoach`'s "least-busy coach first" rule) — this returns the
+ * first least-busy active coach (matching the gender filter, if any) whose
+ * weekly template covers every selected day at some common hour, not an
+ * arbitrary-order match.
  */
 export type TrainerPreference = 'same' | 'new' | 'no_preference';
 export type TrainerGenderPreference = 'male' | 'female' | 'no_preference';
@@ -171,17 +172,11 @@ async function listCandidateCoaches(
   genderPreference: TrainerGenderPreference,
   excludeCoachId?: string
 ): Promise<CoachMatchCandidate[]> {
-  let query = supabase.from('coach_profiles').select('id, gender, profiles(full_name)').eq('status', 'active');
-  if (genderPreference !== 'no_preference') query = query.eq('gender', genderPreference);
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return (data ?? [])
-    .filter((row) => row.id !== excludeCoachId)
-    .map((row) => {
-      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-      return { id: row.id as string, full_name: profile?.full_name ?? 'Coach' };
-    });
+  const ranked = await getActiveCoachesByUtilization();
+  return ranked
+    .filter((c) => c.id !== excludeCoachId)
+    .filter((c) => genderPreference === 'no_preference' || c.gender === genderPreference)
+    .map(({ id, full_name }) => ({ id, full_name }));
 }
 
 /**
@@ -218,6 +213,62 @@ export async function findCoachForSchedule(
 }
 
 export type SetupResult = { dayOfWeek: number; requested: number; confirmed: number };
+
+/**
+ * Renewal `renewal_scheduling`'s "Keep My Schedule" (ClientPortal.md §9) —
+ * re-bills the client's most recent recurring pattern (day/time/coach)
+ * against the new subscription, one click, no re-picking. Reads the
+ * client's most recently-created recurring_slots rows regardless of
+ * status (the old subscription's own rows may already be inactive by the
+ * time this runs) and re-inserts the same day/time/coach combination
+ * against `newSubscriptionId`, generating fresh occurrences exactly like
+ * `setUpRecurringSchedule` does for a fresh pick.
+ */
+export async function carryOverRecurringSchedule(newSubscriptionId: string): Promise<SetupResult[]> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) throw new Error('Could not resolve your client profile.');
+
+  const { data: priorSlots, error } = await supabase
+    .from('recurring_slots')
+    .select('day_of_week, start_time, duration_minutes, coach_id, created_at')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  if (!priorSlots || priorSlots.length === 0) throw new Error('No previous schedule found to carry over.');
+
+  // The most recently-created pattern generation: every row sharing that newest row's
+  // coach/time/duration (one row per selected weekday, per setUpRecurringSchedule's own shape).
+  const newest = priorSlots[0];
+  const pattern = priorSlots.filter(
+    (s) => s.coach_id === newest.coach_id && s.start_time === newest.start_time && s.duration_minutes === newest.duration_minutes
+  );
+
+  const results: SetupResult[] = [];
+  for (const slot of pattern) {
+    const { data: created, error: insertError } = await supabase
+      .from('recurring_slots')
+      .insert({
+        client_id: clientId,
+        coach_id: slot.coach_id,
+        subscription_id: newSubscriptionId,
+        day_of_week: slot.day_of_week,
+        start_time: slot.start_time,
+        duration_minutes: slot.duration_minutes,
+        status: 'active',
+      })
+      .select('id')
+      .single();
+    if (insertError) throw insertError;
+
+    const { data: generated, error: genError } = await supabase.rpc('generate_bookings_from_recurring_slot', {
+      p_recurring_slot_id: created.id,
+      p_count: 4,
+    });
+    if (genError) throw genError;
+    results.push({ dayOfWeek: slot.day_of_week as number, requested: 4, confirmed: (generated ?? []).length });
+  }
+  return results;
+}
 
 export async function setUpRecurringSchedule(
   daysOfWeek: number[],

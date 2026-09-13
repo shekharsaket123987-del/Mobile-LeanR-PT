@@ -15,6 +15,13 @@
  * caller's own forwarded JWT, relying on the real `bookings_update_own_client`/
  * `bookings_update_own_coach` RLS policies — the only thing that has to
  * stay server-side here is the Zoom API secret itself.
+ *
+ * CORS: this function has `verify_jwt: true`, so a browser's real POST
+ * carries an Authorization header — which forces a CORS preflight (OPTIONS)
+ * request first. Without an explicit OPTIONS handler, that preflight fell
+ * through to the "Method not allowed" 405 below, so the browser never sent
+ * the real POST at all — clicking "Join" did nothing, silently, on web.
+ * Native (iOS/Android) doesn't preflight, so this was web-only.
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -25,8 +32,14 @@ const ZOOM_CLIENT_SECRET = Deno.env.get("ZOOM_CLIENT_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 }
 
 async function getZoomAccessToken(): Promise<string> {
@@ -48,6 +61,7 @@ function pickFullName(rel: unknown): string | null {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
   if (!ZOOM_ACCOUNT_ID || !ZOOM_CLIENT_ID || !ZOOM_CLIENT_SECRET) {
     return jsonResponse(

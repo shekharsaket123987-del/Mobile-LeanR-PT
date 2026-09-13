@@ -26,8 +26,49 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 /** §13 rule 16's threshold — matches the same constant used client-side in admin-renewals/admin-shadow. */
 const SESSIONS_LOW_THRESHOLD = 5;
 
+// This function has no verify_jwt gate, but the real POST still carries an Authorization header
+// (checked manually below), which forces a browser CORS preflight (OPTIONS) first. Without an
+// explicit OPTIONS handler, that preflight fell through to "Method not allowed" (405), so the
+// browser never sent the real POST at all — clicking "Purchase plan" did nothing observable on
+// web (native doesn't preflight, so this was web-only). Same root cause as zoom-meeting's fix.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
+}
+
+/**
+ * §13 rule 16 renewal exception: a client with an active/awaiting-activation
+ * subscription is only blocked from purchasing again while more than
+ * SESSIONS_LOW_THRESHOLD sessions remain. "Remaining" is counted the same
+ * way the DB's own `confirm_booking()` booking-time credit check counts it —
+ * `upcoming + completed` bookings against `sessions_total` — not a
+ * completed-only display figure, so this gate and the booking-time gate
+ * never disagree. Shared by both the create-order gate and the
+ * verify-payment TOCTOU re-check below (ClientPortal.md §7: "re-checks no
+ * blocking existing subscription (renewal exception still applies)").
+ */
+// deno-lint-ignore no-explicit-any
+async function hasBlockingSubscription(admin: any, clientId: string): Promise<boolean> {
+  const { data: existingSub } = await admin
+    .from("subscriptions")
+    .select("id, sessions_total")
+    .eq("client_id", clientId)
+    .in("status", ["active", "awaiting_activation"])
+    .maybeSingle();
+  if (!existingSub) return false;
+
+  const { count } = await admin
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("subscription_id", existingSub.id)
+    .in("status", ["upcoming", "completed"]);
+  const remaining = (existingSub.sessions_total as number) - (count ?? 0);
+  return remaining > SESSIONS_LOW_THRESHOLD;
 }
 
 async function hmacSha256Hex(key: string, message: string): Promise<string> {
@@ -37,7 +78,19 @@ async function hmacSha256Hex(key: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** Fire-and-forget — a failed notification insert must never surface as an error on a real purchase. Same convention as subscription-lifecycle/index.ts's notifyProfile. */
+// deno-lint-ignore no-explicit-any
+async function notifyProfile(admin: any, profileId: string | null, title: string, message: string, templateKey: string): Promise<void> {
+  if (!profileId) return;
+  try {
+    await admin.from("notifications").insert({ user_id: profileId, type: "booking", title, message, template_key: templateKey });
+  } catch (err) {
+    console.error("[razorpay] notification insert failed:", err);
+  }
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   try {
     return await handleRequest(req);
   } catch (err) {
@@ -86,25 +139,11 @@ async function handleRequest(req: Request): Promise<Response> {
     if (pkgError || !pkg || !pkg.is_active) return jsonResponse({ error: "Plan not found or no longer available." }, 404);
 
     // §13 rule 16: one active/awaiting plan at a time, renewal exception when sessions_remaining <= threshold.
-    const { data: existingSub } = await supabase
-      .from("subscriptions")
-      .select("id, sessions_total")
-      .eq("client_id", clientId)
-      .in("status", ["active", "awaiting_activation"])
-      .maybeSingle();
-    if (existingSub) {
-      const { count: completedCount } = await admin
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("subscription_id", existingSub.id)
-        .eq("status", "completed");
-      const remaining = (existingSub.sessions_total as number) - (completedCount ?? 0);
-      if (remaining > SESSIONS_LOW_THRESHOLD) {
-        return jsonResponse(
-          { error: "You already have an active plan with sessions remaining. Renewal opens up once you're running low." },
-          409
-        );
-      }
+    if (await hasBlockingSubscription(admin, clientId)) {
+      return jsonResponse(
+        { error: "You already have an active plan with sessions remaining. Renewal opens up once you're running low." },
+        409
+      );
     }
 
     const amountPaise = Math.round(Number(pkg.price) * 100);
@@ -181,7 +220,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     const { data: pkg, error: pkgError } = await admin
       .from("package_tiers")
-      .select("sessions_count, default_pause_days")
+      .select("name, sessions_count, default_pause_days")
       .eq("id", payment.package_id)
       .single();
     if (pkgError || !pkg) {
@@ -192,14 +231,9 @@ async function handleRequest(req: Request): Promise<Response> {
     // Second-layer defense against the same TOCTOU race create-order's own check guards against:
     // two parallel purchase flows can both pass that earlier check before either has committed a
     // subscription row. Re-checking here, right before insert, matches web's documented second
-    // line of defense inside its own fulfillment step.
-    const { data: raceSub } = await admin
-      .from("subscriptions")
-      .select("id")
-      .eq("client_id", clientId)
-      .in("status", ["active", "awaiting_activation"])
-      .maybeSingle();
-    if (raceSub) {
+    // line of defense inside its own fulfillment step — and, per spec, the renewal exception still
+    // applies here too, using the exact same counting rule as the create-order gate.
+    if (await hasBlockingSubscription(admin, clientId)) {
       await admin.from("payments").update({ status: "paid_unfulfilled" }).eq("id", payment.id);
       return jsonResponse(
         { error: `You already have a plan. This payment was captured but not applied — contact support with reference: ${razorpay_order_id}.` },
@@ -228,6 +262,14 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     await admin.from("payments").update({ subscription_id: subscription.id }).eq("id", payment.id);
+
+    await notifyProfile(
+      admin,
+      userData.user.id,
+      "Plan purchased",
+      `Your ${pkg.name ?? "plan"} purchase was successful. Next, pick a start date to activate it.`,
+      "plan_purchased_client"
+    );
 
     return jsonResponse({ success: true, subscriptionId: subscription.id });
   }

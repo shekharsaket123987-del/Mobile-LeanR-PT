@@ -26,8 +26,9 @@ import { LightBadge, LightStatusBadge } from '@/components/light/light-badge';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightTextLink } from '@/components/light/light-tappable';
 import { LightBrand } from '@/constants/light-theme';
-import { cancelBooking, canRateThisWeek, getRescheduledSessions, getSessionsByStatus, rateSession } from '@/lib/data/bookings';
+import { cancelBooking, canRateThisWeek, getRescheduledSessions, getSessionsByStatus, getWorkoutNotesForBookings, rateSession } from '@/lib/data/bookings';
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { acknowledgeShadowCoverage, getMyActiveShadowCoverage } from '@/lib/data/shadow-coverage';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Booking, BookingStatus } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
@@ -128,11 +129,13 @@ function PrePurchaseSessionsScreen() {
 function EnrolledSessionCard({
   booking,
   canRate,
+  notes,
   onCancelled,
   onRated,
 }: {
   booking: Booking;
   canRate: boolean;
+  notes?: string;
   onCancelled: () => void;
   onRated: () => void;
 }) {
@@ -167,6 +170,13 @@ function EnrolledSessionCard({
         {booking.coach_name && <Text style={lightStyles.meta}>with {booking.coach_name}</Text>}
         {booking.was_rescheduled && <LightBadge label="Rescheduled" tone="outline" />}
       </View>
+      {/* GAP-04 / web spec §10, §12: read-only coach notes on a completed session. */}
+      {notes && (
+        <View style={lightStyles.notesBox}>
+          <Text style={lightStyles.notesLabel}>COACH NOTES</Text>
+          <Text style={lightStyles.notesText}>{notes}</Text>
+        </View>
+      )}
       {booking.status === 'upcoming' && (
         <View style={lightStyles.actionRow}>
           <LightTextLink onPress={() => router.push(`/reschedule/${booking.id}`)}>Reschedule</LightTextLink>
@@ -200,8 +210,20 @@ function EnrolledSessionsScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const [sessions, clientId] = await Promise.all([getSessionsForTab(activeTab), getMyClientProfileId()]);
     const canRate = clientId ? await canRateThisWeek(clientId) : false;
-    return { sessions, canRate };
+    // GAP-04: only completed sessions can have coach notes worth fetching.
+    const completedIds = sessions.filter((s) => s.status === 'completed').map((s) => s.id);
+    const notesById = await getWorkoutNotesForBookings(completedIds);
+    return { sessions, canRate, notesById };
   }, [activeTab]);
+
+  // GAP-05: one-time acknowledgeable "Covering for {coach}" banner — separate load so it
+  // doesn't get refetched on every tab switch.
+  const { data: shadowCoverage, reload: reloadShadowCoverage } = useAsync(getMyActiveShadowCoverage, []);
+  const onAcknowledgeShadow = async () => {
+    if (!shadowCoverage) return;
+    await acknowledgeShadowCoverage(shadowCoverage.id);
+    reloadShadowCoverage();
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -216,12 +238,21 @@ function EnrolledSessionsScreen() {
 
   return (
     <LightScreenScaffold title="My Schedule">
-      <LightPrimaryButton size="lg" onPress={() => router.push('/book-session')}>
-        Book a session
-      </LightPrimaryButton>
-      <LightTextLink onPress={() => router.push('/my-schedule')} style={lightStyles.scheduleLink}>
+      {shadowCoverage && !shadowCoverage.acknowledged && (
+        <LightCard variant="teal">
+          <Text style={lightStyles.shadowText}>
+            {shadowCoverage.shadowCoachName} is covering your sessions with {shadowCoverage.primaryCoachName} from{' '}
+            {new Date(shadowCoverage.startsOn).toLocaleDateString()} to {new Date(shadowCoverage.endsOn).toLocaleDateString()}.
+          </Text>
+          <LightTextLink onPress={onAcknowledgeShadow}>Got it</LightTextLink>
+        </LightCard>
+      )}
+
+      {/* GAP-10: ad-hoc "Book a session" removed for subscribed clients — sessions come from
+          the recurring schedule once subscribed, matching web spec §13. */}
+      <LightPrimaryButton size="lg" onPress={() => router.push('/my-schedule')}>
         Manage my schedule
-      </LightTextLink>
+      </LightPrimaryButton>
 
       <LightSegmentedControl options={TABS} value={activeTab} onChange={setActiveTab} />
 
@@ -233,7 +264,14 @@ function EnrolledSessionsScreen() {
       {!loading &&
         !error &&
         data?.sessions.map((booking) => (
-          <EnrolledSessionCard key={booking.id} booking={booking} canRate={data.canRate} onCancelled={reload} onRated={reload} />
+          <EnrolledSessionCard
+            key={booking.id}
+            booking={booking}
+            canRate={data.canRate}
+            notes={data.notesById.get(booking.id)}
+            onCancelled={reload}
+            onRated={reload}
+          />
         ))}
     </LightScreenScaffold>
   );
@@ -246,7 +284,6 @@ export default function SessionsScreen() {
 }
 
 const lightStyles = StyleSheet.create({
-  scheduleLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal, marginTop: -8 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -255,4 +292,8 @@ const lightStyles = StyleSheet.create({
   mode: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
   actionRow: { flexDirection: 'row', gap: 20, marginTop: 6 },
   cancelLink: { color: LightBrand.alertRed },
+  notesBox: { marginTop: 8, gap: 3 },
+  notesLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 0.6, color: LightBrand.textMuted },
+  notesText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary, lineHeight: 19 },
+  shadowText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.tealDark, lineHeight: 19, marginBottom: 6 },
 });

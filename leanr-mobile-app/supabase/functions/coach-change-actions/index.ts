@@ -99,6 +99,18 @@ async function handleRequest(req: Request): Promise<Response> {
     .eq("status", "active");
   if (cancelError) return jsonResponse({ error: cancelError.message }, 500);
 
+  // GAP-03 / web spec BR-32: cancel the client's still-upcoming bookings with the old coach
+  // BEFORE generating new ones below — otherwise they're left dangling as duplicate sessions
+  // with a coach the client no longer has a schedule with. Must run before the loop, since the
+  // loop below creates NEW 'upcoming' bookings with the new coach that this same filter would
+  // incorrectly catch if run afterward.
+  const { error: cancelBookingsError } = await admin
+    .from("bookings")
+    .update({ status: "cancelled", cancelled_by: "system", cancel_reason: "Client changed coaches" })
+    .eq("client_id", clientId)
+    .eq("status", "upcoming");
+  if (cancelBookingsError) return jsonResponse({ error: cancelBookingsError.message }, 500);
+
   const startTime = `${pad(hour)}:00:00`;
   for (const dayOfWeek of days) {
     const { data: slot, error: slotError } = await admin

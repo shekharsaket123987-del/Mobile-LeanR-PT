@@ -13,7 +13,7 @@
  * summary card, `marketing`/`demo_booked` get "No Subscription Found".
  */
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { LightProgressRing } from '@/components/light/light-progress-ring';
@@ -56,6 +56,15 @@ export default function SubscriptionScreen() {
     return { subscription, pkg, sessionsUsed, payments, stage, demo };
   }, []);
   const [busy, setBusy] = useState(false);
+
+  // GAP-13 / web spec §9.1: web never renders this screen for an `awaiting_activation`
+  // subscription — the journey-stage redirect to /activate intercepts first. Mirror that
+  // instead of showing a raw "Awaiting_activation" badge here.
+  useEffect(() => {
+    if (!loading && data?.subscription?.status === 'awaiting_activation') {
+      router.replace('/activate');
+    }
+  }, [loading, data]);
 
   const {
     subscription,
@@ -110,6 +119,8 @@ export default function SubscriptionScreen() {
     );
   }
 
+  if (subscription?.status === 'awaiting_activation') return null; // redirecting via the effect above
+
   return (
     <LightScreenScaffold title="My Plan">
       {!subscription && stage === 'demo_completed' && (
@@ -145,17 +156,17 @@ export default function SubscriptionScreen() {
               <LightStatusBadge status={subscription.status} />
             </View>
             {pkg?.sessions_count ? <Text style={styles.planMeta}>{pkg.sessions_count} sessions per month</Text> : null}
-            {subscription.status !== 'awaiting_activation' && (
-              <View style={styles.ringWrap}>
-                <LightProgressRing
-                  progress={subscription.sessions_total > 0 ? sessionsUsed / subscription.sessions_total : 0}
-                  valueText={`${sessionsUsed}/${subscription.sessions_total}`}
-                  label="sessions used"
-                  size={140}
-                  strokeWidth={12}
-                />
-              </View>
-            )}
+            {/* GAP-13: the awaiting_activation redirect above means `subscription` here is
+                never that status — this ring always renders for whatever reaches this point. */}
+            <View style={styles.ringWrap}>
+              <LightProgressRing
+                progress={subscription.sessions_total > 0 ? sessionsUsed / subscription.sessions_total : 0}
+                valueText={`${sessionsUsed}/${subscription.sessions_total}`}
+                label="sessions used"
+                size={140}
+                strokeWidth={12}
+              />
+            </View>
           </LightCard>
 
           <LightCard>
@@ -165,18 +176,14 @@ export default function SubscriptionScreen() {
             {subscription.pause_days_allowed > 0 && <Row label="Pause Days Included" value={String(subscription.pause_days_allowed)} />}
           </LightCard>
 
-          {(subscription.status === 'awaiting_activation' || subscription.status === 'active' || subscription.status === 'paused') && (
+          {(subscription.status === 'active' || subscription.status === 'paused') && (
             <LightCard style={styles.actionsCard}>
-              {subscription.status === 'awaiting_activation' ? (
-                <LightMenuRow label="Activate this plan" icon="play-circle-outline" onPress={() => router.push('/activate')} last />
-              ) : (
-                <LightMenuRow
-                  label={subscription.status === 'active' ? 'Pause Plan (if eligible)' : 'Resume Plan'}
-                  icon={subscription.status === 'active' ? 'pause-circle-outline' : 'play-circle-outline'}
-                  onPress={busy ? undefined : onTogglePause}
-                  last
-                />
-              )}
+              <LightMenuRow
+                label={subscription.status === 'active' ? 'Pause Plan (if eligible)' : 'Resume Plan'}
+                icon={subscription.status === 'active' ? 'pause-circle-outline' : 'play-circle-outline'}
+                onPress={busy ? undefined : onTogglePause}
+                last
+              />
             </LightCard>
           )}
         </>

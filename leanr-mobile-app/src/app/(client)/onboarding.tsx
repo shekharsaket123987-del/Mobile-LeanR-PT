@@ -15,7 +15,7 @@
  * showing that control would silently discard whatever the client picked.
  */
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
 import { LightChip, LightChipGrid } from '@/components/light/light-chip';
@@ -24,9 +24,11 @@ import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/lig
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightTextField } from '@/components/light/light-text-field';
+import { LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
-import { submitOnboarding } from '@/lib/data/onboarding';
+import { getMyOnboarding, submitOnboarding } from '@/lib/data/onboarding';
 import type { FitnessGoal } from '@/lib/data/types';
+import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
 
 const FITNESS_GOALS: { value: FitnessGoal; label: string }[] = [
@@ -47,6 +49,16 @@ function toNumber(v: string): number | undefined {
 }
 
 export default function OnboardingScreen() {
+  // AUTH-008 fix: re-verify server-side on every load that onboarding hasn't already been
+  // submitted, instead of rendering the form and only discovering the "already submitted"
+  // error at the moment of a doomed submit attempt.
+  const { data: existingOnboarding, loading: checkingExisting } = useAsync(getMyOnboarding, []);
+  useEffect(() => {
+    if (!checkingExisting && existingOnboarding) {
+      router.replace('/(client)');
+    }
+  }, [checkingExisting, existingOnboarding]);
+
   const [step, setStep] = useState(1);
   const [weight, setWeight] = useState('');
   const [goal, setGoal] = useState<FitnessGoal | null>(null);
@@ -122,6 +134,15 @@ export default function OnboardingScreen() {
     }
   };
 
+  if (checkingExisting) {
+    return (
+      <LightScreenScaffold title="Let's Get Started!">
+        <LightLoadingState />
+      </LightScreenScaffold>
+    );
+  }
+  if (existingOnboarding) return null; // redirecting via the effect above
+
   return (
     <LightScreenScaffold title="Let's Get Started!" subtitle={`Step ${step} of ${TOTAL_STEPS}`}>
       {step === 1 && (
@@ -150,11 +171,12 @@ export default function OnboardingScreen() {
           <Text style={[styles.label, styles.optionalLabel]}>OPTIONAL</Text>
           <LightTextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
           <LightTextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
-          <LightTextField placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
-          <LightTextField placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
-          <LightTextField placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
-          <LightTextField placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
-          <LightTextField placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
+          {/* AUTH-006 fix: web spec has these as inches, not cm (BR-8 / ClientPortal.md §7.2). */}
+          <LightTextField placeholder="Waist (in)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+          <LightTextField placeholder="Chest (in)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+          <LightTextField placeholder="Hip (in)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+          <LightTextField placeholder="Arms (in)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+          <LightTextField placeholder="Thigh (in)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
         </LightCard>
       )}
 

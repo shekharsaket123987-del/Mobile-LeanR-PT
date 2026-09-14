@@ -2,22 +2,24 @@
  * Choose Your Plan — dual-branch (New PRD.md pre-purchase redesign):
  * before any purchase, a light-themed version (same data/purchase logic,
  * Individual/Corporate tabs matching the mockup and the marketing shell's
- * own Plans screen); the existing dark post-purchase/renewal screen is
- * unchanged, moved into `EnrolledPlansScreen`.
+ * own Plans screen).
+ *
+ * GAP-18 (NAV-005) fix: `EnrolledPlansScreen` (renewal/post-purchase) used to render the
+ * legacy dark `ui/*`/`GlassCard` stack — the last un-migrated screen branch, jarring against
+ * the rest of the now fully light-themed app, and reachable by every previously-subscribed
+ * client via "Renew Now". Migrated onto the same Light* components `PrePurchasePlansScreen`
+ * already uses — no business-logic change, palette only.
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { EmptyState, ErrorState, LoadingState, ScreenScaffold } from '@/components/screen-scaffold';
-import { TextLink } from '@/components/tappable';
-import { PrimaryButton } from '@/components/ui/button';
-import { GlassCard } from '@/components/ui/glass-card';
-import { Brand, DisplayFont } from '@/constants/theme';
+import { DisplayFont } from '@/constants/theme';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightCard } from '@/components/light/light-card';
 import { LightPrimaryButton } from '@/components/light/light-button';
 import { LightSegmentedControl } from '@/components/light/light-segmented-control';
+import { LightTextLink } from '@/components/light/light-tappable';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -77,9 +79,9 @@ function PrePurchasePlansScreen() {
 
   return (
     <LightScreenScaffold title="Our Plans">
-      <TextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
+      <LightTextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
         Book a Free Demo first →
-      </TextLink>
+      </LightTextLink>
 
       <LightSegmentedControl options={TABS} value={tab} onChange={setTab} />
 
@@ -145,38 +147,38 @@ function EnrolledPlansScreen() {
   };
 
   return (
-    <ScreenScaffold title="Choose Your Plan" subtitle="Every plan pairs you with a dedicated live coach.">
-      <TextLink onPress={() => router.push('/demo-booking')} style={styles.demoLink}>
+    <LightScreenScaffold title="Choose Your Plan" subtitle="Every plan pairs you with a dedicated live coach.">
+      <LightTextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
         Book a Free Demo first →
-      </TextLink>
+      </LightTextLink>
 
-      {loading && <LoadingState />}
-      {error && <ErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (plans?.length ?? 0) === 0 && <EmptyState message="No plans available right now." icon="pricetag-outline" />}
+      {loading && <LightLoadingState />}
+      {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (plans?.length ?? 0) === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
       {!loading &&
         !error &&
         plans?.map((plan) => (
-          <GlassCard key={plan.id} style={styles.planCard}>
-            <Text style={styles.planName}>{plan.name}</Text>
-            <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
-            {plan.sessions_count ? <Text style={styles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
-            <PrimaryButton
+          <LightCard key={plan.id} style={lightStyles.planCard}>
+            <Text style={lightStyles.planName}>{plan.name}</Text>
+            <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
+            {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
+            <LightPrimaryButton
               size="lg"
               onPress={() => onPurchase(plan.id, plan.name)}
               loading={purchasingId === plan.id}
               disabled={purchasingId !== null && purchasingId !== plan.id}
-              style={styles.purchaseButton}>
+              style={lightStyles.purchaseButton}>
               Purchase plan
-            </PrimaryButton>
-          </GlassCard>
+            </LightPrimaryButton>
+          </LightCard>
         ))}
 
       {purchaseError && (
-        <Text style={styles.errorText} accessibilityRole="alert">
+        <Text style={lightStyles.errorText} accessibilityRole="alert">
           {purchaseError}
         </Text>
       )}
-    </ScreenScaffold>
+    </LightScreenScaffold>
   );
 }
 
@@ -185,16 +187,6 @@ export default function PlansScreen() {
   if (loading) return null;
   return subscription ? <EnrolledPlansScreen /> : <PrePurchasePlansScreen />;
 }
-
-const styles = StyleSheet.create({
-  demoLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginTop: -8 },
-  planCard: { gap: 4 },
-  planName: { fontFamily: 'Manrope_700Bold', fontSize: 13, letterSpacing: 0.4, color: 'rgba(255,255,255,0.7)' },
-  planPrice: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 38, color: Brand.yellow, letterSpacing: -0.5 },
-  planMeta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
-  purchaseButton: { marginTop: 12 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
-});
 
 const lightStyles = StyleSheet.create({
   demoLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal, marginTop: -8 },

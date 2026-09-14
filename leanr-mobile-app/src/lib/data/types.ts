@@ -52,6 +52,9 @@ export type CoachProfile = {
   specialization: string | null;
   secondary_specializations?: string[] | null;
   rating: number | null;
+  languages?: string[] | null; // GAP-15 / SES-028: full coach card should surface these (columns confirmed real via admin-coaches.ts / coach-performance.ts)
+  years_experience?: number | null;
+  review_count?: number | null;
   full_name?: string; // present when joined via profiles(full_name)
   photo_url?: string | null; // present when joined via profiles(photo_url)
   source?: 'recurring' | 'demo'; // set by getMyCoach() — which relationship this coach came from

@@ -112,19 +112,16 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse({ error: "Start date must be tomorrow or later." }, 400);
     }
 
-    const { error: updateError } = await admin
-      .from("subscriptions")
-      .update({ status: "active", activated_at: startDate })
-      .eq("id", subscriptionId);
-    if (updateError) return jsonResponse({ error: updateError.message }, 500);
-
-    // Renewal-supersede: any other still-active subscription for this client becomes inactive.
-    await admin
-      .from("subscriptions")
-      .update({ status: "inactive" })
-      .eq("client_id", clientId)
-      .eq("status", "active")
-      .neq("id", subscriptionId);
+    // Activation + renewal-supersede must be atomic (BR-6, "MUST NOT CHANGE" per the web spec) —
+    // both writes happen inside activate_subscription() as one Postgres function invocation
+    // instead of two independent, uncoordinated `.update()` calls. See migration
+    // 20260914090000_atomic_subscription_activation.sql for the rationale.
+    const { error: activateError } = await admin.rpc("activate_subscription", {
+      p_subscription_id: subscriptionId,
+      p_client_id: clientId,
+      p_start_date: startDate,
+    });
+    if (activateError) return jsonResponse({ error: activateError.message }, 409);
 
     await notifyProfile(admin, userData.user.id, "booking", "Plan activated", `Your plan starts on ${startDate}.`, "plan_activated_client");
 

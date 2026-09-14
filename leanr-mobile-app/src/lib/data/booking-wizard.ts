@@ -295,5 +295,15 @@ export async function confirmHold(
 
   const { data, error } = await supabase.rpc('confirm_booking', params);
   if (error) throw error;
-  return data as string;
+  const bookingId = data as string;
+
+  // GAP-07 / web spec §14: client + coach must be notified on any regular or demo booking —
+  // best-effort, mirrors this codebase's own established pattern of never failing the primary
+  // action over a notification error (see e.g. progress.ts's coach-notify try/catch).
+  supabase.rpc('notify_session_booked', { p_booking_id: bookingId }).then(
+    () => {},
+    () => {}
+  );
+
+  return bookingId;
 }

@@ -9,7 +9,7 @@
  * Relit for the post-purchase light theme (mockup frame 4) — real month
  * calendar via `LightCalendarGrid` instead of the earlier date-chip row.
  */
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -21,6 +21,7 @@ import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { addIstDays, formatIstDateLabel, istDateKey, todayIst, type IstDate } from '@/lib/data/booking-wizard';
+import { getClientJourneyStage } from '@/lib/data/journey';
 import { activateSubscription, getPendingActivationSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -38,7 +39,17 @@ export default function ActivatePlanScreen() {
     setActionError(null);
     try {
       await activateSubscription(subscription.id, istDateKey(selectedDate));
-      router.replace('/onboarding');
+      // AUTH-007 fix: route by the freshly-recomputed journey stage instead of unconditionally
+      // to onboarding — a renewal client (who already has onboarding on file) needs
+      // renewal-checkin/renewal-scheduling instead, exactly like EnrolledHomeScreen's own gate.
+      const stage = await getClientJourneyStage();
+      const dest: Record<string, Href> = {
+        onboarding: '/onboarding' as Href,
+        renewal_checkin: '/renewal-checkin' as Href,
+        renewal_scheduling: '/renewal-scheduling' as Href,
+        slot_selection: '/my-schedule' as Href,
+      };
+      router.replace(dest[stage] ?? ('/(client)' as Href));
     } catch (err) {
       setActionError(getErrorMessage(err));
     } finally {
@@ -90,7 +101,9 @@ export default function ActivatePlanScreen() {
       <LightPrimaryButton size="lg" onPress={onConfirm} loading={submitting}>
         Activate Plan
       </LightPrimaryButton>
-      <Text style={styles.hint}>You can reschedule later if needed.</Text>
+      {/* SUB-010 fix: activation is a one-time lock (BR-5) — the previous copy here claimed
+          the opposite. */}
+      <Text style={styles.hint}>This start date is locked in once you activate — choose carefully.</Text>
     </LightScreenScaffold>
   );
 }

@@ -82,11 +82,18 @@ export default function MyScheduleScreen() {
   const currentSlots = data?.currentSlots ?? [];
   const settings = data?.settings ?? null;
 
+  // GAP-14 / web spec BR-10, §7.3: an existing active recurring slot means this is a
+  // renewal/change flow, not first-time setup — web never offers "no preference" gender on
+  // that path (first-time setup does). `no_preference` here means "not yet chosen," not a
+  // valid selection, when `isChangeContext` — see the gated chip + submit guard below.
+  const isChangeContext = currentSlots.length > 0;
+
   const [wizardStep, setWizardStep] = useState<2 | 3>(2);
   const [slotType, setSlotType] = useState<SlotType>('standard');
   const [selectedDays, setSelectedDays] = useState<number[]>(STANDARD_DAYS);
   const [trainerPreference, setTrainerPreference] = useState<TrainerPreference>('same');
   const [trainerGender, setTrainerGender] = useState<TrainerGenderPreference>('no_preference');
+  const genderChosen = !isChangeContext || trainerGender !== 'no_preference';
   const [hours, setHours] = useState<number[] | null>(null);
   const [matchedCoach, setMatchedCoach] = useState<CoachMatchCandidate | null>(null);
   const [assignedCoach, setAssignedCoach] = useState<CoachProfile | null>(null);
@@ -114,7 +121,7 @@ export default function MyScheduleScreen() {
   useEffect(() => {
     let cancelled = false;
 
-    if (!coach || !settings || selectedDays.length === 0 || wizardStep !== 3) {
+    if (!coach || !settings || selectedDays.length === 0 || wizardStep !== 3 || !genderChosen) {
       Promise.resolve().then(() => {
         if (!cancelled) {
           setHours(null);
@@ -154,7 +161,7 @@ export default function MyScheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [coach, settings, selectedDays, trainerPreference, trainerGender, wizardStep]);
+  }, [coach, settings, selectedDays, trainerPreference, trainerGender, wizardStep, genderChosen]);
 
   const onConfirm = async () => {
     if (!settings || selectedHour === null || selectedDays.length === 0 || !matchedCoach) return;
@@ -303,12 +310,15 @@ export default function MyScheduleScreen() {
             <LightChipGrid>
               <LightChip label="Male" selected={trainerGender === 'male'} onPress={() => setTrainerGender('male')} />
               <LightChip label="Female" selected={trainerGender === 'female'} onPress={() => setTrainerGender('female')} />
-              <LightChip
-                label="No preference"
-                selected={trainerGender === 'no_preference'}
-                onPress={() => setTrainerGender('no_preference')}
-              />
+              {!isChangeContext && (
+                <LightChip
+                  label="No preference"
+                  selected={trainerGender === 'no_preference'}
+                  onPress={() => setTrainerGender('no_preference')}
+                />
+              )}
             </LightChipGrid>
+            {isChangeContext && !genderChosen && <Text style={styles.hintText}>Pick a preferred coach gender to continue.</Text>}
 
             <LightSectionHeader title="Trainer preference" />
             <LightChipGrid>
@@ -348,7 +358,7 @@ export default function MyScheduleScreen() {
             </Text>
           )}
 
-          <LightPrimaryButton size="lg" onPress={onConfirm} loading={phase === 'saving'} disabled={selectedHour === null}>
+          <LightPrimaryButton size="lg" onPress={onConfirm} loading={phase === 'saving'} disabled={selectedHour === null || !genderChosen}>
             Find My Coach
           </LightPrimaryButton>
           <LightSecondaryButton size="lg" onPress={() => setWizardStep(2)}>

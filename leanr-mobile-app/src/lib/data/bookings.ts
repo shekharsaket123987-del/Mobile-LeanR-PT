@@ -7,7 +7,7 @@
  * have failed outright).
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
-import { notifyAdmins, notifyProfile, resolveProfileIdForCoach } from '@/lib/data/notify';
+import { notifyAdmins, notifyProfile, resolveProfileIdForClient, resolveProfileIdForCoach } from '@/lib/data/notify';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking, BookingStatus } from './types';
 
@@ -58,6 +58,23 @@ export async function getSessionsByStatus(status: BookingStatus) {
     .order('scheduled_start', { ascending: false });
   if (error) throw error;
   return (data ?? []).map(withCoachName);
+}
+
+/**
+ * GAP-04 / web spec §10, §12: coach-authored session notes, read-only, via the column-scoped
+ * `client_workout_notes` view (see migration 20260914100000) — exposes only `notes`, never the
+ * coach/admin-internal `homework`/`exercises_performed`/`performance_rating`/`improvements`/
+ * `additional_remarks` fields.
+ */
+export async function getWorkoutNotesForBookings(bookingIds: string[]): Promise<Map<string, string>> {
+  if (bookingIds.length === 0) return new Map();
+  const { data, error } = await supabase.from('client_workout_notes').select('booking_id, notes').in('booking_id', bookingIds);
+  if (error) throw error;
+  const notesById = new Map<string, string>();
+  for (const row of data ?? []) {
+    if (row.notes) notesById.set(row.booking_id as string, row.notes as string);
+  }
+  return notesById;
 }
 
 export async function getClientBookingById(bookingId: string): Promise<Booking | null> {
@@ -196,9 +213,12 @@ export async function rescheduleBooking(
   const { error } = await supabase.rpc('reschedule_booking', rpcArgs);
   if (error) throw error;
 
-  // ClientPortal.md §15: rescheduled-by-client notifies the coach(es) + admins (the client
-  // already knows — it's their own action, surfaced in-app via the screen itself).
+  // GAP-12 / web spec §14: "Session rescheduled" always notifies the client too, regardless of
+  // who initiated it — the earlier omission here (on the theory the client "already knows,
+  // it's their own action") contradicted the web app's documented behavior.
   const newWhen = new Date(newStart).toLocaleString();
+  const clientProfileId = await resolveProfileIdForClient(clientId);
+  await notifyProfile(clientProfileId, 'booking', 'Session rescheduled', `Your session was moved to ${newWhen}.`, 'session_rescheduled_client');
   if (booking?.coach_id) {
     const coachProfileId = await resolveProfileIdForCoach(booking.coach_id as string);
     await notifyProfile(coachProfileId, 'booking', 'Session rescheduled', `Your client moved their session to ${newWhen}.`, 'session_rescheduled_coach');

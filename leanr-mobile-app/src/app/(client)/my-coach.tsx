@@ -80,9 +80,26 @@ export default function MyCoachScreen() {
               <Text style={styles.coachName} numberOfLines={1}>
                 {coach.full_name}
               </Text>
-              {coach.rating != null && <Text style={styles.coachRating}>★ {coach.rating.toFixed(1)}</Text>}
+              {coach.rating != null && (
+                <Text style={styles.coachRating}>
+                  ★ {coach.rating.toFixed(1)}
+                  {coach.review_count != null ? ` (${coach.review_count})` : ''}
+                </Text>
+              )}
+              {coach.years_experience != null && (
+                <Text style={styles.coachMeta}>{coach.years_experience} yrs experience</Text>
+              )}
             </View>
           </View>
+          {/* GAP-15 / SES-028: web's full coach card includes languages — columns exist, were
+              just never queried/rendered on mobile before this fix. */}
+          {coach.languages && coach.languages.length > 0 && (
+            <View style={styles.tagRow}>
+              {coach.languages.map((l) => (
+                <LightBadge key={l} label={l} tone="outline" />
+              ))}
+            </View>
+          )}
           {tags.length > 0 && (
             <View style={styles.tagRow}>
               {tags.map((t) => (
@@ -308,6 +325,7 @@ const styles = StyleSheet.create({
   coachInfo: { flexShrink: 1, gap: 2 },
   coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: LightBrand.navy },
   coachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
+  coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
   coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, lineHeight: 20 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   sectionLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary },

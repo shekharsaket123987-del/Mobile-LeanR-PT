@@ -32,7 +32,7 @@ import {
   todayIst,
   type IstDate,
 } from '@/lib/data/booking-wizard';
-import { findDemoMatch, hasExistingAssessment, type DemoMatch } from '@/lib/data/demo-booking';
+import { findDemoMatch, getLatestDemoBooking, hasExistingAssessment, type DemoMatch } from '@/lib/data/demo-booking';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
 
@@ -40,11 +40,15 @@ type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
 export default function DemoBookingScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [settings, alreadyDone] = await Promise.all([getBookingSettings(), hasExistingAssessment()]);
-    return { settings, alreadyDone };
+    const [settings, alreadyDone, latestDemo] = await Promise.all([getBookingSettings(), hasExistingAssessment(), getLatestDemoBooking()]);
+    return { settings, alreadyDone, latestDemo };
   }, []);
 
   const settings = data?.settings ?? null;
+  // GAP-16 / web spec §3.1, §4.1 (`demo_booked` stage): block re-booking while a demo is
+  // already `upcoming` — mirrors web's page-level self-guard instead of just an informational
+  // note, and closes the direct-deep-link bypass the earlier version left open.
+  const upcomingDemo = data?.latestDemo?.status === 'upcoming' ? data.latestDemo : null;
 
   const [selectedDate, setSelectedDate] = useState<IstDate>(() => addIstDays(todayIst(), 1));
   const [match, setMatch] = useState<DemoMatch | null>(null);
@@ -148,6 +152,21 @@ export default function DemoBookingScreen() {
     return (
       <LightScreenScaffold title="Book a Free Demo">
         <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
+    );
+  }
+
+  if (upcomingDemo && phase === 'pick') {
+    return (
+      <LightScreenScaffold title="Demo Already Booked">
+        <LightCard>
+          <Text style={styles.metaText}>
+            You already have a demo session scheduled for {new Date(upcomingDemo.scheduledStart).toLocaleString()}.
+          </Text>
+        </LightCard>
+        <LightPrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+          View my schedule
+        </LightPrimaryButton>
       </LightScreenScaffold>
     );
   }

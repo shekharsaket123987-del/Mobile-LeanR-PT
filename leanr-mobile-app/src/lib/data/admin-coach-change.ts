@@ -120,6 +120,16 @@ export async function approveCoachChangeRequestWithCoach(id: string, clientId: s
   const { error: cancelError } = await supabase.from('recurring_slots').update({ status: 'cancelled' }).eq('client_id', clientId).eq('status', 'active');
   if (cancelError) throw cancelError;
 
+  // GAP-03 / web spec BR-32: cancel the client's still-upcoming bookings with the old coach
+  // BEFORE generating new ones below — see coach-change-actions/index.ts's identical fix for
+  // the client self-serve path (same bug, same reasoning, mirrored here for the admin path).
+  const { error: cancelBookingsError } = await supabase
+    .from('bookings')
+    .update({ status: 'cancelled', cancelled_by: 'system', cancel_reason: 'Client changed coaches' })
+    .eq('client_id', clientId)
+    .eq('status', 'upcoming');
+  if (cancelBookingsError) throw cancelBookingsError;
+
   for (const slot of activeSlots ?? []) {
     const { data: newSlot, error: insertError } = await supabase
       .from('recurring_slots')

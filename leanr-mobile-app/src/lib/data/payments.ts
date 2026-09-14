@@ -21,7 +21,15 @@ export type PurchaseResult = { subscriptionId: string };
 
 export type PaymentWithPackage = Payment & { package_tiers: { name: string } | null };
 
-/** `payments_select_own` RLS lets a client read their own rows directly — no edge function needed for this one. */
+/**
+ * `payments_select_own` RLS lets a client read their own rows directly — no edge function
+ * needed for this one.
+ *
+ * GAP-13 / web spec §10: the client-facing payment history is sourced from web's `sales_view`,
+ * scoped to successful purchases — not a raw dump of every internal `payments.status` value.
+ * Filtered to `paid` here to match; `created`/`failed`/`paid_unfulfilled` rows are internal
+ * ledger states a client shouldn't be shown an unmapped, ugly-cased badge for.
+ */
 export async function getMyPayments(): Promise<PaymentWithPackage[]> {
   const clientId = await getMyClientProfileId();
   if (!clientId) return [];
@@ -30,6 +38,7 @@ export async function getMyPayments(): Promise<PaymentWithPackage[]> {
     .from('payments')
     .select('*, package_tiers(name)')
     .eq('client_id', clientId)
+    .eq('status', 'paid')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as PaymentWithPackage[];

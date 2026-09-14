@@ -96,8 +96,8 @@ function PrePurchaseProfileScreen() {
   const onChangePassword = async () => {
     setPasswordError(null);
     setPasswordChanged(false);
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -265,8 +265,8 @@ function EnrolledProfileScreen() {
   const onChangePassword = async () => {
     setPasswordError(null);
     setPasswordChanged(false);
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {

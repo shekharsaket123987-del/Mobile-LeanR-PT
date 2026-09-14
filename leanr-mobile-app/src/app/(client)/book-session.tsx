@@ -12,6 +12,12 @@
  * Deliberately out of scope here (see README open items): recurring
  * schedule setup/change, and demo/assessment booking (a different
  * RPC path — confirmDemoBooking — with different matching rules, §15).
+ *
+ * GAP-10 (web spec §13 route-guard map, matching both app PRD documents):
+ * once a client has an active subscription, this ad-hoc wizard is
+ * unreachable — it redirects to /my-schedule even on direct navigation,
+ * same treatment web gives /client/book. Sessions happen through the
+ * recurring schedule only once subscribed.
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -76,6 +82,14 @@ export default function BookSessionScreen() {
   const subscription = data?.subscription ?? null;
   const settings = data?.settings ?? null;
   const coaches = data?.coaches ?? [];
+
+  // GAP-10: server-verified guard, not just nav-hiding — re-checked on every load so a direct
+  // deep link into this screen can't bypass the web-spec rule once a client is subscribed.
+  useEffect(() => {
+    if (!loading && subscription) {
+      router.replace('/my-schedule');
+    }
+  }, [loading, subscription]);
   // No coach assigned yet -> default to the first available one until the
   // client taps a different chip. Derived directly from render inputs
   // (no effect needed) so there's nothing to keep in sync.
@@ -174,6 +188,8 @@ export default function BookSessionScreen() {
     await rateSession(unratedDemo.bookingId, rating);
     setFeedbackDismissed(true);
   };
+
+  if (subscription) return null; // GAP-10: redirecting away via the effect above — avoid flashing the ad-hoc wizard first.
 
   if (!subscription) {
     return (

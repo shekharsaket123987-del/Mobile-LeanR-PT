@@ -9,6 +9,7 @@ import { StyleSheet, Text } from 'react-native';
 
 import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
 import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightTextField } from '@/components/light/light-text-field';
 import { StarRating } from '@/components/ui/star-rating';
 import { LightBrand } from '@/constants/light-theme';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -26,6 +27,7 @@ export function RateSessionSheet({
 }) {
   const [quality, setQuality] = useState(0);
   const [trainer, setTrainer] = useState(0);
+  const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,9 +39,10 @@ export function RateSessionSheet({
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit({ qualityRating: quality, trainerRating: trainer, note: '' });
+      await onSubmit({ qualityRating: quality, trainerRating: trainer, note });
       setQuality(0);
       setTrainer(0);
+      setNote('');
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -53,6 +56,16 @@ export function RateSessionSheet({
       <StarRating value={quality} onChange={setQuality} />
       <Text style={[styles.label, styles.labelSpacing]}>TRAINER</Text>
       <StarRating value={trainer} onChange={setTrainer} />
+
+      <Text style={[styles.label, styles.labelSpacing]}>NOTE (OPTIONAL)</Text>
+      <LightTextField
+        placeholder="Anything you'd like to add?"
+        value={note}
+        onChangeText={setNote}
+        multiline
+        numberOfLines={3}
+        style={styles.noteInput}
+      />
 
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -70,6 +83,7 @@ export function RateSessionSheet({
 const styles = StyleSheet.create({
   label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted },
   labelSpacing: { marginTop: 14 },
+  noteInput: { minHeight: 72, textAlignVertical: 'top', paddingTop: 14 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 8 },
   button: { marginTop: 14 },
 });

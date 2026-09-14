@@ -47,8 +47,8 @@ export default function ResetPasswordScreen() {
 
   const onSubmit = async () => {
     setError(null);
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
     if (password !== confirmPassword) {

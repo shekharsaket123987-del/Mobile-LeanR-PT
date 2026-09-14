@@ -18,7 +18,7 @@ import type { CoachProfile } from './types';
 async function getCoachProfileById(coachId: string): Promise<CoachProfile | null> {
   const { data: coach, error } = await supabase
     .from('coach_profiles')
-    .select('id, profile_id, bio, specialization, secondary_specializations, rating, profiles(full_name, photo_url)')
+    .select('id, profile_id, bio, specialization, secondary_specializations, rating, languages, years_experience, review_count, profiles(full_name, photo_url)')
     .eq('id', coachId)
     .single();
   if (error || !coach) return null;
@@ -31,6 +31,9 @@ async function getCoachProfileById(coachId: string): Promise<CoachProfile | null
     specialization: coach.specialization,
     secondary_specializations: coach.secondary_specializations,
     rating: coach.rating,
+    languages: coach.languages,
+    years_experience: coach.years_experience,
+    review_count: coach.review_count,
     full_name: profile?.full_name,
     photo_url: profile?.photo_url,
   } as CoachProfile;

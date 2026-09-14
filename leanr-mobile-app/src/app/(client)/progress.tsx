@@ -12,16 +12,17 @@
  * web, so wiring an upload here would be inventing functionality that
  * doesn't exist in the web app.
  *
- * Purchase-gated (mockup poster's "NOT Available Until Plan Purchase" list
- * explicitly includes Progress/Measurements): not linked from the demo-only
- * More menu (`more.tsx`'s `PRE_PURCHASE_ROWS`), but this screen previously
- * had no in-screen guard of its own — every other gated screen (Book a
- * Session, Chat, Session History) defends in depth with BOTH nav-hiding AND
- * a `hasEverPurchased` check here, so a demo-only client reaching this
- * route directly (deep link, future internal link) could log measurements
- * with no plan. Mirrors `book-session.tsx`'s exact gate treatment.
+ * NOT purchase-gated, on purpose (fixed 2026-09-14, see
+ * app-gap-fix-plan.md GAP-01 / COM-001): the web app's own client-portal
+ * spec (ClientPortal.md §5.5, §8 BR-15) requires progress logging to work
+ * for ANY authenticated client, pre- or post-purchase — it is the explicit
+ * prerequisite for clearing the measurement-staleness gate that blocks
+ * free demo booking. A previous pass here mirrored `book-session.tsx`'s
+ * purchase gate onto this screen too, which was backwards: it left a
+ * brand-new prospect able to buy a paid plan outright but never able to
+ * log the measurement needed to book a free demo. Do not re-add a
+ * subscription check here.
  */
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -37,7 +38,6 @@ import { LightEmptyState, LightErrorState, LightLoadingState } from '@/component
 import { LightBrand } from '@/constants/light-theme';
 import { DisplayFont } from '@/constants/theme';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
-import { getLatestSubscription } from '@/lib/data/subscription';
 import type { ProgressLog } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -61,7 +61,7 @@ const METRICS: { key: Metric; label: string; unit: string }[] = [
   { key: 'weight', label: 'Weight', unit: 'kg' },
   { key: 'body_fat_pct', label: 'Body Fat', unit: '%' },
   { key: 'muscle_pct', label: 'Muscle', unit: '%' },
-  { key: 'waist', label: 'Waist', unit: 'cm' },
+  { key: 'waist', label: 'Waist', unit: 'in' },
 ];
 
 type RangeKey = '3m' | '6m' | 'all';
@@ -72,7 +72,6 @@ const RANGES: { key: RangeKey; label: string; months: number | null }[] = [
 ];
 
 export default function ProgressScreen() {
-  const { data: subscription, loading: subscriptionLoading } = useAsync(getLatestSubscription, []);
   const { data: logs, loading, error, reload } = useAsync(getProgressLogs, []);
   const [tab, setTab] = useState<'measurements' | 'photos'>('measurements');
   const [metric, setMetric] = useState<Metric>('weight');
@@ -139,17 +138,6 @@ export default function ProgressScreen() {
 
   const unit = METRICS.find((m) => m.key === metric)?.unit ?? '';
 
-  if (!subscriptionLoading && !subscription) {
-    return (
-      <LightScreenScaffold title="Progress">
-        <LightEmptyState message="You need an active plan before you can log progress." icon="lock-closed-outline" />
-        <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
-          View plans
-        </LightPrimaryButton>
-      </LightScreenScaffold>
-    );
-  }
-
   return (
     <LightScreenScaffold title="Progress">
       <LightSegmentedControl
@@ -212,11 +200,12 @@ export default function ProgressScreen() {
             <LightTextField placeholder="Weight (kg)" keyboardType="numeric" value={weight} onChangeText={setWeight} />
             <LightTextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
             <LightTextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
-            <LightTextField placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
-            <LightTextField placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
-            <LightTextField placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
-            <LightTextField placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
-            <LightTextField placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
+            {/* AUTH-006 fix: web spec has these as inches, not cm (BR-8 / ClientPortal.md §7.2). */}
+            <LightTextField placeholder="Waist (in)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+            <LightTextField placeholder="Chest (in)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+            <LightTextField placeholder="Hip (in)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+            <LightTextField placeholder="Arms (in)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+            <LightTextField placeholder="Thigh (in)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
           </LightCard>
 
           {submitError && (

@@ -227,6 +227,16 @@ function EnrolledHomeScreen() {
           case 'slot_selection':
             router.replace('/my-schedule');
             break;
+          // AUTH-010 fix: a client whose subscription lapsed to paused/inactive with nothing
+          // newer falls through to these marketing-equivalent stages (web spec §4.1 step 3) —
+          // without this case, `HomeScreen`'s any-status `getLatestSubscription()` check still
+          // mounts this Enrolled screen, and this switch's old `default: setGate('clear')`
+          // left them stuck looking at full "active client" widgets against a dead plan.
+          case 'marketing':
+          case 'demo_booked':
+          case 'demo_completed':
+            router.replace('/plans');
+            break;
           default:
             setGate('clear');
         }
@@ -320,16 +330,18 @@ function EnrolledHomeScreen() {
                   <LightEmptyState
                     message="No upcoming sessions booked yet."
                     icon="calendar-outline"
-                    actionLabel="Book a session"
-                    onAction={() => router.push('/book-session')}
+                    actionLabel="Manage my schedule"
+                    onAction={() => router.push('/my-schedule')}
                   />
                 </LightCard>
               )}
 
               <TodaysTasksCard />
 
-              <LightPrimaryButton size="lg" onPress={() => router.push(nextBooking ? '/sessions' : '/book-session')}>
-                {nextBooking ? 'View sessions' : 'Book a session'}
+              {/* GAP-10: subscribed clients manage sessions via the recurring schedule, not the
+                  ad-hoc wizard — matches web spec §13's post-subscription route guard. */}
+              <LightPrimaryButton size="lg" onPress={() => router.push(nextBooking ? '/sessions' : '/my-schedule')}>
+                {nextBooking ? 'View sessions' : 'Manage my schedule'}
               </LightPrimaryButton>
             </>
           )}

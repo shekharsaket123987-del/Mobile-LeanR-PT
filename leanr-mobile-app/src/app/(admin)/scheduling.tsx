@@ -14,6 +14,7 @@ import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { getAdminScheduling, type AdminSchedulingRow, type SchedulingBucket } from '@/lib/data/admin-scheduling';
+import { sessionTypeLabel } from '@/lib/data/bookings';
 import { useAsync } from '@/lib/data/use-async';
 
 const SECTIONS: { key: SchedulingBucket; title: string; icon: string }[] = [
@@ -50,7 +51,7 @@ export default function AdminSchedulingScreen() {
                   <View style={styles.headerRow}>
                     <Text style={styles.title}>{formatDateTime(b.scheduled_start)}</Text>
                     <View style={styles.badgeRow}>
-                      {b.session_type === 'assessment' && <Text style={styles.typeTag}>Assessment</Text>}
+                      {b.session_type === 'assessment' && <Text style={styles.typeTag}>{sessionTypeLabel(b.session_type)}</Text>}
                       <LightStatusBadge status={b.status} />
                     </View>
                   </View>

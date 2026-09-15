@@ -39,6 +39,7 @@ import {
   transferClientCoach,
   type MeasurementInput,
 } from '@/lib/data/admin-clients';
+import { sessionTypeLabel } from '@/lib/data/bookings';
 import type { DerivedClientStatus } from '@/lib/data/coach-clients';
 import { getErrorMessage } from '@/lib/data/errors';
 import { useAsync } from '@/lib/data/use-async';
@@ -327,7 +328,11 @@ export default function AdminClientDetailScreen() {
               <View style={styles.sessionRow}>
                 <View style={styles.sessionBadges}>
                   <LightBadge
-                    label={b.session_type === 'assessment' ? `Assessment · ${b.amount_paid ? `₹${b.amount_paid.toLocaleString('en-IN')}` : 'Free'}` : 'Regular'}
+                    label={
+                      b.session_type === 'assessment'
+                        ? `${sessionTypeLabel(b.session_type)} · ${b.amount_paid ? `₹${b.amount_paid.toLocaleString('en-IN')}` : 'Free'}`
+                        : sessionTypeLabel(b.session_type)
+                    }
                     tone="gray"
                   />
                   <LightBadge label={b.status} tone={b.status === 'completed' ? 'green' : b.status === 'cancelled' || b.status === 'missed' ? 'red' : 'teal'} />

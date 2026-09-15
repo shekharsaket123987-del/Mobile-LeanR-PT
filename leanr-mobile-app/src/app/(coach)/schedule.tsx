@@ -7,7 +7,7 @@
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LightCard } from '@/components/light/light-card';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
@@ -15,6 +15,7 @@ import { LightSegmentedControl } from '@/components/light/light-segmented-contro
 import { LightStatusBadge } from '@/components/light/light-badge';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
+import { sessionTypeLabel } from '@/lib/data/bookings';
 import { getCoachBookings } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -52,7 +53,10 @@ export default function CoachSchedule() {
             accessibilityRole="button"
             accessibilityLabel={`Session at ${formatSessionTime(booking.scheduled_start)}`}>
             <LightCard style={styles.row}>
-              <Text style={styles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
+              <View>
+                <Text style={styles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
+                <Text style={styles.sessionType}>{sessionTypeLabel(booking.session_type)}</Text>
+              </View>
               <LightStatusBadge status={booking.status} />
             </LightCard>
           </Pressable>
@@ -64,4 +68,5 @@ export default function CoachSchedule() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
+  sessionType: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted, marginTop: 2 },
 });

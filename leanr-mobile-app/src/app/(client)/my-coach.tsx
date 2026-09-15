@@ -32,6 +32,7 @@ import {
   type CoachChangeRequest,
   type CoachChangeStatus,
 } from '@/lib/data/coach-change';
+import { getDemoAssignedCoach } from '@/lib/data/demo-booking';
 import { findCoachForSchedule, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -58,19 +59,37 @@ const CHANGE_STATUS_TONE: Record<CoachChangeStatus, 'teal' | 'green' | 'red'> = 
 
 export default function MyCoachScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [coach, changeRequests] = await Promise.all([getMyCoach(), getMyCoachChangeRequests()]);
-    return { coach, changeRequests };
+    const [coach, changeRequests, demoAssignedCoach] = await Promise.all([getMyCoach(), getMyCoachChangeRequests(), getDemoAssignedCoach()]);
+    return { coach, changeRequests, demoAssignedCoach };
   }, []);
 
   const coach = data?.coach ?? null;
   const changeRequests = data?.changeRequests ?? [];
   const tags = [coach?.specialization, ...(coach?.secondary_specializations ?? [])].filter((t): t is string => !!t);
+  // web spec §2.8: while no recurring-slot coach exists yet, the demo-assigned coach is shown
+  // as a simplified read-only card — but only while the demo is still upcoming; once it's
+  // completed/missed this reverts to "No Active Coach" until a real plan/schedule exists.
+  const demoCoach = !coach && data?.demoAssignedCoach?.status === 'upcoming' ? data.demoAssignedCoach : null;
 
   return (
     <LightScreenScaffold title="My Coach">
       {loading && <LightLoadingState />}
       {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && !coach && <LightEmptyState message="No coach assigned yet." icon="person-outline" />}
+
+      {!loading && !error && !coach && demoCoach && (
+        <LightCard style={styles.coachCard}>
+          <View style={styles.coachRow}>
+            <LightAvatar photoUrl={demoCoach.coachPhoto} name={demoCoach.coachName} size={64} ring />
+            <View style={styles.coachInfo}>
+              <Text style={styles.coachName} numberOfLines={1}>
+                {demoCoach.coachName}
+              </Text>
+              <Text style={styles.coachMeta}>Assigned for your upcoming demo session</Text>
+            </View>
+          </View>
+        </LightCard>
+      )}
+      {!loading && !error && !coach && !demoCoach && <LightEmptyState message="No coach assigned yet." icon="person-outline" />}
 
       {!loading && !error && coach && (
         <LightCard style={styles.coachCard}>

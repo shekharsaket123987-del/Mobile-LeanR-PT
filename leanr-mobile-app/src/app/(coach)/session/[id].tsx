@@ -36,6 +36,7 @@ import { LightStatCard } from '@/components/light/light-stat-card';
 import { LightTextField } from '@/components/light/light-text-field';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
+import { sessionTypeLabel } from '@/lib/data/bookings';
 import {
   attendanceEligible,
   getAttendanceMap,
@@ -147,6 +148,8 @@ export default function SessionWorkflow() {
 
   return (
     <LightScreenScaffold title={formatSessionTime(booking.scheduled_start)}>
+      <Text style={styles.sessionType}>{sessionTypeLabel(booking.session_type)}</Text>
+
       {stage === 'completed' && <LightStatCard emphasize value="Completed" label="SESSION" />}
 
       {stage === 'absent-closed' && (
@@ -247,6 +250,7 @@ export default function SessionWorkflow() {
 }
 
 const styles = StyleSheet.create({
+  sessionType: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.6, color: LightBrand.teal, textTransform: 'uppercase' },
   headerRow: { flexDirection: 'row' },
   bigStatus: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, color: LightBrand.navy },
   metaLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted, marginTop: 4 },

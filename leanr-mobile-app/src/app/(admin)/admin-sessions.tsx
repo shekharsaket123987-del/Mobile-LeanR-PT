@@ -17,6 +17,7 @@ import { LightTextField } from '@/components/light/light-text-field';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { cancelSessionAsAdmin, listAdminSessions, rescheduleSessionAsAdmin, type AdminSessionRow } from '@/lib/data/admin-sessions';
+import { sessionTypeLabel } from '@/lib/data/bookings';
 import { getErrorMessage } from '@/lib/data/errors';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -98,7 +99,8 @@ export default function AdminSessionsScreen() {
                 {s.client_name} · {s.coach_name}
               </Text>
               <Text style={styles.typeText}>
-                {s.session_type === 'assessment' ? `Assessment${s.amount_paid != null ? ` · ₹${s.amount_paid}` : ''}` : 'Regular'}
+                {sessionTypeLabel(s.session_type)}
+                {s.session_type === 'assessment' && s.amount_paid != null ? ` · ₹${s.amount_paid}` : ''}
               </Text>
               {s.status === 'upcoming' && (
                 <View style={styles.actionRow}>

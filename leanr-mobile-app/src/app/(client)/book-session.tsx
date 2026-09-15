@@ -21,13 +21,13 @@
  */
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Alert, StyleSheet, Text } from 'react-native';
 
 import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
 import { LightCard } from '@/components/light/light-card';
 import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightPrimaryButton } from '@/components/light/light-button';
+import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightStatCard } from '@/components/light/light-stat-card';
@@ -46,9 +46,11 @@ import {
   todayIst,
   type IstDate,
 } from '@/lib/data/booking-wizard';
+import { canRateThisWeek, rateSession } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
 import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
-import { rateSession } from '@/lib/data/bookings';
+import { getMyClientProfileId } from '@/lib/data/identity';
+import { getClientJourneyState } from '@/lib/data/journey';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -57,14 +59,21 @@ type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
 export default function BookSessionScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [coach, subscription, coaches, settings, unratedDemo] = await Promise.all([
+    // web spec §8.4/§9.2: the journey state carries its own demoSession detail in one
+    // response — never a second, independent fetch for the same booking on this screen.
+    const [coach, subscription, coaches, settings, unratedDemo, journeyState, clientId] = await Promise.all([
       getMyCoach(),
       getMySubscription(),
       getAvailableCoaches(),
       getBookingSettings(),
       getUnratedCompletedDemo(),
+      getClientJourneyState(),
+      getMyClientProfileId(),
     ]);
-    return { coach, subscription, coaches, settings, unratedDemo };
+    // web spec §2.7/§6.9: the 7-day rating cap is GLOBAL across all of a client's bookings —
+    // must gate this screen's demo-feedback sheet the same way sessions.tsx gates its own.
+    const canRate = clientId ? await canRateThisWeek(clientId) : false;
+    return { coach, subscription, coaches, settings, unratedDemo, journeyState, canRate };
   }, []);
   const [feedbackDismissed, setFeedbackDismissed] = useState(false);
 
@@ -82,6 +91,8 @@ export default function BookSessionScreen() {
   const subscription = data?.subscription ?? null;
   const settings = data?.settings ?? null;
   const coaches = data?.coaches ?? [];
+  const journeyStage = data?.journeyState?.stage ?? 'marketing';
+  const demoAssignedCoach = data?.journeyState?.demoSession ?? null;
 
   // GAP-10: server-verified guard, not just nav-hiding — re-checked on every load so a direct
   // deep link into this screen can't bypass the web-spec rule once a client is subscribed.
@@ -166,6 +177,18 @@ export default function BookSessionScreen() {
     setActionError(null);
   };
 
+  // web spec §2.7/§6.9: rating is capped once per 7 days GLOBALLY across all of a client's
+  // bookings — this demo-feedback gate must respect the same cap sessions.tsx's own "Rate
+  // session" link enforces, not silently allow a bypass through this second entry point.
+  useEffect(() => {
+    if (!feedbackDismissed && data?.unratedDemo && data.canRate === false) {
+      Promise.resolve().then(() => {
+        Alert.alert("Can't rate yet", 'You can rate one session every 7 days.');
+        setFeedbackDismissed(true);
+      });
+    }
+  }, [data, feedbackDismissed]);
+
   if (loading) {
     return (
       <LightScreenScaffold title="Book a Session">
@@ -191,19 +214,55 @@ export default function BookSessionScreen() {
 
   if (subscription) return null; // GAP-10: redirecting away via the effect above — avoid flashing the ad-hoc wizard first.
 
+  // web spec §2.6/§2.9: the no-subscription case branches on journey stage — a demo in
+  // flight (or just completed) changes what this screen shows, not a single generic message.
   if (!subscription) {
+    if (journeyStage === 'demo_booked' && demoAssignedCoach) {
+      return (
+        <LightScreenScaffold title="Book a Session">
+          <LightCard style={styles.demoStageCard}>
+            <Text style={styles.demoStageTitle}>Your Demo Session Is Already Booked</Text>
+            <Text style={styles.metaText}>
+              {demoAssignedCoach.coachName} · {new Date(demoAssignedCoach.scheduledStart).toLocaleString()}
+            </Text>
+            <Text style={styles.metaText}>Ongoing session booking unlocks once your demo is done.</Text>
+          </LightCard>
+        </LightScreenScaffold>
+      );
+    }
+
+    if (journeyStage === 'demo_completed') {
+      return (
+        <LightScreenScaffold title="Book a Session">
+          <LightCard style={styles.demoStageCard}>
+            <Text style={styles.demoStageTitle}>Ready when you are</Text>
+            <Text style={styles.metaText}>Choose a plan to start booking ongoing sessions with your coach.</Text>
+          </LightCard>
+          <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
+            Choose Your Plan
+          </LightPrimaryButton>
+          <RateSessionSheet
+            visible={!!unratedDemo && data?.canRate !== false}
+            title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+            onClose={() => setFeedbackDismissed(true)}
+            onSubmit={onSubmitDemoFeedback}
+          />
+        </LightScreenScaffold>
+      );
+    }
+
     return (
       <LightScreenScaffold title="Book a Session">
-        <LightEmptyState message="You need an active plan before you can book a session." icon="lock-closed-outline" />
-        <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
-          View plans
+        <LightCard style={styles.demoStageCard}>
+          <Text style={styles.demoStageTitle}>No Subscription Found</Text>
+          <Text style={styles.metaText}>Book a free demo session, or choose a plan to get started.</Text>
+        </LightCard>
+        <LightPrimaryButton size="lg" onPress={() => router.push('/demo-booking')}>
+          Book Free Demo
         </LightPrimaryButton>
-        <RateSessionSheet
-          visible={!!unratedDemo}
-          title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
-          onClose={() => setFeedbackDismissed(true)}
-          onSubmit={onSubmitDemoFeedback}
-        />
+        <LightSecondaryButton size="lg" onPress={() => router.push('/plans')}>
+          Choose Your Plan
+        </LightSecondaryButton>
       </LightScreenScaffold>
     );
   }
@@ -299,7 +358,7 @@ export default function BookSessionScreen() {
       {phase === 'holding' && <LightLoadingState rows={1} />}
 
       <RateSessionSheet
-        visible={!!unratedDemo}
+        visible={!!unratedDemo && data?.canRate !== false}
         title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
         onClose={() => setFeedbackDismissed(true)}
         onSubmit={onSubmitDemoFeedback}
@@ -315,4 +374,6 @@ const styles = StyleSheet.create({
   metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
   holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.amber, marginTop: 8 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  demoStageCard: { gap: 6, alignItems: 'center', paddingVertical: 20 },
+  demoStageTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy, textAlign: 'center' },
 });

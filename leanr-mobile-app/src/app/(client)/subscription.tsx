@@ -26,8 +26,7 @@ import { LightStatusBadge } from '@/components/light/light-badge';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { DisplayFont } from '@/constants/theme';
-import { getLatestDemoBooking } from '@/lib/data/demo-booking';
-import { getClientJourneyStage } from '@/lib/data/journey';
+import { getClientJourneyState } from '@/lib/data/journey';
 import { getPackageById } from '@/lib/data/plans';
 import { getMyPayments, type PaymentWithPackage } from '@/lib/data/payments';
 import { getLatestSubscription, getSessionsUsedCount, pauseSubscription, resumeSubscription } from '@/lib/data/subscription';
@@ -46,14 +45,14 @@ function formatPrice(amount: number) {
 export default function SubscriptionScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const subscription = await getLatestSubscription();
-    const [pkg, sessionsUsed, payments, stage, demo] = await Promise.all([
+    // web spec §8.4/§9.2: journeyState carries its own demoSession — one fetch, not two.
+    const [pkg, sessionsUsed, payments, journeyState] = await Promise.all([
       subscription ? getPackageById(subscription.package_id) : Promise.resolve(null),
       subscription ? getSessionsUsedCount(subscription.id) : Promise.resolve(0),
       getMyPayments(),
-      subscription ? Promise.resolve(null) : getClientJourneyStage(),
-      subscription ? Promise.resolve(null) : getLatestDemoBooking(),
+      subscription ? Promise.resolve(null) : getClientJourneyState(),
     ]);
-    return { subscription, pkg, sessionsUsed, payments, stage, demo };
+    return { subscription, pkg, sessionsUsed, payments, stage: journeyState?.stage ?? null, demo: journeyState?.demoSession ?? null };
   }, []);
   const [busy, setBusy] = useState(false);
 

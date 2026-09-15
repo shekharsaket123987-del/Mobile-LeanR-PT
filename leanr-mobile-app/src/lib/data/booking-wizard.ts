@@ -67,8 +67,8 @@ export function istDayOfWeek(date: IstDate): number {
   return new Date(Date.UTC(date.year, date.month - 1, date.day)).getUTCDay();
 }
 
-/** The UTC instant corresponding to a given IST wall-clock date+hour. */
-function istHourToUtcInstant(date: IstDate, hour: number, minute = 0): Date {
+/** The UTC instant corresponding to a given IST wall-clock date+hour. Exported for demo-booking.ts, which needs to resolve a specific preferred hour to an instant independent of any particular booking-window grid (web spec §9.1 — no index math). */
+export function istHourToUtcInstant(date: IstDate, hour: number, minute = 0): Date {
   return new Date(Date.UTC(date.year, date.month - 1, date.day, hour, minute, 0) - IST_OFFSET_MS);
 }
 
@@ -246,6 +246,15 @@ export async function getOpenSlotsForCoachOnDate(
     slots.push(slotStart.toISOString());
   }
 
+  return slots;
+}
+
+/** Every whole-hour candidate slot (ISO instant) for a date within the booking window — the "hourly grid" §2.3/§8.1 build their time-search order from, independent of any one coach's actual availability. */
+export function hourlyGridSlots(date: IstDate, window: { startHour: number; endHour: number }): string[] {
+  const slots: string[] = [];
+  for (let hour = window.startHour; hour < window.endHour; hour++) {
+    slots.push(istHourToUtcInstant(date, hour).toISOString());
+  }
   return slots;
 }
 

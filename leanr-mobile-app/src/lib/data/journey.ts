@@ -14,8 +14,15 @@
  *      stage — see §4.8/§17).
  *   4. No usable subscription → latest demo booking → `demo_booked` /
  *      `demo_completed` / `marketing`.
+ *
+ * mobile-app-reference/audit/demo-booking-workflow.md §8.4/§9.2: the web
+ * app's `getMyJourneyStateAction()` returns the full `demoSession` detail
+ * alongside the stage in ONE response — callers never re-fetch it. Mirrored
+ * here via `getClientJourneyState()`; `getClientJourneyStage()` is kept as a
+ * thin stage-only wrapper for callers (activate.tsx, index.tsx) that never
+ * needed the demo detail in the first place.
  */
-import { getLatestDemoBooking } from '@/lib/data/demo-booking';
+import { getDemoAssignedCoach, type DemoAssignedCoach } from '@/lib/data/demo-booking';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { getMyOnboarding } from '@/lib/data/onboarding';
 import { getMyActiveRecurringSlots } from '@/lib/data/recurring-schedule';
@@ -32,6 +39,12 @@ export type ClientJourneyStage =
   | 'renewal_scheduling'
   | 'slot_selection'
   | 'active';
+
+export type ClientJourneyState = {
+  stage: ClientJourneyStage;
+  /** Only populated for demo_booked/demo_completed — the client's most recent demo booking, auto-assigned coach and all. */
+  demoSession: DemoAssignedCoach | null;
+};
 
 /** "Is this a renewal?" — true when the client has any other subscription row besides the current one. */
 async function isRenewalSubscription(clientId: string, currentSubscriptionId: string): Promise<boolean> {
@@ -65,38 +78,43 @@ async function hasRecurringSlotsForSubscription(clientId: string, subscriptionId
   return (count ?? 0) > 0;
 }
 
-export async function getClientJourneyStage(): Promise<ClientJourneyStage> {
+export async function getClientJourneyState(): Promise<ClientJourneyState> {
   const clientId = await getMyClientProfileId();
-  if (!clientId) return 'marketing';
+  if (!clientId) return { stage: 'marketing', demoSession: null };
 
   const latest = await getLatestSubscription();
 
-  if (latest?.status === 'awaiting_activation') return 'awaiting_activation';
+  if (latest?.status === 'awaiting_activation') return { stage: 'awaiting_activation', demoSession: null };
 
   if (latest?.status === 'active') {
     const onboarding = await getMyOnboarding();
-    if (!onboarding) return 'onboarding';
+    if (!onboarding) return { stage: 'onboarding', demoSession: null };
 
     if (await isRenewalSubscription(clientId, latest.id)) {
       if (latest.activated_at && !(await hasProgressLoggedSince(clientId, latest.activated_at))) {
-        return 'renewal_checkin';
+        return { stage: 'renewal_checkin', demoSession: null };
       }
       if (!(await hasRecurringSlotsForSubscription(clientId, latest.id))) {
-        return 'renewal_scheduling';
+        return { stage: 'renewal_scheduling', demoSession: null };
       }
-      return 'active';
+      return { stage: 'active', demoSession: null };
     }
 
     const slots = await getMyActiveRecurringSlots();
-    if (slots.length === 0) return 'slot_selection';
-    return 'active';
+    if (slots.length === 0) return { stage: 'slot_selection', demoSession: null };
+    return { stage: 'active', demoSession: null };
   }
 
   // No subscription, or one sitting at 'paused'/'inactive' with nothing newer — never a permanent trap.
-  const demo = await getLatestDemoBooking();
-  if (demo?.status === 'upcoming') return 'demo_booked';
-  if (demo?.status === 'completed' || demo?.status === 'missed') return 'demo_completed';
-  return 'marketing';
+  const demoSession = await getDemoAssignedCoach();
+  if (demoSession?.status === 'upcoming') return { stage: 'demo_booked', demoSession };
+  if (demoSession?.status === 'completed' || demoSession?.status === 'missed') return { stage: 'demo_completed', demoSession };
+  return { stage: 'marketing', demoSession: null };
+}
+
+/** Narrow stage-only view for callers that never needed the demo detail (activate.tsx, index.tsx). */
+export async function getClientJourneyStage(): Promise<ClientJourneyStage> {
+  return (await getClientJourneyState()).stage;
 }
 
 /** Narrow redirect-only view of the stage, kept for call sites that only care about the purchase->activate->onboarding funnel. */

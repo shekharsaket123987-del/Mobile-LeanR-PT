@@ -9,11 +9,15 @@
  */
 import { supabase } from '@/lib/supabase/client';
 
-export type UtilizationRankedCoach = { id: string; full_name: string; gender: string | null };
+export type UtilizationRankedCoach = { id: string; full_name: string; gender: string | null; photo_url: string | null };
 
-export async function getActiveCoachesByUtilization(): Promise<UtilizationRankedCoach[]> {
+/** `genderPreference` mirrors web spec §2.3 step 2: applied as a hard filter on the coach pool before ranking, not a tiebreaker. */
+export async function getActiveCoachesByUtilization(genderPreference?: 'male' | 'female' | 'other'): Promise<UtilizationRankedCoach[]> {
+  let coachQuery = supabase.from('coach_profiles').select('id, status, gender, profiles(full_name, photo_url)').eq('status', 'active');
+  if (genderPreference) coachQuery = coachQuery.eq('gender', genderPreference);
+
   const [{ data: coaches, error: coachError }, { data: bookings, error: bookingError }] = await Promise.all([
-    supabase.from('coach_profiles').select('id, status, gender, profiles(full_name)').eq('status', 'active'),
+    coachQuery,
     supabase.from('bookings').select('coach_id').eq('status', 'upcoming'),
   ]);
   if (coachError) throw coachError;
@@ -31,9 +35,10 @@ export async function getActiveCoachesByUtilization(): Promise<UtilizationRanked
         id: c.id as string,
         full_name: profile?.full_name ?? 'Coach',
         gender: (c.gender as string | null) ?? null,
+        photo_url: (profile?.photo_url as string | null) ?? null,
         utilization: utilization.get(c.id as string) ?? 0,
       };
     })
     .sort((a, b) => a.utilization - b.utilization)
-    .map(({ id, full_name, gender }) => ({ id, full_name, gender }));
+    .map(({ id, full_name, gender, photo_url }) => ({ id, full_name, gender, photo_url }));
 }

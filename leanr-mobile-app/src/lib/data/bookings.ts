@@ -13,6 +13,17 @@ import type { Booking, BookingStatus } from './types';
 
 const BOOKING_SELECT_WITH_COACH = '*, coach_profiles(profiles(full_name))';
 
+/**
+ * web spec §8.10/§9.4: the platform's one canonical session-type label pair
+ * ("Demo Session" / "Regular Session") — every screen that displays a
+ * booking's type (coach schedule/session-detail, admin sessions/scheduling/
+ * client-detail) must import this instead of re-inlining the ternary, so
+ * the wording can't drift into a third/fourth variant again.
+ */
+export function sessionTypeLabel(sessionType: string): 'Demo Session' | 'Regular Session' {
+  return sessionType === 'assessment' ? 'Demo Session' : 'Regular Session';
+}
+
 /** Flattens the nested `coach_profiles.profiles.full_name` join onto `coach_name`. */
 function withCoachName(row: Record<string, unknown>): Booking {
   const coachProfile = row.coach_profiles as { profiles?: { full_name?: string } | { full_name?: string }[] } | null;

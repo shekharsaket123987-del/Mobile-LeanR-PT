@@ -244,6 +244,7 @@ export default function BookSessionScreen() {
           <RateSessionSheet
             visible={!!unratedDemo && data?.canRate !== false}
             title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+            requireNote
             onClose={() => setFeedbackDismissed(true)}
             onSubmit={onSubmitDemoFeedback}
           />

@@ -21,6 +21,7 @@ import { LightStatCard } from '@/components/light/light-stat-card';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import { sessionTypeLabel } from '@/lib/data/bookings';
 import {
   getAttendanceMap,
   getCoachBookings,
@@ -32,7 +33,7 @@ import {
   getCoachUpcomingNext3Days,
 } from '@/lib/data/coach-portal';
 import { getLinkedEscalations } from '@/lib/data/coach-escalations';
-import { getMyPerformance, getMyUtilization } from '@/lib/data/coach-performance';
+import { getMyPerformance, getMyUtilization, getRecentReviews } from '@/lib/data/coach-performance';
 import { useAsync } from '@/lib/data/use-async';
 
 function formatSessionTime(iso: string) {
@@ -42,7 +43,7 @@ function formatSessionTime(iso: string) {
 export default function CoachDashboard() {
   const { session } = useAuth();
   const { data, loading, error, reload } = useAsync(async () => {
-    const [today, thisWeekCount, performance, utilization, escalations, pendingTasks, upcoming3Days, cancelled, rescheduled, clients] =
+    const [today, thisWeekCount, performance, utilization, escalations, pendingTasks, upcoming3Days, cancelled, rescheduled, clients, recentReviews] =
       await Promise.all([
         getCoachBookings('today'),
         getCoachSessionsThisWeekCount(),
@@ -54,9 +55,23 @@ export default function CoachDashboard() {
         getCoachCancelledSessions(),
         getCoachRescheduledSessions(),
         getCoachClients(),
+        getRecentReviews(1),
       ]);
     const attendanceMap = await getAttendanceMap(today.map((b) => b.id));
-    return { today, thisWeekCount, performance, utilization, escalations, pendingTasks, upcoming3Days, cancelled, rescheduled, clients, attendanceMap };
+    return {
+      today,
+      thisWeekCount,
+      performance,
+      utilization,
+      escalations,
+      pendingTasks,
+      upcoming3Days,
+      cancelled,
+      rescheduled,
+      clients,
+      attendanceMap,
+      latestReview: recentReviews[0] ?? null,
+    };
   }, []);
 
   if (loading) {
@@ -104,6 +119,22 @@ export default function CoachDashboard() {
           <LightStatCard value={String(activeEscalations)} label="ACTIVE ESCALATIONS" emphasize={activeEscalations > 0} />
         </View>
       </View>
+
+      {data.latestReview && (
+        <LightCard style={styles.reviewCard}>
+          <View style={styles.reviewHeaderRow}>
+            <Text style={styles.reviewTitle}>Latest Review</Text>
+            <LightBadge label={sessionTypeLabel(data.latestReview.sessionType)} tone="outline" />
+          </View>
+          <Text style={styles.reviewStars}>
+            ★ {data.latestReview.trainerRating ?? '—'} trainer · ★ {data.latestReview.qualityRating ?? '—'} quality
+          </Text>
+          {data.latestReview.note && <Text style={styles.reviewNote}>&quot;{data.latestReview.note}&quot;</Text>}
+          <Text style={styles.reviewMeta}>
+            {data.latestReview.clientName} · {formatSessionTime(data.latestReview.ratedAt)}
+          </Text>
+        </LightCard>
+      )}
 
       <LightSectionHeader title="Today's Tasks" />
       {data.today.length === 0 && <LightEmptyState message="No sessions today." icon="checkmark-circle-outline" />}
@@ -182,4 +213,10 @@ const styles = StyleSheet.create({
   clientRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   clientInfo: { gap: 4 },
   clientName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  reviewCard: { gap: 4 },
+  reviewHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reviewTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.textSecondary },
+  reviewStars: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.amber },
+  reviewNote: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textPrimary, fontStyle: 'italic' },
+  reviewMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
 });

@@ -21,9 +21,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CelebrationOverlay } from '@/components/celebration-overlay';
+import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { IconButton } from '@/components/ui/button';
 import { LightAvatar } from '@/components/light/light-avatar';
 import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
@@ -33,15 +35,27 @@ import { DisplayFont } from '@/constants/theme';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
-import { getUpcomingBookings } from '@/lib/data/bookings';
+import { getUpcomingBookings, rateSession } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
-import { getClientJourneyStage } from '@/lib/data/journey';
+import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
+import { getClientJourneyStage, getClientJourneyState } from '@/lib/data/journey';
 import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
 import { getLatestSubscription, getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
 import type { Booking } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getJoinState, openZoomLink } from '@/lib/data/zoom';
 import { getErrorMessage } from '@/lib/data/errors';
+
+/** web spec §2.5-adjacent, client's own request: how far before a session's start the Join affordance starts pulsing to grab attention. */
+const JOIN_BLINK_WINDOW_MS = 5 * 60_000;
+
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h}h : ${String(m).padStart(2, '0')}m : ${String(s).padStart(2, '0')}s`;
+}
 
 const LAST_CELEBRATED_KEY = 'leanr.lastCelebratedMilestone';
 
@@ -57,17 +71,85 @@ function formatSessionDateTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+/**
+ * Client's explicit request: a live countdown + a Join button that starts
+ * pulsing in the last 5 minutes before start — scoped to the pre-purchase
+ * demo card only (not the post-purchase EnrolledJoinRow below), so paid
+ * clients' existing join experience is untouched by this ask.
+ */
+function DemoJoinRow({ booking }: { booking: Booking }) {
+  const [now, setNow] = useState(() => Date.now());
+  const [joining, setJoining] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const state = getJoinState(booking);
+  const msToStart = new Date(booking.scheduled_start).getTime() - now;
+  const blinking = state === 'joinable' && msToStart <= JOIN_BLINK_WINDOW_MS;
+
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    if (blinking) {
+      opacity.value = withRepeat(withSequence(withTiming(0.35, { duration: 600 }), withTiming(1, { duration: 600 })), -1, true);
+    } else {
+      opacity.value = withTiming(1, { duration: 200 });
+    }
+  }, [blinking, opacity]);
+  const blinkStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  const onJoin = async () => {
+    setJoining(true);
+    try {
+      await openZoomLink(booking);
+    } catch (err) {
+      Alert.alert('Could not join', getErrorMessage(err));
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  return (
+    <View style={lightStyles.joinBlock}>
+      {state !== 'ended' && (
+        <Text style={lightStyles.countdownText}>{msToStart > 0 ? formatCountdown(msToStart) : 'Starting now'}</Text>
+      )}
+      {state === 'too-early' && <Text style={lightStyles.joinHint}>Join opens 10 min before start</Text>}
+      {state === 'joinable' && (
+        <Animated.View style={blinkStyle}>
+          <LightPrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
+            {joining ? 'Starting…' : 'Join Now'}
+          </LightPrimaryButton>
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
 function PrePurchaseHomeScreen() {
   const { session, profile } = useAuth();
   const { data, loading, error, reload } = useAsync(async () => {
-    const [nextBookings, coach] = await Promise.all([getUpcomingBookings(1), getMyCoach()]);
-    return { nextBookings, coach };
+    const [nextBookings, coach, journeyState, unratedDemo] = await Promise.all([
+      getUpcomingBookings(1),
+      getMyCoach(),
+      getClientJourneyState(),
+      getUnratedCompletedDemo(),
+    ]);
+    return { nextBookings, coach, journeyState, unratedDemo };
   }, []);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
 
   const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
   const nextBooking = data?.nextBookings?.[0] ?? null;
   const coach = data?.coach ?? null;
+  // web spec §2.6/§9.2-style single source of truth, plus the client's own rule: while a demo
+  // is booked or its rating is still pending, neither "Book a Free Demo" nor "Choose Your Plan"
+  // should be reachable anywhere — this dashboard is the primary surface for that gate.
+  const stage = data?.journeyState?.stage ?? 'marketing';
+  const unratedDemo = !feedbackDismissed ? (data?.unratedDemo ?? null) : null;
 
   const onAddToCalendar = async (booking: Booking) => {
     setAddingToCalendar(true);
@@ -86,6 +168,12 @@ function PrePurchaseHomeScreen() {
     }
   };
 
+  const onSubmitDemoFeedback = async (rating: { qualityRating: number; trainerRating: number; note: string }) => {
+    if (!unratedDemo) return;
+    await rateSession(unratedDemo.bookingId, rating);
+    setFeedbackDismissed(true);
+  };
+
   return (
     <View style={lightStyles.root}>
       <SafeAreaView style={lightStyles.flex} edges={['top']}>
@@ -100,9 +188,12 @@ function PrePurchaseHomeScreen() {
           {loading && <LightLoadingState />}
           {error && <LightErrorState message={error} onRetry={reload} />}
 
-          {!loading && !error && nextBooking && (
+          {!loading && !error && stage === 'demo_booked' && nextBooking && (
             <LightCard style={lightStyles.heroCard}>
-              <Text style={lightStyles.heroEyebrow}>YOUR DEMO IS SCHEDULED</Text>
+              <View style={lightStyles.notifyRow}>
+                <Ionicons name="notifications" size={15} color={LightBrand.amber} />
+                <Text style={lightStyles.heroEyebrow}>YOUR DEMO IS COMING UP</Text>
+              </View>
               <Text style={lightStyles.heroDate}>{formatSessionDateTime(nextBooking.scheduled_start)}</Text>
               <View style={lightStyles.modeRow}>
                 <Ionicons name="videocam-outline" size={15} color={LightBrand.teal} />
@@ -119,6 +210,8 @@ function PrePurchaseHomeScreen() {
                 </View>
               )}
 
+              <DemoJoinRow booking={nextBooking} />
+
               <LightSecondaryButton size="md" onPress={() => onAddToCalendar(nextBooking)} loading={addingToCalendar} style={lightStyles.calendarButton}>
                 Add to Calendar
               </LightSecondaryButton>
@@ -130,17 +223,39 @@ function PrePurchaseHomeScreen() {
             </LightCard>
           )}
 
-          {!loading && !error && !nextBooking && (
-            <LightCard>
-              <LightEmptyState message="No demo booked yet." icon="calendar-outline" actionLabel="Book a Free Demo" onAction={() => router.push('/demo-booking')} />
+          {!loading && !error && stage === 'demo_completed' && unratedDemo && (
+            <LightCard style={lightStyles.heroCard}>
+              <Text style={lightStyles.heroEyebrow}>HOW WAS YOUR DEMO?</Text>
+              <Text style={lightStyles.modeText}>Rate your session to unlock choosing a plan — or skip for now.</Text>
             </LightCard>
           )}
 
-          <LightPrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
-            Choose Your Plan
-          </LightPrimaryButton>
+          {!loading && !error && stage === 'demo_completed' && !unratedDemo && (
+            <LightPrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
+              Choose Your Plan
+            </LightPrimaryButton>
+          )}
+
+          {!loading && !error && stage === 'marketing' && (
+            <>
+              <LightCard>
+                <LightEmptyState message="No demo booked yet." icon="calendar-outline" actionLabel="Book a Free Demo" onAction={() => router.push('/demo-booking')} />
+              </LightCard>
+              <LightPrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
+                Choose Your Plan
+              </LightPrimaryButton>
+            </>
+          )}
         </View>
       </SafeAreaView>
+
+      <RateSessionSheet
+        visible={!!unratedDemo}
+        title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+        requireNote
+        onClose={() => setFeedbackDismissed(true)}
+        onSubmit={onSubmitDemoFeedback}
+      />
     </View>
   );
 }
@@ -384,6 +499,9 @@ const lightStyles = StyleSheet.create({
   coachProfileButton: { marginTop: 8 },
   joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textMuted, marginTop: 10 },
   joinButton: { marginTop: 10, alignSelf: 'flex-start' },
+  notifyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  joinBlock: { marginTop: 8 },
+  countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, color: LightBrand.navy, letterSpacing: -0.3 },
   journeyCard: { gap: 4 },
   journeyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   journeyTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, color: LightBrand.navy },

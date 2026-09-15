@@ -17,11 +17,14 @@ import { getErrorMessage } from '@/lib/data/errors';
 export function RateSessionSheet({
   visible,
   title = 'Rate this session',
+  requireNote = false,
   onClose,
   onSubmit,
 }: {
   visible: boolean;
   title?: string;
+  /** When true, submitting a rating (not skipping) also requires a non-empty note. Skip is unaffected either way. */
+  requireNote?: boolean;
   onClose: () => void;
   onSubmit: (rating: { qualityRating: number; trainerRating: number; note: string }) => Promise<void>;
 }) {
@@ -34,6 +37,10 @@ export function RateSessionSheet({
   const submit = async () => {
     if (quality === 0 || trainer === 0) {
       setError('Rate both to continue.');
+      return;
+    }
+    if (requireNote && note.trim().length === 0) {
+      setError('Add a note to continue, or use Skip.');
       return;
     }
     setSubmitting(true);

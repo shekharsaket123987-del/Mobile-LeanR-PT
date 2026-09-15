@@ -13,9 +13,16 @@
  * submit button + shows the same copy the web app uses) AND server-side via
  * `bookDemoSession`'s `assertMeasurementsFresh()` call — "both layers", per
  * spec.
+ *
+ * The staleness check is re-fetched on every screen FOCUS (not just once on
+ * mount) via `useFocusEffect` — same convention as sessions.tsx. Without
+ * this, a client who taps "Log them now", logs measurements on /progress,
+ * and navigates back here would still see the stale banner and a disabled
+ * button: `router.back()` pops to this screen's existing instance rather
+ * than remounting it, so a mount-only fetch would never see the fresh log.
  */
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { LightAvatar } from '@/components/light/light-avatar';
@@ -72,6 +79,13 @@ export default function DemoBookingScreen() {
     ]);
     return { settings, alreadyDone, latestDemo, measurement };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   const settings = data?.settings ?? null;
   const measurementStale = data?.measurement.stale ?? false;

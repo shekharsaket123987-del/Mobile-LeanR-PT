@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
+import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { DisplayFont } from '@/constants/theme';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightCard } from '@/components/light/light-card';
@@ -23,6 +24,9 @@ import { LightTextLink } from '@/components/light/light-tappable';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import { rateSession } from '@/lib/data/bookings';
+import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
+import { getClientJourneyState } from '@/lib/data/journey';
 import { getMarketingPlans } from '@/lib/data/plans';
 import { getMyPayments, purchasePackage } from '@/lib/data/payments';
 import { getLatestSubscription } from '@/lib/data/subscription';
@@ -49,9 +53,19 @@ function formatPrice(price: number) {
 
 function PrePurchasePlansScreen() {
   const { session, profile } = useAuth();
-  const { data: plans, loading, error, reload } = useAsync(getMarketingPlans, []);
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [plans, journeyState, unratedDemo] = await Promise.all([getMarketingPlans(), getClientJourneyState(), getUnratedCompletedDemo()]);
+    return { plans, journeyState, unratedDemo };
+  }, []);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
+
+  const plans = data?.plans ?? [];
+  // client's rule: plans unlock only once any in-flight demo is done (rated or skipped) —
+  // same journey-stage gate as index.tsx/subscription.tsx/book-session.tsx.
+  const stage = data?.journeyState?.stage ?? 'marketing';
+  const unratedDemo = !feedbackDismissed ? (data?.unratedDemo ?? null) : null;
 
   const onPurchase = async (planId: string, planName: string) => {
     setPurchasingId(planId);
@@ -70,32 +84,74 @@ function PrePurchasePlansScreen() {
     }
   };
 
+  const onSubmitDemoFeedback = async (rating: { qualityRating: number; trainerRating: number; note: string }) => {
+    if (!unratedDemo) return;
+    await rateSession(unratedDemo.bookingId, rating);
+    setFeedbackDismissed(true);
+  };
+
+  if (loading) {
+    return (
+      <LightScreenScaffold title="Our Plans">
+        <LightLoadingState />
+      </LightScreenScaffold>
+    );
+  }
+  if (error) {
+    return (
+      <LightScreenScaffold title="Our Plans">
+        <LightErrorState message={error} onRetry={reload} />
+      </LightScreenScaffold>
+    );
+  }
+
+  if (stage === 'demo_booked') {
+    return (
+      <LightScreenScaffold title="Our Plans">
+        <LightEmptyState message="Your demo session is scheduled — plans unlock once it's done." icon="lock-closed-outline" />
+      </LightScreenScaffold>
+    );
+  }
+
+  if (stage === 'demo_completed' && unratedDemo) {
+    return (
+      <LightScreenScaffold title="Our Plans">
+        <LightEmptyState message="Rate your demo session to unlock plans." icon="star-outline" />
+        <RateSessionSheet
+          visible
+          title={unratedDemo.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+          requireNote
+          onClose={() => setFeedbackDismissed(true)}
+          onSubmit={onSubmitDemoFeedback}
+        />
+      </LightScreenScaffold>
+    );
+  }
+
   return (
     <LightScreenScaffold title="Our Plans">
-      <LightTextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
-        Book a Free Demo first →
-      </LightTextLink>
+      {stage === 'marketing' && (
+        <LightTextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
+          Book a Free Demo first →
+        </LightTextLink>
+      )}
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (plans?.length ?? 0) === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
-      {!loading &&
-        !error &&
-        plans?.map((plan) => (
-          <LightCard key={plan.id} style={lightStyles.planCard}>
-            <Text style={lightStyles.planName}>{plan.name}</Text>
-            <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
-            {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
-            <LightPrimaryButton
-              size="lg"
-              onPress={() => onPurchase(plan.id, plan.name)}
-              loading={purchasingId === plan.id}
-              disabled={purchasingId !== null && purchasingId !== plan.id}
-              style={lightStyles.purchaseButton}>
-              Purchase plan
-            </LightPrimaryButton>
-          </LightCard>
-        ))}
+      {plans.length === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
+      {plans.map((plan) => (
+        <LightCard key={plan.id} style={lightStyles.planCard}>
+          <Text style={lightStyles.planName}>{plan.name}</Text>
+          <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
+          {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
+          <LightPrimaryButton
+            size="lg"
+            onPress={() => onPurchase(plan.id, plan.name)}
+            loading={purchasingId === plan.id}
+            disabled={purchasingId !== null && purchasingId !== plan.id}
+            style={lightStyles.purchaseButton}>
+            Purchase plan
+          </LightPrimaryButton>
+        </LightCard>
+      ))}
 
       {purchaseError && (
         <Text style={lightStyles.errorText} accessibilityRole="alert">

@@ -12,6 +12,47 @@
 import { getMyCoachProfileId } from '@/lib/data/identity';
 import { supabase } from '@/lib/supabase/client';
 
+export type RecentReview = {
+  bookingId: string;
+  clientName: string;
+  sessionType: string;
+  qualityRating: number | null;
+  trainerRating: number | null;
+  note: string | null;
+  ratedAt: string;
+  scheduledStart: string;
+};
+
+/** Client's request: the coach dashboard should show individual client ratings/feedback, not just the aggregate average above — every rated booking for this coach (demo or regular), most recent first. */
+export async function getRecentReviews(limit = 10): Promise<RecentReview[]> {
+  const coachId = await getMyCoachProfileId();
+  if (!coachId) return [];
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('id, scheduled_start, session_type, quality_rating, trainer_rating, rating_note, rated_at, client_profiles(profiles(full_name))')
+    .eq('coach_id', coachId)
+    .not('rated_at', 'is', null)
+    .order('rated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const clientProfile = row.client_profiles as { profiles?: { full_name?: string } | { full_name?: string }[] } | null;
+    const profile = clientProfile ? (Array.isArray(clientProfile.profiles) ? clientProfile.profiles[0] : clientProfile.profiles) : null;
+    return {
+      bookingId: row.id as string,
+      clientName: profile?.full_name ?? 'Client',
+      sessionType: row.session_type as string,
+      qualityRating: row.quality_rating as number | null,
+      trainerRating: row.trainer_rating as number | null,
+      note: row.rating_note as string | null,
+      ratedAt: row.rated_at as string,
+      scheduledStart: row.scheduled_start as string,
+    };
+  });
+}
+
 export type CoachPerformance = {
   completedSessions: number;
   upcomingSessions: number;

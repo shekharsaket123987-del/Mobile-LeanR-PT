@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { LightProgressRing } from '@/components/light/light-progress-ring';
 import { LightCard } from '@/components/light/light-card';
 import { LightPrimaryButton } from '@/components/light/light-button';
@@ -26,6 +27,8 @@ import { LightStatusBadge } from '@/components/light/light-badge';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
 import { DisplayFont } from '@/constants/theme';
+import { rateSession } from '@/lib/data/bookings';
+import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
 import { getClientJourneyState } from '@/lib/data/journey';
 import { getPackageById } from '@/lib/data/plans';
 import { getMyPayments, type PaymentWithPackage } from '@/lib/data/payments';
@@ -46,15 +49,17 @@ export default function SubscriptionScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
     const subscription = await getLatestSubscription();
     // web spec §8.4/§9.2: journeyState carries its own demoSession — one fetch, not two.
-    const [pkg, sessionsUsed, payments, journeyState] = await Promise.all([
+    const [pkg, sessionsUsed, payments, journeyState, unratedDemo] = await Promise.all([
       subscription ? getPackageById(subscription.package_id) : Promise.resolve(null),
       subscription ? getSessionsUsedCount(subscription.id) : Promise.resolve(0),
       getMyPayments(),
       subscription ? Promise.resolve(null) : getClientJourneyState(),
+      subscription ? Promise.resolve(null) : getUnratedCompletedDemo(),
     ]);
-    return { subscription, pkg, sessionsUsed, payments, stage: journeyState?.stage ?? null, demo: journeyState?.demoSession ?? null };
+    return { subscription, pkg, sessionsUsed, payments, stage: journeyState?.stage ?? null, demo: journeyState?.demoSession ?? null, unratedDemo };
   }, []);
   const [busy, setBusy] = useState(false);
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
 
   // GAP-13 / web spec §9.1: web never renders this screen for an `awaiting_activation`
   // subscription — the journey-stage redirect to /activate intercepts first. Mirror that
@@ -72,7 +77,14 @@ export default function SubscriptionScreen() {
     payments,
     stage,
     demo,
-  } = data ?? { subscription: null, pkg: null, sessionsUsed: 0, payments: [], stage: null, demo: null };
+  } = data ?? { subscription: null, pkg: null, sessionsUsed: 0, payments: [], stage: null, demo: null, unratedDemo: null };
+  const unratedDemo = !feedbackDismissed ? (data?.unratedDemo ?? null) : null;
+
+  const onSubmitDemoFeedback = async (rating: { qualityRating: number; trainerRating: number; note: string }) => {
+    if (!unratedDemo) return;
+    await rateSession(unratedDemo.bookingId, rating);
+    setFeedbackDismissed(true);
+  };
 
   const onTogglePause = () => {
     if (!subscription) return;
@@ -122,7 +134,33 @@ export default function SubscriptionScreen() {
 
   return (
     <LightScreenScaffold title="My Plan">
-      {!subscription && stage === 'demo_completed' && (
+      {/* client's rule: no "Choose Your Plan"/"View plans" CTA while a demo is still in
+          flight (booked or unrated) — matches the same gate in index.tsx/plans.tsx. */}
+      {!subscription && stage === 'demo_booked' && (
+        <LightCard variant="teal">
+          <View style={styles.headerRow}>
+            <Text style={styles.planName}>Demo Session Scheduled</Text>
+            <LightStatusBadge status="upcoming" />
+          </View>
+          {demo && <Text style={styles.planMeta}>Session: {formatDate(demo.scheduledStart)}</Text>}
+          <Text style={styles.planMeta}>Plans unlock once your demo is done.</Text>
+        </LightCard>
+      )}
+
+      {!subscription && stage === 'demo_completed' && unratedDemo && (
+        <>
+          <LightEmptyState message="Rate your demo session to unlock plans." icon="star-outline" />
+          <RateSessionSheet
+            visible
+            title={unratedDemo.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
+            requireNote
+            onClose={() => setFeedbackDismissed(true)}
+            onSubmit={onSubmitDemoFeedback}
+          />
+        </>
+      )}
+
+      {!subscription && stage === 'demo_completed' && !unratedDemo && (
         <>
           <LightCard variant="teal">
             <View style={styles.headerRow}>
@@ -138,7 +176,7 @@ export default function SubscriptionScreen() {
         </>
       )}
 
-      {!subscription && stage !== 'demo_completed' && (
+      {!subscription && stage === 'marketing' && (
         <>
           <LightEmptyState message="You haven't purchased a plan yet." icon="card-outline" />
           <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>

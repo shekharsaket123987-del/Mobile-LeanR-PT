@@ -49,8 +49,19 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
+// The real POST carries a Content-Type: application/json header, which forces
+// a browser CORS preflight (OPTIONS) first. Without an explicit OPTIONS
+// handler, that preflight fell through to "Method not allowed" (405), so the
+// browser never sent the real POST at all — same root cause as
+// razorpay/zoom-meeting's fix.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 }
 
 function pad(n: number) {
@@ -201,6 +212,7 @@ async function getBookingWindow(admin: ReturnType<typeof createClient>) {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   const body = await req.json().catch(() => ({}));

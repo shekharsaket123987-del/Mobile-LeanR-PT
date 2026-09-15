@@ -101,17 +101,14 @@ export type BookingSettings = {
 };
 
 /**
- * New PRD.md §27: `default_session_duration_minutes`/`assessment_session_duration_minutes`
- * are NOT live on web — the real session/assessment durations are hardcoded (45/60)
- * in `client-portal.actions.ts::getBookingOptionsAction`; the "default duration" setting
- * only moves the admin dashboard's empty-slot KPI (see admin-dashboard.ts), and the
- * assessment one has zero live readers on web at all. Hardcoded here to match exactly —
- * previously these were read live from `system_settings`, which meant moving either
- * admin Settings slider (or that DB row) would silently change the real booked-session
- * length on mobile in a way it never does on web.
+ * Regular PT sessions are 60 minutes (product decision — was previously
+ * hardcoded to 45 to match web's own client-portal.actions.ts, but the
+ * live `system_settings.default_session_duration_minutes` row is 60, and
+ * that's the actual intended session length for this app). Assessment/demo
+ * sessions are a separate, shorter concept and stay at 60 as well.
  */
-const WEB_HARDCODED_SESSION_DURATION_MINUTES = 45;
-const WEB_HARDCODED_ASSESSMENT_DURATION_MINUTES = 60;
+const REGULAR_SESSION_DURATION_MINUTES = 60;
+const ASSESSMENT_DURATION_MINUTES = 60;
 
 /** §13 system_settings — read live so an admin change is reflected without a client update. */
 export async function getBookingSettings(): Promise<BookingSettings> {
@@ -125,10 +122,10 @@ export async function getBookingSettings(): Promise<BookingSettings> {
   return {
     bookingWindowStartHour: byKey.booking_window_start_hour ?? 5,
     bookingWindowEndHour: byKey.booking_window_end_hour ?? 22,
-    defaultSessionDurationMinutes: WEB_HARDCODED_SESSION_DURATION_MINUTES,
+    defaultSessionDurationMinutes: REGULAR_SESSION_DURATION_MINUTES,
     temporaryBookingHoldMinutes: byKey.temporary_booking_hold_minutes ?? 10,
     rescheduleCutoffHours: byKey.reschedule_cutoff_hours ?? 1,
-    assessmentSessionDurationMinutes: WEB_HARDCODED_ASSESSMENT_DURATION_MINUTES,
+    assessmentSessionDurationMinutes: ASSESSMENT_DURATION_MINUTES,
   };
 }
 

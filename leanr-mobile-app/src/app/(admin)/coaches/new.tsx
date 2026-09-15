@@ -82,7 +82,7 @@ export default function AdminAddCoachScreen() {
         specialization: specialization.trim(),
         additionalSkills,
         languages,
-        slots: slots.filter((s) => s.days.length > 0).map((s) => ({ days: s.days, hour: s.hour, durationMinutes: 45 })),
+        slots: slots.filter((s) => s.days.length > 0).map((s) => ({ days: s.days, hour: s.hour, durationMinutes: 60 })),
       };
       setResult(await createCoach(input));
     } catch (err) {

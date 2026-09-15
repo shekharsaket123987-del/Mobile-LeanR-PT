@@ -26,8 +26,18 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 const MSG91_AUTH_KEY = Deno.env.get("MSG91_AUTH_KEY");
 const MSG91_OTP_TEMPLATE_ID = Deno.env.get("MSG91_OTP_TEMPLATE_ID");
 
+// The real POST carries an Authorization header, which forces a browser CORS
+// preflight (OPTIONS) first. Without an explicit OPTIONS handler, that
+// preflight fell through to "Method not allowed" (405), so the browser never
+// sent the real POST at all — same root cause as razorpay/zoom-meeting's fix.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 }
 
 /** MSG91 expects digits only, with country code, no leading '+'. A bare 10-digit number is assumed Indian (91). */
@@ -39,6 +49,7 @@ function normalizeMobile(raw: string): string | null {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   try {
     return await handleRequest(req);
   } catch (err) {

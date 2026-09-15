@@ -1,8 +1,9 @@
 /**
  * Choose Your Plan — dual-branch (New PRD.md pre-purchase redesign):
- * before any purchase, a light-themed version (same data/purchase logic,
- * Individual/Corporate tabs matching the mockup and the marketing shell's
- * own Plans screen).
+ * before any purchase, a light-themed version (same data/purchase logic
+ * as the marketing shell's own Plans screen). Plans apply to everyone —
+ * no Individual/Corporate segmentation exists in the data model
+ * (`package_tiers` has no such concept), so there's no tab to show.
  *
  * GAP-18 (NAV-005) fix: `EnrolledPlansScreen` (renewal/post-purchase) used to render the
  * legacy dark `ui/*`/`GlassCard` stack — the last un-migrated screen branch, jarring against
@@ -18,7 +19,6 @@ import { DisplayFont } from '@/constants/theme';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightCard } from '@/components/light/light-card';
 import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
 import { LightTextLink } from '@/components/light/light-tappable';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
@@ -47,15 +47,8 @@ function formatPrice(price: number) {
   return `₹${price.toLocaleString()}`;
 }
 
-type PlanTab = 'individual' | 'corporate';
-const TABS: { key: PlanTab; label: string }[] = [
-  { key: 'individual', label: 'Individual' },
-  { key: 'corporate', label: 'Corporate' },
-];
-
 function PrePurchasePlansScreen() {
   const { session, profile } = useAuth();
-  const [tab, setTab] = useState<PlanTab>('individual');
   const { data: plans, loading, error, reload } = useAsync(getMarketingPlans, []);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -83,36 +76,26 @@ function PrePurchasePlansScreen() {
         Book a Free Demo first →
       </LightTextLink>
 
-      <LightSegmentedControl options={TABS} value={tab} onChange={setTab} />
-
-      {tab === 'corporate' && (
-        <LightEmptyState message="Corporate plans aren't available yet — contact us for team pricing." icon="business-outline" />
-      )}
-
-      {tab === 'individual' && (
-        <>
-          {loading && <LightLoadingState />}
-          {error && <LightErrorState message={error} onRetry={reload} />}
-          {!loading && !error && (plans?.length ?? 0) === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
-          {!loading &&
-            !error &&
-            plans?.map((plan) => (
-              <LightCard key={plan.id} style={lightStyles.planCard}>
-                <Text style={lightStyles.planName}>{plan.name}</Text>
-                <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
-                {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
-                <LightPrimaryButton
-                  size="lg"
-                  onPress={() => onPurchase(plan.id, plan.name)}
-                  loading={purchasingId === plan.id}
-                  disabled={purchasingId !== null && purchasingId !== plan.id}
-                  style={lightStyles.purchaseButton}>
-                  Purchase plan
-                </LightPrimaryButton>
-              </LightCard>
-            ))}
-        </>
-      )}
+      {loading && <LightLoadingState />}
+      {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (plans?.length ?? 0) === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
+      {!loading &&
+        !error &&
+        plans?.map((plan) => (
+          <LightCard key={plan.id} style={lightStyles.planCard}>
+            <Text style={lightStyles.planName}>{plan.name}</Text>
+            <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
+            {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
+            <LightPrimaryButton
+              size="lg"
+              onPress={() => onPurchase(plan.id, plan.name)}
+              loading={purchasingId === plan.id}
+              disabled={purchasingId !== null && purchasingId !== plan.id}
+              style={lightStyles.purchaseButton}>
+              Purchase plan
+            </LightPrimaryButton>
+          </LightCard>
+        ))}
 
       {purchaseError && (
         <Text style={lightStyles.errorText} accessibilityRole="alert">

@@ -62,7 +62,7 @@ export async function getSessionRules(): Promise<Record<SessionRuleKey, number>>
   if (error) throw error;
   const byKey = new Map((data ?? []).map((r) => [r.key, Number(r.value)]));
   return {
-    default_session_duration_minutes: byKey.get('default_session_duration_minutes') ?? 45,
+    default_session_duration_minutes: byKey.get('default_session_duration_minutes') ?? 60,
     cancellation_cutoff_hours: byKey.get('cancellation_cutoff_hours') ?? 12,
     reschedule_cutoff_hours: byKey.get('reschedule_cutoff_hours') ?? 1,
     inactivity_threshold_days: byKey.get('inactivity_threshold_days') ?? 30,

@@ -158,7 +158,7 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
   const istToday = new Date(now.getTime());
   const dayOfWeek = istToday.getUTCDay();
   const { data: settingRow } = await supabase.from('system_settings').select('value').eq('key', 'default_session_duration_minutes').maybeSingle();
-  const slotMinutes = Number(settingRow?.value ?? 45) || 45;
+  const slotMinutes = Number(settingRow?.value ?? 60) || 60;
   const { data: availabilityRows, error: availabilityError } = await supabase
     .from('coach_availability')
     .select('start_time, end_time')

@@ -83,7 +83,7 @@ export default function AdminAddClientScreen() {
   const [coachId, setCoachId] = useState<string | null>(null);
   const [days, setDays] = useState<number[]>([]);
   const [hour, setHour] = useState('6');
-  const [durationMinutes] = useState(45);
+  const [durationMinutes] = useState(60);
 
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<AdminSlotCheckResult | null>(null);

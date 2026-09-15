@@ -14,10 +14,22 @@
  * everywhere else in this codebase (subscription.ts) — `subscriptions`
  * has no such column; it's `sessions_total` minus a live count of
  * `completed` bookings for that subscription.
+ *
+ * Parity fix (2026-09-14, admin-parity sweep #8): web's
+ * `src/lib/services/renewals.service.ts` deliberately uses a *wider*
+ * staff-only bar, `RENEWAL_OPPORTUNITY_THRESHOLD = 10`, so coach/admin see
+ * a renewal coming before the client's own 5-session self-serve trigger
+ * opens. This file was filtering on `SESSIONS_LOW_THRESHOLD` (5) — the
+ * client-facing threshold, not the staff one — matching admin-renewals.ts's
+ * identical pre-fix bug (same root cause, same fix). `SESSIONS_LOW_THRESHOLD`
+ * is kept below only as a citation of the client-facing value; it's no
+ * longer used for this screen's filter.
  */
 import { supabase } from '@/lib/supabase/client';
 
 export const SESSIONS_LOW_THRESHOLD = 5;
+/** Matches web's `renewals.service.ts:7` exactly. */
+export const RENEWAL_OPPORTUNITY_THRESHOLD = 10;
 
 export type RenewalOpportunity = {
   subscriptionId: string;
@@ -87,6 +99,6 @@ export async function getRenewalOpportunities(): Promise<RenewalOpportunity[]> {
         estimatedDaysRemaining: perWeek > 0 ? Math.round((Math.max(sessionsRemaining, 0) / perWeek) * 7) : null,
       };
     })
-    .filter((r) => r.sessionsRemaining <= SESSIONS_LOW_THRESHOLD)
+    .filter((r) => r.sessionsRemaining <= RENEWAL_OPPORTUNITY_THRESHOLD)
     .sort((a, b) => a.sessionsRemaining - b.sessionsRemaining);
 }

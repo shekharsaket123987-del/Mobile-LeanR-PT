@@ -89,10 +89,12 @@ export async function generateCoachReportCsv(): Promise<string> {
       avgRating != null ? avgRating.toFixed(1) : '',
       ratings.length,
       util?.active_clients ?? 0,
-      util ? Number(util.utilization_pct).toFixed(0) + '%' : '',
+      util ? Math.round(Number(util.utilization_pct)) : '',
     ];
   });
-  return toCsv(['Name', 'Specialization', 'Status', 'Rating', 'Review Count', 'Active Clients', 'Utilization'], rows);
+  // "Utilization %" as a plain number (not a "NN%" string) to match web's
+  // generateCoachReportAction() CSV value type.
+  return toCsv(['Name', 'Specialization', 'Status', 'Rating', 'Review Count', 'Active Clients', 'Utilization %'], rows);
 }
 
 export async function generateMonthlyPtReportCsv(): Promise<string> {
@@ -112,21 +114,20 @@ export async function generateMonthlyPtReportCsv(): Promise<string> {
   const rows = Array.from(byMonth.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([monthKey, stats]) => {
-      const label = new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' });
       const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-      return [label, stats.total, stats.completed, `${completionRate}%`, stats.assessment];
+      return [monthKey, stats.total, stats.completed, completionRate, stats.assessment];
     });
-  return toCsv(['Month', 'Total Sessions', 'Completed', 'Completion Rate', 'Assessment Sessions'], rows);
+  // Month kept as raw "YYYY-MM" and Completion Rate as a plain number (no "%" suffix)
+  // to match web's generateMonthlyReportAction() CSV value types exactly.
+  return toCsv(['Month', 'Total Sessions', 'Completed', 'Completion Rate %', 'Assessment Sessions'], rows);
 }
 
 export async function generateRevenueReportCsv(): Promise<string> {
   const { data, error } = await supabase.from('revenue_trend_view').select('month, revenue, sessions').order('month', { ascending: true });
   if (error) throw error;
-  const rows = (data ?? []).map((row) => [
-    new Date(row.month).toLocaleDateString(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' }),
-    Number(row.revenue).toFixed(2),
-    row.sessions,
-  ]);
+  // Month kept as raw "YYYY-MM" and Revenue as a plain number (not a fixed-2dp
+  // string) to match web's generateRevenueReportAction() CSV value types exactly.
+  const rows = (data ?? []).map((row) => [new Date(row.month).toISOString().slice(0, 7), Number(row.revenue), row.sessions]);
   return toCsv(['Month', 'Revenue (Rs.)', 'Completed Sessions'], rows);
 }
 
@@ -136,7 +137,9 @@ export async function generateCancellationReportCsv(): Promise<string> {
     .select('scheduled_start, status, cancel_reason, no_show_party, client_profiles(profiles(full_name)), coach_profiles(profiles(full_name))')
     .in('status', ['cancelled', 'missed'])
     .order('scheduled_start', { ascending: false })
-    .limit(500);
+    // Web's generateCancellationReportAction() has no limit; raised from a
+    // prior 500-row cap that could silently truncate a full export.
+    .limit(5000);
   if (error) throw error;
   const rows = (data ?? []).map((row) => {
     const cp = Array.isArray(row.client_profiles) ? row.client_profiles[0] : row.client_profiles;

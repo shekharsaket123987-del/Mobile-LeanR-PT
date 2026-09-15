@@ -20,13 +20,16 @@ export type AuditLogRow = {
   summary: string;
 };
 
+// Mirrors web's summarize() in admin-audit.actions.ts exactly: shows the actual
+// old→new values for up to 3 changed keys (excluding updated_at), not just key names.
 function diffSummary(action: string, oldData: Record<string, unknown> | null, newData: Record<string, unknown> | null): string {
   if (action === 'INSERT') return 'Created';
   if (action === 'DELETE') return 'Deleted';
   if (!oldData || !newData) return 'Updated';
-  const changed = Object.keys(newData).filter((k) => JSON.stringify(newData[k]) !== JSON.stringify(oldData[k]));
-  if (changed.length === 0) return 'Updated';
-  return `Changed: ${changed.slice(0, 4).join(', ')}${changed.length > 4 ? '…' : ''}`;
+  const changedKeys = Object.keys(newData).filter((k) => JSON.stringify(newData[k]) !== JSON.stringify(oldData[k]));
+  const interesting = changedKeys.filter((k) => k !== 'updated_at').slice(0, 3);
+  if (interesting.length === 0) return 'Updated';
+  return interesting.map((k) => `${k}: ${JSON.stringify(oldData[k])} → ${JSON.stringify(newData[k])}`).join(', ');
 }
 
 export async function getAuditLog(entityType?: EntityType): Promise<AuditLogRow[]> {

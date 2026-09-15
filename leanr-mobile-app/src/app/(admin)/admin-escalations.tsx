@@ -34,6 +34,19 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  slot_not_available: 'Slot not available',
+  coach_missed_session: 'Coach missed session',
+  need_schedule_change: 'Need schedule change',
+  payment_issue: 'Payment issue',
+  technical_issue: 'Technical issue',
+  want_coach_change: 'Want to change coach',
+  other: 'Other',
+};
+function categoryLabel(value: string | null) {
+  return (value && CATEGORY_LABELS[value]) ?? 'Other';
+}
+
 export default function AdminEscalationsScreen() {
   const [tab, setTab] = useState<'active' | 'resolved'>('active');
   const { data: escalations, loading, error, reload } = useAsync(() => getAllEscalations(tab), [tab]);
@@ -55,12 +68,26 @@ export default function AdminEscalationsScreen() {
             accessibilityLabel={`Open escalation: ${e.reason}`}>
             <LightCard style={styles.card}>
               <View style={styles.header}>
-                <Text style={styles.date}>{formatDate(e.created_at)}</Text>
+                <Text style={styles.code}>{e.clientCode ? `#${e.clientCode}` : `#${e.id.slice(0, 8).toUpperCase()}`}</Text>
+                <LightBadge label={categoryLabel(e.category)} tone="gray" />
                 <LightBadge label={e.status.replace('_', ' ')} tone={STATUS_TONE[e.status] ?? 'gray'} />
               </View>
+              <Text style={styles.date}>
+                Raised {formatDate(e.created_at)}
+                {e.resolved_at ? ` · Resolved ${formatDate(e.resolved_at)}` : ''}
+              </Text>
               <Text style={styles.reason}>{e.reason}</Text>
+              {e.description && <Text style={styles.description}>{e.description}</Text>}
+              {e.status === 'resolved' && e.resolution_notes && (
+                <Text style={styles.resolution}>Resolution: {e.resolution_notes}</Text>
+              )}
               <View style={styles.footerRow}>
-                {e.clientName && <Text style={styles.client}>{e.clientName}</Text>}
+                {e.clientName && (
+                  <Text style={styles.client}>
+                    {e.clientName}
+                    {e.packageName ? ` · ${e.packageName}` : ''}
+                  </Text>
+                )}
                 <Ionicons name="chevron-forward" size={16} color={LightBrand.textMuted} />
               </View>
             </LightCard>
@@ -72,9 +99,12 @@ export default function AdminEscalationsScreen() {
 
 const styles = StyleSheet.create({
   card: { gap: 4 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  code: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: LightBrand.textMuted },
   date: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textMuted },
   reason: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy },
+  description: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  resolution: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.tealDark, marginTop: 2 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   client: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.tealDark },
 });

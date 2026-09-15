@@ -14,6 +14,7 @@
  * no money" behavior for this action.
  */
 import { supabase } from '@/lib/supabase/client';
+import { getBookingSettings } from './booking-wizard';
 import { deriveClientStatus, type DerivedClientStatus } from './coach-clients';
 import { notifyProfile, resolveProfileIdForCoach } from './notify';
 import type { Booking } from './types';
@@ -117,35 +118,73 @@ export async function listAdminClients(): Promise<AdminClientListRow[]> {
   });
 }
 
+export type ClientProgressPoint = {
+  loggedAt: string;
+  weight: number | null;
+  bodyFatPct: number | null;
+  musclePct: number | null;
+  waist: number | null;
+  chest: number | null;
+  hip: number | null;
+  arms: number | null;
+  thigh: number | null;
+};
+
+// amount_paid is a real bookings column (web migration 0027, confirmed on
+// the live schema) not yet added to the shared `Booking` type in types.ts —
+// declared locally rather than widening the shared type, since
+// `select('*')` already returns it. Same pattern as AdminSessionRow in
+// admin-sessions.ts.
+export type ClientSessionRow = Booking & { amount_paid: number | null };
+
 export type AdminClientDetail = AdminClientListRow & {
   phone: string | null;
   coachId: string | null;
   subscriptionId: string | null;
   subscriptionStatus: string | null;
   pauseDaysAllowed: number | null;
-  sessionHistory: Booking[];
+  sessionHistory: ClientSessionRow[];
+  goals: string[];
+  medicalNotes: string | null;
+  demographics: { age: number | null; gender: string | null; heightCm: number | null; weightKg: number | null; bmi: number | null } | null;
+  progressHistory: ClientProgressPoint[];
 };
+
+function calculateBmi(heightCm: number | null | undefined, weightKg: number | null | undefined): number | null {
+  if (!heightCm || !weightKg || heightCm <= 0) return null;
+  const heightM = heightCm / 100;
+  return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
+}
 
 export async function getAdminClientDetail(clientId: string): Promise<AdminClientDetail | null> {
   const { data: profileRow, error } = await supabase
     .from('client_profiles')
-    .select('id, client_code, profiles(full_name, photo_url, phone)')
+    .select('id, client_code, goals, medical_notes, profiles(full_name, photo_url, phone)')
     .eq('id', clientId)
     .maybeSingle();
   if (error) throw error;
   if (!profileRow) return null;
   const profile = Array.isArray(profileRow.profiles) ? profileRow.profiles[0] : profileRow.profiles;
 
-  const [subsRes, slotsRes, demoRes, historyRes] = await Promise.all([
+  const [subsRes, slotsRes, demoRes, historyRes, onboardingRes, progressRes] = await Promise.all([
     supabase.from('subscriptions').select('id, package_id, status, started_at, activated_at, sessions_total, pause_days_allowed').eq('client_id', clientId),
     supabase.from('recurring_slots').select('coach_id, day_of_week, start_time').eq('client_id', clientId).eq('status', 'active'),
     supabase.from('bookings').select('id').eq('client_id', clientId).eq('session_type', 'assessment').limit(1),
     supabase.from('bookings').select('*').eq('client_id', clientId).order('scheduled_start', { ascending: false }).limit(30),
+    supabase.from('client_onboarding').select('age, gender, height_cm, weight_kg').eq('client_id', clientId).maybeSingle(),
+    supabase
+      .from('progress_logs')
+      .select('logged_at, weight, body_fat_pct, muscle_pct, waist, chest, hip, arms, thigh')
+      .eq('client_id', clientId)
+      .order('logged_at', { ascending: false })
+      .limit(30),
   ]);
   if (subsRes.error) throw subsRes.error;
   if (slotsRes.error) throw slotsRes.error;
   if (demoRes.error) throw demoRes.error;
   if (historyRes.error) throw historyRes.error;
+  if (onboardingRes.error) throw onboardingRes.error;
+  if (progressRes.error) throw progressRes.error;
 
   const derivedStatus = deriveClientStatus((subsRes.data ?? []).map((s) => s.status), (demoRes.data ?? []).length > 0);
   const currentSub =
@@ -186,7 +225,29 @@ export async function getAdminClientDetail(clientId: string): Promise<AdminClien
     slotSummary: summarizeSlots(slotsRes.data ?? []),
     sessionsUsed: completedCount,
     sessionsTotal: currentSub?.sessions_total ?? null,
-    sessionHistory: (historyRes.data ?? []) as Booking[],
+    sessionHistory: (historyRes.data ?? []) as ClientSessionRow[],
+    goals: profileRow.goals ?? [],
+    medicalNotes: profileRow.medical_notes ?? null,
+    demographics: onboardingRes.data
+      ? {
+          age: onboardingRes.data.age ?? null,
+          gender: onboardingRes.data.gender ?? null,
+          heightCm: onboardingRes.data.height_cm ?? null,
+          weightKg: onboardingRes.data.weight_kg ?? null,
+          bmi: calculateBmi(onboardingRes.data.height_cm, onboardingRes.data.weight_kg),
+        }
+      : null,
+    progressHistory: (progressRes.data ?? []).map((l) => ({
+      loggedAt: l.logged_at,
+      weight: l.weight,
+      bodyFatPct: l.body_fat_pct,
+      musclePct: l.muscle_pct,
+      waist: l.waist,
+      chest: l.chest,
+      hip: l.hip,
+      arms: l.arms,
+      thigh: l.thigh,
+    })),
   };
 }
 
@@ -228,15 +289,6 @@ export async function pauseClientSubscription(subscriptionId: string): Promise<v
   const { clientProfileId, coachProfileId, planName } = await getSubscriptionNotifyContext(subscriptionId);
   await notifyProfile(clientProfileId, 'system', 'Subscription paused', `Your ${planName} subscription has been paused.`, 'subscription_paused_client');
   await notifyProfile(coachProfileId, 'system', 'Client subscription paused', `A client's ${planName} subscription has been paused.`, 'subscription_paused_coach');
-}
-
-export async function resumeClientSubscription(subscriptionId: string): Promise<void> {
-  const { error } = await supabase.from('subscriptions').update({ status: 'active', resumed_at: new Date().toISOString() }).eq('id', subscriptionId);
-  if (error) throw error;
-
-  const { clientProfileId, coachProfileId, planName } = await getSubscriptionNotifyContext(subscriptionId);
-  await notifyProfile(clientProfileId, 'system', 'Subscription resumed', `Your ${planName} subscription has been resumed.`, 'subscription_resumed_client');
-  await notifyProfile(coachProfileId, 'system', 'Client subscription resumed', `A client's ${planName} subscription has been resumed.`, 'subscription_resumed_coach');
 }
 
 /**
@@ -407,4 +459,111 @@ export async function listAdminCoachOptions(): Promise<CoachOption[]> {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     return { id: row.id as string, full_name: profile?.full_name ?? 'Coach' };
   });
+}
+
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function hourlyGrid(startHour: number, endHour: number): string[] {
+  const slots: string[] = [];
+  for (let h = startHour; h < endHour; h++) slots.push(`${String(h).padStart(2, '0')}:00`);
+  return slots;
+}
+
+async function isDayTimeFreeForCoach(coachId: string, dayOfWeek: number, timeOfDay: string, durationMinutes: number): Promise<boolean> {
+  const [h, m] = timeOfDay.split(':').map(Number);
+  const startMin = h * 60 + m;
+  const endMin = startMin + durationMinutes;
+
+  const { data: windows, error: availError } = await supabase
+    .from('coach_availability')
+    .select('start_time, end_time')
+    .eq('coach_id', coachId)
+    .eq('day_of_week', dayOfWeek)
+    .eq('is_active', true);
+  if (availError) throw availError;
+  const withinTemplate = (windows ?? []).some((w) => {
+    const [wsH, wsM] = w.start_time.split(':').map(Number);
+    const [weH, weM] = w.end_time.split(':').map(Number);
+    return startMin >= wsH * 60 + wsM && endMin <= weH * 60 + weM;
+  });
+  if (!withinTemplate) return false;
+
+  const { data: collisions, error: collisionError } = await supabase
+    .from('recurring_slots')
+    .select('id')
+    .eq('coach_id', coachId)
+    .eq('day_of_week', dayOfWeek)
+    .eq('start_time', `${timeOfDay}:00`)
+    .eq('status', 'active')
+    .limit(1);
+  if (collisionError) throw collisionError;
+  return (collisions ?? []).length === 0;
+}
+
+async function patternFreeAt(coachId: string, days: number[], timeOfDay: string, durationMinutes: number): Promise<boolean> {
+  for (const day of days) {
+    if (!(await isDayTimeFreeForCoach(coachId, day, timeOfDay, durationMinutes))) return false;
+  }
+  return true;
+}
+
+export type AdminSlotCheckResult = {
+  available: boolean;
+  alternativeTimesForSameCoach: string[];
+  alternativeCoaches: { coachId: string; name: string }[];
+};
+
+/** Web parity: `checkAdminSlotAssignment` (scheduling.service.ts) — the
+ * "migrate an existing client, assign them to coach X" availability gate
+ * used by the Add Client form. Web calls this without a durationMinutes
+ * override (defaults to 60 here too, matching web's own behavior exactly
+ * even though actual sessions are 45min elsewhere — not fixed here, just
+ * replicated, since the web app is the parity reference). Reads only
+ * (`coach_availability`, `recurring_slots`, `coach_profiles`), all
+ * already RLS-readable by admin elsewhere in this file — no service-role
+ * edge function needed. */
+export async function checkSlotAvailability(input: {
+  coachId: string;
+  days: number[];
+  timeOfDay: string;
+  durationMinutes?: number;
+}): Promise<AdminSlotCheckResult> {
+  const durationMinutes = input.durationMinutes ?? 60;
+
+  if (await patternFreeAt(input.coachId, input.days, input.timeOfDay, durationMinutes)) {
+    return { available: true, alternativeTimesForSameCoach: [], alternativeCoaches: [] };
+  }
+
+  const { bookingWindowStartHour, bookingWindowEndHour } = await getBookingSettings();
+  const grid = hourlyGrid(bookingWindowStartHour, bookingWindowEndHour).filter((t) => t !== input.timeOfDay);
+  const requestedMinutes = timeToMinutes(input.timeOfDay);
+
+  const sameCoachChecks = await Promise.all(grid.map((t) => patternFreeAt(input.coachId, input.days, t, durationMinutes)));
+  const alternativeTimesForSameCoach = grid
+    .filter((_, i) => sameCoachChecks[i])
+    .sort((a, b) => Math.abs(timeToMinutes(a) - requestedMinutes) - Math.abs(timeToMinutes(b) - requestedMinutes))
+    .slice(0, 5);
+
+  const { data: otherCoaches, error: coachesError } = await supabase
+    .from('coach_profiles')
+    .select('id, profiles(full_name)')
+    .eq('status', 'active')
+    .neq('id', input.coachId);
+  if (coachesError) throw coachesError;
+
+  const otherCoachChecks = await Promise.all(
+    (otherCoaches ?? []).map((c: any) => patternFreeAt(c.id as string, input.days, input.timeOfDay, durationMinutes))
+  );
+  const alternativeCoaches = (otherCoaches ?? [])
+    .filter((_: any, i: number) => otherCoachChecks[i])
+    .map((c: any) => {
+      const profile = Array.isArray(c.profiles) ? c.profiles[0] : c.profiles;
+      return { coachId: c.id as string, name: profile?.full_name ?? 'Coach' };
+    })
+    .slice(0, 5);
+
+  return { available: false, alternativeTimesForSameCoach, alternativeCoaches };
 }

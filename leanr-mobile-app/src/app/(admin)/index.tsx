@@ -58,7 +58,13 @@ export default function AdminDashboardScreen() {
             <StatTile value={String(data.activeCoaches)} label="ACTIVE COACHES" />
             <StatTile value={data.avgCoachRating !== null ? data.avgCoachRating.toFixed(1) : '—'} label="AVG COACH RATING" />
             <StatTile value={data.avgSessionsPerDay.toFixed(1)} label="AVG SESSIONS/DAY" />
-            <StatTile value={data.renewalRatePct !== null ? `${data.renewalRatePct.toFixed(0)}%` : '—'} label="RENEWAL RATE" />
+            <StatTile value={String(data.avgSessionsPerClient)} label="AVG SESSIONS/CLIENT" />
+            <StatTile
+              value={data.renewalRatePct !== null ? `${data.renewalRatePct.toFixed(0)}%` : '—'}
+              label="RENEWAL RATE"
+              emphasize
+            />
+            <StatTile value={String(data.renewalOpportunityCount)} label="RENEWAL OPPORTUNITIES" />
           </View>
 
           <LightSectionHeader title="Revenue Trend" eyebrow="LAST 6 MONTHS" />

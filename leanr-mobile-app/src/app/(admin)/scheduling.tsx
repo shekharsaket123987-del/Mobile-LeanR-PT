@@ -1,11 +1,14 @@
 /**
  * Scheduling (admin, grouped activity view) — New PRD.md §4.C "Screen:
- * Scheduling" — fully read-only, 6 sections.
+ * Scheduling" — fully read-only, 6 sections. Web's AdminSchedulingPage
+ * renders plain (non-clickable) cards, no per-row navigation — matched here
+ * (the `shadow` bucket's `id` is a shadow_coach_assignments id, not a
+ * booking id, so it can't route to /admin-sessions/[id] anyway).
  */
-import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { LightCard } from '@/components/light/light-card';
+import { LightStatusBadge } from '@/components/light/light-badge';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
@@ -43,14 +46,19 @@ export default function AdminSchedulingScreen() {
               <LightSectionHeader title={section.title} eyebrow={`${rows.length} SESSIONS`} />
               {rows.length === 0 && <LightEmptyState message="Nothing here." icon={section.icon as never} />}
               {rows.map((b: AdminSchedulingRow) => (
-                <Pressable key={b.id} onPress={() => router.push({ pathname: '/admin-sessions/[id]', params: { id: b.id } })} accessibilityRole="button" accessibilityLabel={`Session with ${b.client_name}`}>
-                  <LightCard style={styles.row}>
+                <LightCard key={b.id} style={styles.row}>
+                  <View style={styles.headerRow}>
                     <Text style={styles.title}>{formatDateTime(b.scheduled_start)}</Text>
-                    <Text style={styles.meta}>
-                      {b.client_name} · {b.coach_name}
-                    </Text>
-                  </LightCard>
-                </Pressable>
+                    <View style={styles.badgeRow}>
+                      {b.session_type === 'assessment' && <Text style={styles.typeTag}>Assessment</Text>}
+                      <LightStatusBadge status={b.status} />
+                    </View>
+                  </View>
+                  <Text style={styles.meta}>
+                    {b.client_name} · {b.coach_name}
+                  </Text>
+                  {b.note && <Text style={styles.note}>{b.note}</Text>}
+                </LightCard>
               ))}
             </View>
           );
@@ -61,6 +69,10 @@ export default function AdminSchedulingScreen() {
 
 const styles = StyleSheet.create({
   row: { gap: 2 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
   meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textSecondary },
+  note: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 2 },
+  typeTag: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: LightBrand.textMuted },
 });

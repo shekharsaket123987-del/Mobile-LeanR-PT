@@ -10,6 +10,7 @@
  */
 import { useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { LightCard } from '@/components/light/light-card';
 import { LightDestructiveButton, LightPrimaryButton } from '@/components/light/light-button';
@@ -19,6 +20,22 @@ import { LightBrand } from '@/constants/light-theme';
 import { getPendingLeaveRequests, resolveLeaveRequest, type AdminLeaveRequest } from '@/lib/data/admin-leave';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+
+// Web's admin/leave-requests LeaveRequestsClient.tsx: past this many days, a
+// leave has likely stopped being a temporary gap and started being a real
+// change in the client's routine — purely an admin-facing nudge, never an
+// automatic conversion. Shadow coverage still applies automatically either way.
+const LONG_LEAVE_THRESHOLD_DAYS = 14;
+
+function leaveDurationDays(startsOn: string, endsOn: string): number {
+  const start = new Date(`${startsOn}T00:00:00Z`);
+  const end = new Date(`${endsOn}T00:00:00Z`);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function AdminLeaveScreen() {
   const { data: requests, loading, error, reload } = useAsync(getPendingLeaveRequests, []);
@@ -34,30 +51,51 @@ export default function AdminLeaveScreen() {
 }
 
 function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResolved: () => void }) {
+  const router = useRouter();
   const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const isLongLeave = request.leave_type === 'full_day' && leaveDurationDays(request.starts_on, request.ends_on) >= LONG_LEAVE_THRESHOLD_DAYS;
 
   const onResolve = async (status: 'approved' | 'rejected') => {
     setBusy(status === 'approved' ? 'approve' : 'reject');
     setError(null);
     try {
       const outcome = await resolveLeaveRequest(request.id, status);
-      if (outcome && (outcome.autoAssigned.length > 0 || outcome.needsManual.length > 0)) {
-        const lines: string[] = [];
+      if (outcome) {
+        const lines: string[] = [`Leave approved for ${request.coachName} (${formatDate(request.starts_on)} – ${formatDate(request.ends_on)})`, ''];
         if (outcome.autoAssigned.length > 0) {
           lines.push(
-            'Auto-assigned:',
-            ...outcome.autoAssigned.map((a) => `• ${a.clientName} → ${a.shadowCoachName}`)
+            'Shadow coverage auto-assigned:',
+            ...outcome.autoAssigned.map(
+              (a) => `• ${a.clientName} → ${a.shadowCoachName} (${formatDate(a.startsOn)}${a.endsOn !== a.startsOn ? ` – ${formatDate(a.endsOn)}` : ''})`
+            )
           );
         }
         if (outcome.needsManual.length > 0) {
-          if (lines.length > 0) lines.push('');
+          if (outcome.autoAssigned.length > 0) lines.push('');
           lines.push(
-            'Needs manual assignment (see Shadow Coverage):',
-            ...outcome.needsManual.map((n) => `• ${n.clientName}`)
+            'Needs manual assignment (no shadow coach available):',
+            ...outcome.needsManual.map((n) => `• ${n.clientName}${n.uncoveredDates.length > 0 ? ` — ${n.uncoveredDates.join(', ')}` : ''}`)
           );
         }
-        Alert.alert('Shadow coverage', lines.join('\n'));
+        if (outcome.autoAssigned.length === 0 && outcome.needsManual.length === 0) {
+          lines.push('This coach has no active clients affected during the leave window.');
+        }
+        if (isLongLeave) {
+          lines.push(
+            '',
+            `This leave is ${leaveDurationDays(request.starts_on, request.ends_on)} days — long enough that a permanent coach change may serve affected clients better than ongoing shadow coverage. Shadow coverage has still been applied automatically above.`
+          );
+        }
+        if (outcome.needsManual.length > 0) {
+          Alert.alert('Shadow coverage', lines.join('\n'), [
+            { text: 'Review clients', onPress: () => router.push({ pathname: '/coaches/[id]', params: { id: request.coachId } }) },
+            { text: 'OK', style: 'cancel' },
+          ]);
+        } else {
+          Alert.alert('Shadow coverage', lines.join('\n'));
+        }
       }
       onResolved();
     } catch (err) {
@@ -69,12 +107,16 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
 
   return (
     <LightCard style={styles.card}>
-      <Text style={styles.name}>{request.coachName}</Text>
+      <Text style={styles.name}>
+        {request.coachName}
+        {isLongLeave ? ` · ${leaveDurationDays(request.starts_on, request.ends_on)}+ days` : ''}
+      </Text>
       <Text style={styles.dates}>
         {request.starts_on}
         {request.ends_on !== request.starts_on ? ` – ${request.ends_on}` : ''}
         {request.leave_type === 'partial' ? ` (${request.partial_start_time?.slice(0, 5)}–${request.partial_end_time?.slice(0, 5)})` : ' (full day)'}
       </Text>
+      <Text style={styles.submitted}>Submitted {formatDate(request.created_at)}</Text>
       {request.reason && <Text style={styles.bodyText}>{request.reason}</Text>}
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -95,6 +137,7 @@ const styles = StyleSheet.create({
   card: { gap: 2 },
   name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy },
   dates: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.textSecondary, marginTop: 2 },
+  submitted: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: LightBrand.textSecondary, opacity: 0.7, marginTop: 4 },
   bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary, marginTop: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed, marginTop: 4 },
   approveButton: { marginTop: 10 },

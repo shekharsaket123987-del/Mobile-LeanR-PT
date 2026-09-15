@@ -60,7 +60,7 @@ export async function listAdminCoaches(): Promise<AdminCoachListRow[]> {
 
 export type WorkingHoursRow = { day_of_week: number; start_time: string; end_time: string; is_active: boolean };
 
-export type AssignedClient = { id: string; full_name: string };
+export type AssignedClient = { id: string; full_name: string; packageName: string | null; sessionsRemaining: number | null };
 
 export type AdminCoachDetail = AdminCoachListRow & {
   profileId: string;
@@ -116,6 +116,36 @@ export async function getAdminCoachDetail(coachId: string): Promise<AdminCoachDe
   }
   const [completedRes, upcomingRes, missedRes] = countsRes;
 
+  // Matches web's admin-coach.actions.ts:107-108 (packageName/sessionsRemaining
+  // per assigned client) — sessionsRemaining derived the same way it is
+  // everywhere else in this codebase (sessions_total minus a live count of
+  // `completed` bookings on that subscription), not web's subscription_usage_view.
+  const clientIds = [...seenClients.keys()];
+  const activeSubsRes =
+    clientIds.length > 0
+      ? await supabase.from('subscriptions').select('id, client_id, sessions_total, package:package_tiers(name)').eq('status', 'active').in('client_id', clientIds)
+      : { data: [], error: null };
+  if (activeSubsRes.error) throw activeSubsRes.error;
+  const activeSubs = activeSubsRes.data ?? [];
+  const subCompletedRes =
+    activeSubs.length > 0
+      ? await supabase
+          .from('bookings')
+          .select('subscription_id')
+          .eq('status', 'completed')
+          .in(
+            'subscription_id',
+            activeSubs.map((s) => s.id)
+          )
+      : { data: [], error: null };
+  if (subCompletedRes.error) throw subCompletedRes.error;
+  const usedBySubscription = new Map<string, number>();
+  for (const b of subCompletedRes.data ?? []) {
+    if (!b.subscription_id) continue;
+    usedBySubscription.set(b.subscription_id, (usedBySubscription.get(b.subscription_id) ?? 0) + 1);
+  }
+  const subByClient = new Map(activeSubs.map((s) => [s.client_id, s]));
+
   return {
     id: row.id,
     profileId: row.profile_id,
@@ -136,7 +166,16 @@ export async function getAdminCoachDetail(coachId: string): Promise<AdminCoachDe
     activeClients: Number(utilRes.data?.active_clients ?? 0),
     utilizationPct: utilRes.data ? Number(utilRes.data.utilization_pct) : null,
     workingHours: (workingHoursRes.data ?? []) as WorkingHoursRow[],
-    assignedClients: [...seenClients.entries()].map(([id, full_name]) => ({ id, full_name })),
+    assignedClients: [...seenClients.entries()].map(([id, full_name]) => {
+      const sub = subByClient.get(id);
+      const pkg = sub ? (Array.isArray(sub.package) ? sub.package[0] : sub.package) : null;
+      return {
+        id,
+        full_name,
+        packageName: pkg?.name ?? null,
+        sessionsRemaining: sub ? (sub.sessions_total as number) - (usedBySubscription.get(sub.id) ?? 0) : null,
+      };
+    }),
     completedSessions: completedRes.count ?? 0,
     upcomingSessions: upcomingRes.count ?? 0,
     missedSessions: missedRes.count ?? 0,
@@ -222,4 +261,94 @@ export async function reassignCoachClients(fromCoachId: string, newCoachId: stri
 export async function disableCoach(coachId: string): Promise<void> {
   const { error } = await supabase.from('coach_profiles').update({ status: 'inactive' }).eq('id', coachId);
   if (error) throw error;
+}
+
+export type AdminCoachPerformance = {
+  sessionsScheduledToday: number;
+  attendancePct: number;
+  clientNoShowPct: number;
+  coachNoShowPct: number;
+  maxCapacity: number;
+  availableCapacity: number;
+  totalWeeklySessions: number;
+  totalMonthlySessions: number;
+  avgSessionDurationMinutes: number;
+  escalationsRaised: number;
+  coachChangeRequestsReceived: number;
+};
+
+/**
+ * Workload-balancing / coaching-quality panel — mirrors web's
+ * computePerformance() in coachPerformance.service.ts exactly (same
+ * queries, same definitions), scoped here to the admin coach-detail
+ * "Performance" section. `listAdminCoaches`/`getAdminCoachDetail` above
+ * already cover activeClients/utilizationPct/rating/completed-upcoming-
+ * missed counts; this covers the remaining web-only metrics.
+ */
+export async function getAdminCoachPerformance(coachId: string): Promise<AdminCoachPerformance> {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [coachRes, todayRes, weekRes, monthRes, completedRes, outcomeRes, changeReqRes, escalationsRes] = await Promise.all([
+    supabase.from('coach_profiles').select('max_capacity').eq('id', coachId).maybeSingle(),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('coach_id', coachId).eq('status', 'upcoming').gte('scheduled_start', todayStart.toISOString()).lt('scheduled_start', todayEnd.toISOString()),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('coach_id', coachId).gte('scheduled_start', weekStart.toISOString()),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('coach_id', coachId).gte('scheduled_start', monthStart.toISOString()),
+    supabase.from('bookings').select('id, duration_minutes').eq('coach_id', coachId).eq('status', 'completed'),
+    supabase.from('bookings').select('id, no_show_party').eq('coach_id', coachId).in('status', ['completed', 'missed', 'cancelled']),
+    supabase.from('coach_change_requests').select('id', { count: 'exact', head: true }).eq('current_coach_id', coachId),
+    supabase.from('escalations').select('id', { count: 'exact', head: true }).eq('coach_id', coachId),
+  ]);
+  if (coachRes.error) throw coachRes.error;
+  if (todayRes.error) throw todayRes.error;
+  if (weekRes.error) throw weekRes.error;
+  if (monthRes.error) throw monthRes.error;
+  if (completedRes.error) throw completedRes.error;
+  if (outcomeRes.error) throw outcomeRes.error;
+  if (changeReqRes.error) throw changeReqRes.error;
+  if (escalationsRes.error) throw escalationsRes.error;
+
+  const completedRows = completedRes.data ?? [];
+  const avgSessionDurationMinutes =
+    completedRows.length > 0 ? Math.round(completedRows.reduce((s, b) => s + (b.duration_minutes ?? 0), 0) / completedRows.length) : 0;
+
+  const outcomes = outcomeRes.data ?? [];
+  const totalOutcomes = outcomes.length;
+  const clientNoShowPct = totalOutcomes > 0 ? Math.round((outcomes.filter((o) => o.no_show_party === 'client').length / totalOutcomes) * 100) : 0;
+  const coachNoShowPct = totalOutcomes > 0 ? Math.round((outcomes.filter((o) => o.no_show_party === 'coach').length / totalOutcomes) * 100) : 0;
+
+  let attendancePct = 0;
+  const completedBookingIds = completedRows.map((b) => b.id);
+  if (completedBookingIds.length > 0) {
+    const { data: attendanceRows, error: attendanceError } = await supabase.from('attendance').select('status').in('booking_id', completedBookingIds);
+    if (attendanceError) throw attendanceError;
+    const attendance = attendanceRows ?? [];
+    attendancePct = Math.round((attendance.filter((a) => a.status === 'present').length / completedBookingIds.length) * 100);
+  }
+
+  const maxCapacity = coachRes.data?.max_capacity ?? 50;
+  const utilRes = await supabase.from('coach_utilization_view').select('active_clients').eq('coach_id', coachId).maybeSingle();
+  if (utilRes.error) throw utilRes.error;
+  const currentCapacity = Number(utilRes.data?.active_clients ?? 0);
+
+  return {
+    sessionsScheduledToday: todayRes.count ?? 0,
+    attendancePct,
+    clientNoShowPct,
+    coachNoShowPct,
+    maxCapacity,
+    availableCapacity: Math.max(0, maxCapacity - currentCapacity),
+    totalWeeklySessions: weekRes.count ?? 0,
+    totalMonthlySessions: monthRes.count ?? 0,
+    avgSessionDurationMinutes,
+    escalationsRaised: escalationsRes.count ?? 0,
+    coachChangeRequestsReceived: changeReqRes.count ?? 0,
+  };
 }

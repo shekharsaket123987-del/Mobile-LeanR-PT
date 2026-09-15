@@ -449,9 +449,48 @@ function groupOccurrenceAssignments(
   return { groups, uncoveredDates };
 }
 
+export type ShadowAssignmentPlanItem = AssignmentGroup;
+export type ShadowAssignmentPlan = { assignments: ShadowAssignmentPlanItem[]; uncoveredDates: string[] };
+
+/**
+ * Mirrors web's previewShadowAssignmentPlanAction (admin-shadow-coach.actions.ts):
+ * "the one legitimate manual path" for a coach who never filed a leave request —
+ * finds this client's upcoming bookings with primaryCoachId in [startsOn, endsOn]
+ * and computes the same scored, availability-aware, per-occurrence-grouped plan
+ * `runLeaveApprovalCascade` uses, so a different shadow coach can land on
+ * different days if that's what's actually free. Does not require an approved
+ * `coach_leave` row to exist.
+ */
+export async function previewShadowAssignmentPlan(clientId: string, primaryCoachId: string, startsOn: string, endsOn: string): Promise<ShadowAssignmentPlan> {
+  const { data: bookings, error: bookingsError } = await supabase
+    .from('bookings')
+    .select('id, scheduled_start, duration_minutes')
+    .eq('client_id', clientId)
+    .eq('coach_id', primaryCoachId)
+    .eq('status', 'upcoming')
+    .gte('scheduled_start', `${startsOn}T00:00:00+05:30`)
+    .lt('scheduled_start', `${dayAfter(endsOn)}T00:00:00+05:30`)
+    .order('scheduled_start', { ascending: true });
+  if (bookingsError) throw bookingsError;
+
+  const occurrences: Occurrence[] = (bookings ?? []).map((b) => ({ id: b.id, scheduledStart: b.scheduled_start, durationMinutes: b.duration_minutes }));
+  if (occurrences.length === 0) return { assignments: [], uncoveredDates: [] };
+
+  const { data: primaryRow, error: primaryError } = await supabase.from('coach_profiles').select('specialization, languages').eq('id', primaryCoachId).single();
+  if (primaryError) throw primaryError;
+  const primary: PrimaryCoachInfo = { specialization: primaryRow?.specialization ?? null, languages: primaryRow?.languages ?? [] };
+
+  const { candidates, index } = await buildCandidatePool([primaryCoachId], startsOn, endsOn);
+  const { groups, uncoveredDates } = groupOccurrenceAssignments(occurrences, (occ) => pickTopForOccurrence(candidates, index, primary, occ.scheduledStart, occ.durationMinutes));
+  return { assignments: groups, uncoveredDates };
+}
+
+// Matches web's LeaveResolutionSummary (availability.service.ts) — per
+// auto-assigned client, the shadow coach's own covered date range; per
+// needs-manual client, the specific uncovered dates list.
 export type LeaveCascadeOutcome = {
-  autoAssigned: { clientName: string; shadowCoachName: string }[];
-  needsManual: { clientName: string }[];
+  autoAssigned: { clientName: string; shadowCoachName: string; startsOn: string; endsOn: string }[];
+  needsManual: { clientName: string; uncoveredDates: string[] }[];
 };
 
 /** New PRD.md §3.15 "Leave Approval → Automatic Shadow-Coverage Cascade". Called on leave approval — runs for BOTH leave types. */
@@ -523,10 +562,10 @@ export async function runLeaveApprovalCascade(leave: {
         endsOn: group.endsOn,
         reason: 'Auto-assigned: coach on approved leave',
       });
-      outcome.autoAssigned.push({ clientName: gap.clientName, shadowCoachName: group.shadowCoachName });
+      outcome.autoAssigned.push({ clientName: gap.clientName, shadowCoachName: group.shadowCoachName, startsOn: group.startsOn, endsOn: group.endsOn });
     }
     if (uncoveredDates.length > 0) {
-      outcome.needsManual.push({ clientName: gap.clientName });
+      outcome.needsManual.push({ clientName: gap.clientName, uncoveredDates });
       alerts.push(`No available shadow coach for ${gap.clientName} on: ${uncoveredDates.join(', ')}. Assign manually from Shadow Coverage.`);
     }
   }
@@ -590,10 +629,10 @@ export async function runLeaveApprovalCascade(leave: {
         endsOn: group.endsOn,
         reason: 'Re-assigned: previous shadow coach also went on leave',
       });
-      outcome.autoAssigned.push({ clientName, shadowCoachName: group.shadowCoachName });
+      outcome.autoAssigned.push({ clientName, shadowCoachName: group.shadowCoachName, startsOn: group.startsOn, endsOn: group.endsOn });
     }
     if (uncoveredDates.length > 0) {
-      outcome.needsManual.push({ clientName });
+      outcome.needsManual.push({ clientName, uncoveredDates });
       alerts.push(`No available replacement shadow coach for ${clientName} on: ${uncoveredDates.join(', ')} — their shadow coach is also going on leave.`);
     }
   }

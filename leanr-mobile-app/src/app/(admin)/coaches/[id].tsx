@@ -25,6 +25,7 @@ import {
   blockCoachSlot,
   disableCoach,
   getAdminCoachDetail,
+  getAdminCoachPerformance,
   listAdminCoaches,
   reassignCoachClients,
   setCoachAvailability,
@@ -45,6 +46,7 @@ export default function AdminCoachDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: coach, loading, error, reload } = useAsync(() => getAdminCoachDetail(id), [id]);
   const { data: allCoaches } = useAsync(listAdminCoaches, []);
+  const { data: performance } = useAsync(() => getAdminCoachPerformance(id), [id]);
   const [tab, setTab] = useState<Tab>('overview');
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState(false);
@@ -147,6 +149,28 @@ export default function AdminCoachDetailScreen() {
               <Stat value={coach.utilizationPct != null ? `${coach.utilizationPct.toFixed(0)}%` : '—'} label="Utilization" />
               <Stat value={String(coach.activeClients)} label="Active Clients" />
             </View>
+            {performance && (
+              <>
+                <View style={styles.statsRow}>
+                  <Stat value={String(performance.sessionsScheduledToday)} label="Today" />
+                  <Stat value={String(performance.totalWeeklySessions)} label="This Week" />
+                  <Stat value={String(performance.totalMonthlySessions)} label="This Month" />
+                </View>
+                <View style={styles.statsRow}>
+                  <Stat value={`${performance.attendancePct}%`} label="Attendance" />
+                  <Stat value={`${performance.clientNoShowPct}%`} label="Client No-Show" />
+                  <Stat value={`${performance.coachNoShowPct}%`} label="Coach No-Show" />
+                </View>
+                <View style={styles.statsRow}>
+                  <Stat value={`${performance.avgSessionDurationMinutes}m`} label="Avg Duration" />
+                  <Stat value={`${performance.availableCapacity}/${performance.maxCapacity}`} label="Capacity Left" />
+                  <Stat value={String(performance.escalationsRaised)} label="Escalations" />
+                </View>
+                <View style={styles.statsRow}>
+                  <Stat value={String(performance.coachChangeRequestsReceived)} label="Change Requests" />
+                </View>
+              </>
+            )}
           </LightCard>
 
           <LightCard style={styles.card}>
@@ -280,6 +304,10 @@ export default function AdminCoachDetailScreen() {
             <Pressable key={c.id} onPress={() => router.push({ pathname: '/admin-clients/[id]', params: { id: c.id } })} accessibilityRole="button" accessibilityLabel={c.full_name}>
               <LightCard style={styles.timelineCard}>
                 <Text style={styles.timelineTitle}>{c.full_name}</Text>
+                <Text style={styles.timelineDesc}>
+                  {c.packageName ?? 'No package'}
+                  {c.sessionsRemaining != null ? ` · ${c.sessionsRemaining} sessions left` : ''}
+                </Text>
               </LightCard>
             </Pressable>
           ))}

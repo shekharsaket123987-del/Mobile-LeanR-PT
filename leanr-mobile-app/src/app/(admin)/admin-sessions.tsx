@@ -62,7 +62,7 @@ export default function AdminSessionsScreen() {
     setRowError(null);
     setBusy(true);
     try {
-      await rescheduleSessionAsAdmin(id, new Date(newStart).toISOString(), 45);
+      await rescheduleSessionAsAdmin(id, new Date(newStart).toISOString());
       setEditingId(null);
       setNewStart('');
       reload();
@@ -97,6 +97,9 @@ export default function AdminSessionsScreen() {
               <Text style={styles.meta}>
                 {s.client_name} · {s.coach_name}
               </Text>
+              <Text style={styles.typeText}>
+                {s.session_type === 'assessment' ? `Assessment${s.amount_paid != null ? ` · ₹${s.amount_paid}` : ''}` : 'Regular'}
+              </Text>
               {s.status === 'upcoming' && (
                 <View style={styles.actionRow}>
                   <LightGhostButton size="sm" onPress={() => setEditingId(editingId === s.id ? null : s.id)}>
@@ -130,6 +133,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
   meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
+  typeText: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 1 },
   actionRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   rescheduleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   rescheduleField: { flex: 1 },

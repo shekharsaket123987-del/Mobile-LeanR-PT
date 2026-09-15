@@ -20,6 +20,7 @@
  * inline) rather than fabricated or omitted.
  */
 import { supabase } from '@/lib/supabase/client';
+import { getAdminRenewalOpportunities } from './admin-renewals';
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
@@ -53,7 +54,9 @@ export type AdminDashboard = {
   activeCoaches: number;
   avgCoachRating: number | null;
   avgSessionsPerDay: number;
+  avgSessionsPerClient: number;
   renewalRatePct: number | null;
+  renewalOpportunityCount: number;
   revenueTrend: { month: string; revenue: number; sessions: number }[];
   bookingsByHour: { hour: number; bookings: number }[];
   coachUtilization: { coachId: string; coachName: string; utilizationPct: number }[];
@@ -75,7 +78,8 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     revenueTrendRes,
     bookingsByHourRes,
     coachUtilizationRes,
-    subscriptionsRes,
+    usageRes,
+    renewalOpportunities,
   ] = await Promise.all([
     supabase.from('client_profiles').select('id', { count: 'exact', head: true }),
     supabase.from('client_profiles').select('id', { count: 'exact', head: true }).eq('status', 'active'),
@@ -86,7 +90,8 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     supabase.from('revenue_trend_view').select('month, revenue, sessions').order('month', { ascending: true }),
     supabase.from('bookings_by_hour_view').select('hour_of_day, bookings'),
     supabase.from('coach_utilization_view').select('coach_id, coach_name, utilization_pct').order('utilization_pct', { ascending: false }),
-    supabase.from('subscriptions').select('client_id'),
+    supabase.from('subscription_usage_view').select('sessions_used'),
+    getAdminRenewalOpportunities(),
   ]);
 
   for (const res of [
@@ -99,14 +104,28 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     revenueTrendRes,
     bookingsByHourRes,
     coachUtilizationRes,
-    subscriptionsRes,
+    usageRes,
   ]) {
     if (res.error) throw res.error;
   }
 
+  // Matches web's getAdminDashboard(): sessionsBookedToday only counts
+  // upcoming/completed (not 'missed'), same as sessionsCancelledToday only
+  // counting 'cancelled' — a missed booking previously inflated this count.
   const todaysBookings = todaysBookingsRes.data ?? [];
-  const sessionsToday = todaysBookings.filter((b) => b.status !== 'cancelled').length;
+  const sessionsToday = todaysBookings.filter((b) => b.status === 'upcoming' || b.status === 'completed').length;
   const cancelledToday = todaysBookings.filter((b) => b.status === 'cancelled').length;
+
+  const usage = (usageRes.data ?? []).map((u) => Number(u.sessions_used));
+  const avgSessionsPerClient = usage.length > 0 ? Math.round((usage.reduce((a, b) => a + b, 0) / usage.length) * 10) / 10 : 0;
+
+  // Reuses the just-fixed getAdminRenewalOpportunities() (RENEWAL_OPPORTUNITY_THRESHOLD=10,
+  // same "opportunity"/"expired" categories as web) instead of an unrelated
+  // "ever bought a second plan" ratio across ALL clients — matches web's
+  // adminDashboard.service.ts renewalRatePct/renewalOpportunityCount exactly.
+  const renewalOpportunityCount = renewalOpportunities.length;
+  const renewalRatePct =
+    renewalOpportunityCount > 0 ? Math.round((renewalOpportunities.filter((o) => o.converted).length / renewalOpportunityCount) * 100) : null;
 
   const ratings = (ratingsRes.data ?? []).map((r) => r.trainer_rating as number);
   const avgCoachRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
@@ -132,31 +151,19 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
   const trainerUtilizationPct =
     coachUtilization.length > 0 ? coachUtilization.reduce((a, b) => a + b.utilizationPct, 0) / coachUtilization.length : null;
 
-  // Renewal rate: of clients who have ever had more than one subscription
-  // (i.e. purchased again after their first ran its course — subscriptions
-  // are never deleted, only superseded, New PRD.md §6), what fraction of
-  // all clients-with-a-subscription-ever that represents.
-  const subsByClient = new Map<string, number>();
-  for (const row of subscriptionsRes.data ?? []) {
-    subsByClient.set(row.client_id as string, (subsByClient.get(row.client_id as string) ?? 0) + 1);
-  }
-  const clientsWithAnySub = subsByClient.size;
-  const clientsWithRenewal = [...subsByClient.values()].filter((n) => n > 1).length;
-  const renewalRatePct = clientsWithAnySub > 0 ? (clientsWithRenewal / clientsWithAnySub) * 100 : null;
-
-  // Empty slots today: sum of each active coach's today-of-week working-hour
-  // capacity (in default-session-duration-sized slots), minus today's
-  // non-cancelled bookings. Reconstructed formula — see file header.
+  // Empty slots today: sum of today-of-week working-hour capacity (in
+  // default-session-duration-sized slots) minus today's booked-today count.
+  // Matches web's getAdminDashboard() exactly, including that it does NOT
+  // restrict to currently-active coaches' availability rows.
   const istToday = new Date(now.getTime());
   const dayOfWeek = istToday.getUTCDay();
   const { data: settingRow } = await supabase.from('system_settings').select('value').eq('key', 'default_session_duration_minutes').maybeSingle();
   const slotMinutes = Number(settingRow?.value ?? 45) || 45;
   const { data: availabilityRows, error: availabilityError } = await supabase
     .from('coach_availability')
-    .select('start_time, end_time, is_active, coach_profiles!inner(status)')
+    .select('start_time, end_time')
     .eq('day_of_week', dayOfWeek)
-    .eq('is_active', true)
-    .eq('coach_profiles.status', 'active');
+    .eq('is_active', true);
   if (availabilityError) throw availabilityError;
   let capacitySlots = 0;
   for (const row of availabilityRows ?? []) {
@@ -179,7 +186,9 @@ export async function getAdminDashboard(): Promise<AdminDashboard> {
     activeCoaches: activeCoachesRes.count ?? 0,
     avgCoachRating,
     avgSessionsPerDay: (monthBookingsRes.count ?? 0) / daysElapsedInMonth,
+    avgSessionsPerClient,
     renewalRatePct,
+    renewalOpportunityCount,
     revenueTrend,
     bookingsByHour,
     coachUtilization,

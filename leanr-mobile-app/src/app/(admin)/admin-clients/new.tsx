@@ -7,22 +7,33 @@
  * Account creation needs the service-role key, so this calls the
  * `admin-provisioning` Edge Function rather than a direct table insert
  * (see admin-provisioning.ts header).
+ *
+ * Plan list: `listAllPackages` (unfiltered `package_tiers`), NOT the
+ * public/marketing `getMarketingPlans` (is_active-only) — web's
+ * `listPackageOptionsAction` deliberately includes archived plans too,
+ * since a migrated client may be mid-plan on a since-retired package
+ * (see admin-clients.actions.ts:321-324 on web). Availability check:
+ * `checkSlotAvailability` ports web's `checkAdminSlotAssignment` 1:1 —
+ * web gates Create Client on a confirmed-available schedule before
+ * submit (AddClientForm.tsx `canSubmit`/`scheduleConfirmed`); this was
+ * previously missing here entirely (no check existed anywhere in the
+ * mobile app), so an admin could double-book a coach with no warning.
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightPrimaryButton, LightGhostButton } from '@/components/light/light-button';
+import { LightPrimaryButton, LightGhostButton, LightSecondaryButton } from '@/components/light/light-button';
 import { LightCard } from '@/components/light/light-card';
 import { LightChip, LightChipGrid } from '@/components/light/light-chip';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightTextField } from '@/components/light/light-text-field';
 import { LightBrand } from '@/constants/light-theme';
-import { listAdminCoachOptions } from '@/lib/data/admin-clients';
+import { checkSlotAvailability, listAdminCoachOptions, type AdminSlotCheckResult } from '@/lib/data/admin-clients';
 import { createMigratedClient } from '@/lib/data/admin-provisioning';
+import { listAllPackages } from '@/lib/data/admin-settings';
 import { getErrorMessage } from '@/lib/data/errors';
-import { getMarketingPlans } from '@/lib/data/plans';
 import { useAsync } from '@/lib/data/use-async';
 
 const DAYS = [
@@ -35,6 +46,21 @@ const DAYS = [
   { key: 0, label: 'Sun' },
 ];
 
+// Matches web's AddClientForm.tsx HOUR_GRID exactly — hardcoded 5am-9pm
+// picker, independent of the live system_settings booking window (which
+// only feeds the "alternative times" suggestions after a failed check).
+const HOUR_GRID = Array.from({ length: 17 }, (_, i) => i + 5);
+
+function formatHour(h: number): string {
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:00 ${period}`;
+}
+
+function slotSignature(coachId: string | null, days: number[], timeOfDay: string): string {
+  return `${coachId ?? ''}|${[...days].sort().join(',')}|${timeOfDay}`;
+}
+
 function randomPassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
   let out = '';
@@ -43,7 +69,7 @@ function randomPassword(): string {
 }
 
 export default function AdminAddClientScreen() {
-  const { data: plans } = useAsync(getMarketingPlans, []);
+  const { data: plans } = useAsync(listAllPackages, []);
   const { data: coaches } = useAsync(listAdminCoachOptions, []);
 
   const [fullName, setFullName] = useState('');
@@ -59,19 +85,59 @@ export default function AdminAddClientScreen() {
   const [hour, setHour] = useState('6');
   const [durationMinutes] = useState(45);
 
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<AdminSlotCheckResult | null>(null);
+  const [checkedSignature, setCheckedSignature] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ clientId: string } | null>(null);
 
   const selectedPlan = plans?.find((p) => p.id === packageId);
-  const canSubmit = fullName.trim() && email.trim() && password.trim() && packageId && Number(sessionsRemaining) > 0;
+  const timeOfDay = `${hour.padStart(2, '0')}:00`;
+  const wantsSchedule = days.length > 0;
+  const currentSignature = slotSignature(coachId, days, timeOfDay);
+  const scheduleConfirmed = !wantsSchedule || (checkedSignature === currentSignature && checkResult?.available === true);
+  const canSubmit =
+    fullName.trim() && email.trim() && password.trim() && packageId && Number(sessionsRemaining) > 0 && scheduleConfirmed && !submitting;
 
   const onPackageSelect = (id: string, defaultSessions: number) => {
     setPackageId(id);
     setSessionsRemaining(String(defaultSessions));
   };
 
-  const toggleDay = (d: number) => setDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
+  const resetCheck = () => {
+    setCheckResult(null);
+    setCheckedSignature(null);
+  };
+
+  const toggleDay = (d: number) => {
+    setDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
+    resetCheck();
+  };
+  const onCoachSelect = (id: string) => {
+    setCoachId(coachId === id ? null : id);
+    resetCheck();
+  };
+  const onHourChange = (h: string) => {
+    setHour(h);
+    resetCheck();
+  };
+
+  const checkAvailability = async () => {
+    if (!coachId || days.length === 0) return;
+    setChecking(true);
+    setError(null);
+    try {
+      const res = await checkSlotAvailability({ coachId, days, timeOfDay });
+      setCheckResult(res);
+      setCheckedSignature(slotSignature(coachId, days, timeOfDay));
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const onSubmit = async () => {
     setError(null);
@@ -85,7 +151,7 @@ export default function AdminAddClientScreen() {
         packageId: packageId!,
         sessionsRemaining: Number(sessionsRemaining),
         originalPlanSize: originalPlanSize ? Number(originalPlanSize) : null,
-        pauseDaysAllowed: pauseDaysAllowed ? Number(pauseDaysAllowed) : (selectedPlan as { default_pause_days?: number } | undefined)?.default_pause_days ?? 0,
+        pauseDaysAllowed: pauseDaysAllowed ? Number(pauseDaysAllowed) : selectedPlan?.default_pause_days ?? 0,
         coachId,
         days,
         hour: days.length > 0 ? Number(hour) : null,
@@ -163,17 +229,65 @@ export default function AdminAddClientScreen() {
 
       <LightCard style={styles.card}>
         <LightSectionHeader title="Coach & Weekly Schedule" eyebrow="OPTIONAL" />
+        <Text style={styles.hint}>Leave no days selected to create the client without a schedule yet. Pick days and a time, then confirm the coach is free before creating.</Text>
         <LightChipGrid>
           {coaches?.map((c) => (
-            <LightChip key={c.id} label={c.full_name} selected={coachId === c.id} onPress={() => setCoachId(coachId === c.id ? null : c.id)} />
+            <LightChip key={c.id} label={c.full_name} selected={coachId === c.id} onPress={() => onCoachSelect(c.id)} />
           ))}
         </LightChipGrid>
-        <LightTextField keyboardType="number-pad" placeholder="Hour (0-23, IST)" value={hour} onChangeText={setHour} accessibilityLabel="Hour" />
+        <LightChipGrid>
+          {HOUR_GRID.map((h) => (
+            <LightChip key={h} label={formatHour(h)} selected={hour === String(h)} onPress={() => onHourChange(String(h))} />
+          ))}
+        </LightChipGrid>
         <LightChipGrid>
           {DAYS.map((d) => (
             <LightChip key={d.key} label={d.label} selected={days.includes(d.key)} onPress={() => toggleDay(d.key)} />
           ))}
         </LightChipGrid>
+
+        {wantsSchedule && (
+          <View style={styles.availabilityBlock}>
+            <LightSecondaryButton size="sm" loading={checking} disabled={!coachId} onPress={checkAvailability}>
+              Check Availability
+            </LightSecondaryButton>
+
+            {checkedSignature === currentSignature && checkResult && (
+              <View style={[styles.resultBox, checkResult.available ? styles.resultOk : styles.resultBad]}>
+                {checkResult.available ? (
+                  <Text style={styles.resultOkText}>This coach is free for every selected day at this time.</Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    <Text style={styles.resultBadText}>That coach isn&apos;t free for all selected days at this time.</Text>
+                    {checkResult.alternativeTimesForSameCoach.length > 0 && (
+                      <View>
+                        <Text style={styles.altLabel}>Other times with this coach</Text>
+                        <LightChipGrid>
+                          {checkResult.alternativeTimesForSameCoach.map((t) => (
+                            <LightChip key={t} label={formatHour(Number(t.slice(0, 2)))} selected={false} onPress={() => onHourChange(String(Number(t.slice(0, 2))))} />
+                          ))}
+                        </LightChipGrid>
+                      </View>
+                    )}
+                    {checkResult.alternativeCoaches.length > 0 && (
+                      <View>
+                        <Text style={styles.altLabel}>Other coaches free at this same day/time</Text>
+                        <LightChipGrid>
+                          {checkResult.alternativeCoaches.map((c) => (
+                            <LightChip key={c.coachId} label={c.name} selected={false} onPress={() => onCoachSelect(c.coachId)} />
+                          ))}
+                        </LightChipGrid>
+                      </View>
+                    )}
+                    {checkResult.alternativeTimesForSameCoach.length === 0 && checkResult.alternativeCoaches.length === 0 && (
+                      <Text style={styles.altLabel}>No open alternative found for this day pattern — try a different day.</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
       </LightCard>
 
       {error && (
@@ -196,4 +310,12 @@ const styles = StyleSheet.create({
   successTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.tealDark },
   successBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
   credential: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
+  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  availabilityBlock: { gap: 8, marginTop: 4 },
+  resultBox: { borderRadius: 12, borderWidth: 1, padding: 12 },
+  resultOk: { borderColor: LightBrand.successEmerald, backgroundColor: 'rgba(16,185,129,0.06)' },
+  resultBad: { borderColor: LightBrand.alertRed, backgroundColor: 'rgba(239,68,68,0.05)' },
+  resultOkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.tealDark },
+  resultBadText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.alertRed },
+  altLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, textTransform: 'uppercase', color: LightBrand.textMuted, marginBottom: 6 },
 });

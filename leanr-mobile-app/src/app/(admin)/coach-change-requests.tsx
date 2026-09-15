@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { LightAvatar } from '@/components/light/light-avatar';
 import { LightBadge } from '@/components/light/light-badge';
 import { LightDestructiveButton, LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
 import { LightCard } from '@/components/light/light-card';
@@ -85,7 +86,10 @@ function RequestCard({
   return (
     <LightCard style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.name}>{request.clientName}</Text>
+        <View style={styles.identity}>
+          <LightAvatar photoUrl={request.clientPhotoUrl} name={request.clientName} size={36} />
+          <Text style={styles.name}>{request.clientName}</Text>
+        </View>
         <LightBadge label={request.status} tone={request.status === 'pending' ? 'teal' : request.status === 'approved' ? 'green' : 'red'} />
       </View>
       {request.currentCoachName && <Text style={styles.meta}>Current coach: {request.currentCoachName}</Text>}
@@ -133,6 +137,7 @@ function RequestCard({
 const styles = StyleSheet.create({
   card: { gap: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: LightBrand.navy },
   meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
   reason: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textPrimary, marginTop: 2 },

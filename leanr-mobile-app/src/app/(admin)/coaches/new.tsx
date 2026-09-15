@@ -16,10 +16,10 @@ import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightTextField } from '@/components/light/light-text-field';
 import { LightBrand } from '@/constants/light-theme';
+import { COACH_LANGUAGES, COACH_SKILLS } from '@/lib/constants/coach-tags';
 import { createCoach, type CreateCoachInput } from '@/lib/data/admin-provisioning';
 import { getErrorMessage } from '@/lib/data/errors';
 
-const LANGUAGE_OPTIONS = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Marathi', 'Bengali'];
 const DAYS = [
   { key: 1, label: 'Mon' },
   { key: 2, label: 'Tue' },
@@ -29,6 +29,15 @@ const DAYS = [
   { key: 6, label: 'Sat' },
   { key: 0, label: 'Sun' },
 ];
+// 5am-9pm, matches web's admin/coaches/new/page.tsx HOUR_GRID and the
+// booking_window_* settings the resulting slots must fall inside.
+const HOUR_OPTIONS = Array.from({ length: 17 }, (_, i) => i + 5);
+
+function formatHour(h: number): string {
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:00 ${period}`;
+}
 
 function randomPassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -37,23 +46,23 @@ function randomPassword(): string {
   return out;
 }
 
-type SlotRow = { days: number[]; hour: string };
+type SlotRow = { days: number[]; hour: number };
 
 export default function AdminAddCoachScreen() {
   const [fullName, setFullName] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState(randomPassword());
-  const [specialization, setSpecialization] = useState('');
+  const [specialization, setSpecialization] = useState<string>(COACH_SKILLS[0]);
   const [additionalSkills, setAdditionalSkills] = useState<string[]>([]);
-  const [newSkill, setNewSkill] = useState('');
   const [languages, setLanguages] = useState<string[]>([]);
-  const [slots, setSlots] = useState<SlotRow[]>([{ days: [], hour: '6' }]);
+  const [slots, setSlots] = useState<SlotRow[]>([{ days: [], hour: HOUR_OPTIONS[0] }]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ coachId: string } | null>(null);
 
+  const toggleAdditionalSkill = (skill: string) => setAdditionalSkills((cur) => (cur.includes(skill) ? cur.filter((s) => s !== skill) : [...cur, skill]));
   const toggleLanguage = (lang: string) => setLanguages((cur) => (cur.includes(lang) ? cur.filter((l) => l !== lang) : [...cur, lang]));
   const toggleSlotDay = (i: number, d: number) =>
     setSlots((cur) => cur.map((s, idx) => (idx === i ? { ...s, days: s.days.includes(d) ? s.days.filter((x) => x !== d) : [...s.days, d] } : s)));
@@ -73,7 +82,7 @@ export default function AdminAddCoachScreen() {
         specialization: specialization.trim(),
         additionalSkills,
         languages,
-        slots: slots.filter((s) => s.days.length > 0).map((s) => ({ days: s.days, hour: Number(s.hour) || 0, durationMinutes: 45 })),
+        slots: slots.filter((s) => s.days.length > 0).map((s) => ({ days: s.days, hour: s.hour, durationMinutes: 45 })),
       };
       setResult(await createCoach(input));
     } catch (err) {
@@ -117,32 +126,24 @@ export default function AdminAddCoachScreen() {
 
       <LightCard style={styles.card}>
         <LightSectionHeader title="Skills" />
-        <LightTextField placeholder="Primary Specialization" value={specialization} onChangeText={setSpecialization} accessibilityLabel="Primary specialization" />
+        <Text style={styles.fieldLabel}>Primary Specialization</Text>
         <LightChipGrid>
-          {additionalSkills.map((s) => (
-            <LightChip key={s} label={`${s} ✕`} selected onPress={() => setAdditionalSkills(additionalSkills.filter((x) => x !== s))} />
+          {COACH_SKILLS.map((s) => (
+            <LightChip key={s} label={s} selected={specialization === s} onPress={() => setSpecialization(s)} />
           ))}
         </LightChipGrid>
-        <View style={styles.addSkillRow}>
-          <View style={styles.passwordField}>
-            <LightTextField placeholder="Add additional skill" value={newSkill} onChangeText={setNewSkill} accessibilityLabel="Add additional skill" />
-          </View>
-          <LightSecondaryButton
-            size="sm"
-            disabled={!newSkill.trim()}
-            onPress={() => {
-              setAdditionalSkills([...additionalSkills, newSkill.trim()]);
-              setNewSkill('');
-            }}>
-            Add
-          </LightSecondaryButton>
-        </View>
+        <Text style={styles.fieldLabel}>Additional Skills</Text>
+        <LightChipGrid>
+          {COACH_SKILLS.filter((s) => s !== specialization).map((s) => (
+            <LightChip key={s} label={s} selected={additionalSkills.includes(s)} onPress={() => toggleAdditionalSkill(s)} />
+          ))}
+        </LightChipGrid>
       </LightCard>
 
       <LightCard style={styles.card}>
         <LightSectionHeader title="Languages" eyebrow="REQUIRED · AT LEAST ONE" />
         <LightChipGrid>
-          {LANGUAGE_OPTIONS.map((lang) => (
+          {COACH_LANGUAGES.map((lang) => (
             <LightChip key={lang} label={lang} selected={languages.includes(lang)} onPress={() => toggleLanguage(lang)} />
           ))}
         </LightChipGrid>
@@ -152,13 +153,16 @@ export default function AdminAddCoachScreen() {
         <LightSectionHeader title="Weekly Slot Openings" eyebrow="REQUIRED · AT LEAST ONE" />
         {slots.map((s, i) => (
           <View key={i} style={styles.slotRow}>
-            <LightTextField
-              keyboardType="number-pad"
-              placeholder="Hour (0-23, IST)"
-              value={s.hour}
-              onChangeText={(t) => setSlots((cur) => cur.map((x, idx) => (idx === i ? { ...x, hour: t } : x)))}
-              accessibilityLabel={`Slot ${i + 1} hour`}
-            />
+            <LightChipGrid>
+              {HOUR_OPTIONS.map((h) => (
+                <LightChip
+                  key={h}
+                  label={formatHour(h)}
+                  selected={s.hour === h}
+                  onPress={() => setSlots((cur) => cur.map((x, idx) => (idx === i ? { ...x, hour: h } : x)))}
+                />
+              ))}
+            </LightChipGrid>
             <LightChipGrid>
               {DAYS.map((d) => (
                 <LightChip key={d.key} label={d.label} selected={s.days.includes(d.key)} onPress={() => toggleSlotDay(i, d.key)} />
@@ -171,7 +175,7 @@ export default function AdminAddCoachScreen() {
             )}
           </View>
         ))}
-        <LightSecondaryButton onPress={() => setSlots((cur) => [...cur, { days: [], hour: '6' }])}>Add Slot</LightSecondaryButton>
+        <LightSecondaryButton onPress={() => setSlots((cur) => [...cur, { days: [], hour: HOUR_OPTIONS[0] }])}>Add Slot</LightSecondaryButton>
       </LightCard>
 
       {error && (
@@ -190,7 +194,7 @@ const styles = StyleSheet.create({
   card: { gap: 8 },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   passwordField: { flex: 1 },
-  addSkillRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fieldLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textMuted, marginTop: 4 },
   slotRow: { gap: 8, marginBottom: 8 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed },
   successTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.tealDark },

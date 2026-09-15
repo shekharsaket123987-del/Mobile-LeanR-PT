@@ -17,7 +17,9 @@ export type SaleRow = {
 };
 
 export async function listSales(): Promise<SaleRow[]> {
-  const { data, error } = await supabase.from('sales_view').select('*').order('sale_date', { ascending: false }).limit(200);
+  // Web's listSalesAction() has no limit; mirror that as closely as a mobile
+  // list view reasonably can with a generous cap instead of true pagination.
+  const { data, error } = await supabase.from('sales_view').select('*').order('sale_date', { ascending: false }).limit(2000);
   if (error) throw error;
   return (data ?? []).map((row) => ({
     subscriptionId: row.subscription_id,

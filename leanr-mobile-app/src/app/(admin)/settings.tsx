@@ -38,15 +38,18 @@ import {
 import { getErrorMessage } from '@/lib/data/errors';
 import { useAsync } from '@/lib/data/use-async';
 
-const RULE_BOUNDS: Record<SessionRuleKey, { min: number; max: number; label: string }> = {
-  default_session_duration_minutes: { min: 30, max: 90, label: 'Default Session Duration (min)' },
-  cancellation_cutoff_hours: { min: 4, max: 48, label: 'Cancellation Cutoff (hours)' },
-  reschedule_cutoff_hours: { min: 1, max: 24, label: 'Reschedule Cutoff (hours)' },
-  inactivity_threshold_days: { min: 7, max: 90, label: 'Inactivity Threshold (days)' },
+// min/max/step mirror web's AdminSettingsClient.tsx <input type="range"> bounds exactly,
+// so mobile only accepts the same discrete stepped values web's sliders allow.
+const RULE_BOUNDS: Record<SessionRuleKey, { min: number; max: number; step: number; label: string }> = {
+  default_session_duration_minutes: { min: 30, max: 90, step: 15, label: 'Default Session Duration (min)' },
+  cancellation_cutoff_hours: { min: 4, max: 48, step: 4, label: 'Cancellation Cutoff (hours)' },
+  reschedule_cutoff_hours: { min: 1, max: 24, step: 1, label: 'Reschedule Cutoff (hours)' },
+  inactivity_threshold_days: { min: 7, max: 90, step: 7, label: 'Inactivity Threshold (days)' },
 };
 
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n));
+function clampToStep(n: number, min: number, max: number, step: number) {
+  const bounded = Math.min(max, Math.max(min, n));
+  return Math.round((bounded - min) / step) * step + min;
 }
 
 const emptyPackageForm = (): PackageInput => ({ name: '', category: 'addon', sessions_count: 12, price: 0, original_price: null, features: [], highlighted: false, default_pause_days: 0 });
@@ -77,6 +80,11 @@ export default function AdminSettingsScreen() {
   };
 
   const onSavePackage = async () => {
+    // Same guard as web's savePackage(): name required, sessions >= 1, price >= 0.
+    if (!form.name.trim() || form.sessions_count < 1 || form.price < 0) {
+      setError('Enter a name, at least 1 session, and a non-negative price.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -129,7 +137,7 @@ export default function AdminSettingsScreen() {
         (Object.keys(RULE_BOUNDS) as SessionRuleKey[]).map((key) => {
           const bounds = RULE_BOUNDS[key];
           const raw = Number(currentRuleValues[key]) || bounds.min;
-          return [key, clamp(raw, bounds.min, bounds.max)];
+          return [key, clampToStep(raw, bounds.min, bounds.max, bounds.step)];
         })
       ) as Record<SessionRuleKey, number>;
       await saveSessionRules(bounded);

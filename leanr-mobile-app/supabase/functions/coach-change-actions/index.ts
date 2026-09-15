@@ -76,7 +76,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const { data: request, error: requestError } = await admin
     .from("coach_change_requests")
-    .select("id, client_id, status, new_coach_id")
+    .select("id, client_id, current_coach_id, status, new_coach_id")
     .eq("id", requestId)
     .single();
   if (requestError || !request) return jsonResponse({ error: "Coach-change request not found." }, 404);
@@ -91,25 +91,37 @@ async function handleRequest(req: Request): Promise<Response> {
     .eq("status", "active")
     .maybeSingle();
 
-  // Retire the old recurring pattern (same as setUpRecurringSchedule's own change-schedule path).
-  const { error: cancelError } = await admin
+  // Retire the old recurring pattern — scoped to the OLD coach specifically
+  // (web ground truth: coachChange.service.ts's completeCoachChange filters
+  // both the slot cancellation and the booking cancellation below to
+  // request.current_coach_id's slots, not just "any active slot the client
+  // has"), so this can't cancel a pattern with some other coach the client
+  // may also have (shouldn't normally happen, but matches web exactly).
+  const { data: oldSlots, error: oldSlotsError } = await admin
     .from("recurring_slots")
-    .update({ status: "cancelled" })
+    .select("id")
     .eq("client_id", clientId)
+    .eq("coach_id", request.current_coach_id)
     .eq("status", "active");
-  if (cancelError) return jsonResponse({ error: cancelError.message }, 500);
+  if (oldSlotsError) return jsonResponse({ error: oldSlotsError.message }, 500);
+  const oldSlotIds = (oldSlots ?? []).map((s) => s.id);
 
-  // GAP-03 / web spec BR-32: cancel the client's still-upcoming bookings with the old coach
-  // BEFORE generating new ones below — otherwise they're left dangling as duplicate sessions
-  // with a coach the client no longer has a schedule with. Must run before the loop, since the
-  // loop below creates NEW 'upcoming' bookings with the new coach that this same filter would
-  // incorrectly catch if run afterward.
-  const { error: cancelBookingsError } = await admin
-    .from("bookings")
-    .update({ status: "cancelled", cancelled_by: "system", cancel_reason: "Client changed coaches" })
-    .eq("client_id", clientId)
-    .eq("status", "upcoming");
-  if (cancelBookingsError) return jsonResponse({ error: cancelBookingsError.message }, 500);
+  if (oldSlotIds.length > 0) {
+    const { error: cancelError } = await admin.from("recurring_slots").update({ status: "cancelled" }).in("id", oldSlotIds);
+    if (cancelError) return jsonResponse({ error: cancelError.message }, 500);
+
+    // GAP-03 / web spec BR-32: cancel the client's still-upcoming bookings tied to the
+    // old coach's retired slots BEFORE generating new ones below — otherwise they're left
+    // dangling as duplicate sessions with a coach the client no longer has a schedule with.
+    // Scoped by recurring_slot_id (not just client+status) to match web exactly and avoid
+    // cancelling an unrelated upcoming booking (e.g. a one-off demo/assessment session).
+    const { error: cancelBookingsError } = await admin
+      .from("bookings")
+      .update({ status: "cancelled", cancelled_by: "system", cancel_reason: "Client changed coaches" })
+      .in("recurring_slot_id", oldSlotIds)
+      .eq("status", "upcoming");
+    if (cancelBookingsError) return jsonResponse({ error: cancelBookingsError.message }, 500);
+  }
 
   const startTime = `${pad(hour)}:00:00`;
   for (const dayOfWeek of days) {

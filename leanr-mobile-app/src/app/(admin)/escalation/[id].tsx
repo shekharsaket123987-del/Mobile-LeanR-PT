@@ -5,8 +5,8 @@
  * client-side (for UX) and by a DB trigger (for the real trust boundary).
  */
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { LightBadge } from '@/components/light/light-badge';
 import { LightPrimaryButton } from '@/components/light/light-button';
@@ -59,6 +59,14 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function categoryLabel(value: string | null) {
+  return ISSUE_TYPE_OPTIONS.find((c) => c.value === value)?.label ?? 'Other';
+}
+
 export default function AdminEscalationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, loading, error, reload } = useAsync(async () => {
@@ -82,6 +90,19 @@ export default function AdminEscalationDetailScreen() {
   const notes = data?.notes ?? [];
   const called = Boolean(escalation?.called_client_at);
   const isResolved = escalation?.status === 'resolved';
+
+  // Prefill the assessment form from whatever was already saved, once per
+  // escalation — keyed on id (not on every `data` change) so that reloading
+  // after adding a note or marking in-progress doesn't clobber in-progress edits.
+  const prefilledFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!escalation || prefilledFor.current === escalation.id) return;
+    prefilledFor.current = escalation.id;
+    setIssueType(escalation.admin_issue_type ?? null);
+    setFault(escalation.fault ?? null);
+    setSummary(escalation.admin_summary ?? '');
+    setResolutionNotes(escalation.resolution_notes ?? '');
+  }, [escalation]);
 
   const run = async (fn: () => Promise<void>, setBusy: (b: boolean) => void) => {
     setActionError(null);
@@ -121,17 +142,32 @@ export default function AdminEscalationDetailScreen() {
   return (
     <LightScreenScaffold title={escalation.reason} subtitle={formatDate(escalation.created_at)}>
       <LightCard variant={isResolved ? 'default' : 'teal'} style={styles.summaryCard}>
+        <Text style={styles.metaLine}>{escalation.clientCode ? `#${escalation.clientCode}` : `#${escalation.id.slice(0, 8).toUpperCase()}`}</Text>
         {escalation.clientName && <Text style={styles.metaLine}>Client: {escalation.clientName}</Text>}
         {escalation.coachName && <Text style={styles.metaLine}>Coach: {escalation.coachName}</Text>}
-        {escalation.category && <Text style={styles.metaLine}>Category: {escalation.category}</Text>}
+        <Text style={styles.metaLine}>Category: {categoryLabel(escalation.category)}</Text>
         {escalation.description && <Text style={styles.bodyText}>{escalation.description}</Text>}
+        <Text style={styles.metaLine}>
+          Raised {formatDate(escalation.created_at)} · {formatTime(escalation.created_at)}
+        </Text>
+        {escalation.resolved_at && (
+          <Text style={styles.metaLine}>
+            Resolved {formatDate(escalation.resolved_at)} · {formatTime(escalation.resolved_at)}
+          </Text>
+        )}
         <LightBadge label={escalation.status.replace('_', ' ')} tone={STATUS_TONE[escalation.status] ?? 'gray'} />
       </LightCard>
 
-      {!called && !isResolved && (
+      {!called && (
         <LightPrimaryButton size="lg" onPress={() => run(() => confirmCalledClient(id), setConfirming)} loading={confirming}>
           Confirm I&apos;ve called the client
         </LightPrimaryButton>
+      )}
+
+      {called && (
+        <Text style={styles.metaLine}>
+          Called the client on {formatDate(escalation.called_client_at!)} · {formatTime(escalation.called_client_at!)}
+        </Text>
       )}
 
       {!called && <LightEmptyState message="Assessment, notes, and resolution unlock once you've confirmed the call." icon="call-outline" />}
@@ -142,13 +178,13 @@ export default function AdminEscalationDetailScreen() {
             <LightSectionHeader title="Issue type" />
             <LightChipGrid>
               {ISSUE_TYPE_OPTIONS.map((opt) => (
-                <LightChip key={opt.value} label={opt.label} selected={issueType === opt.value} onPress={() => !isResolved && setIssueType(opt.value)} disabled={isResolved} />
+                <LightChip key={opt.value} label={opt.label} selected={issueType === opt.value} onPress={() => setIssueType(opt.value)} />
               ))}
             </LightChipGrid>
             <Text style={styles.label}>FAULT</Text>
             <LightChipGrid>
               {FAULT_OPTIONS.map((opt) => (
-                <LightChip key={opt.value} label={opt.label} selected={fault === opt.value} onPress={() => !isResolved && setFault(opt.value)} disabled={isResolved} />
+                <LightChip key={opt.value} label={opt.label} selected={fault === opt.value} onPress={() => setFault(opt.value)} />
               ))}
             </LightChipGrid>
             <Text style={styles.label}>SUMMARY</Text>
@@ -157,57 +193,53 @@ export default function AdminEscalationDetailScreen() {
               value={summary}
               onChangeText={setSummary}
               multiline
-              editable={!isResolved}
               style={styles.multilineInput}
               accessibilityLabel="Assessment summary"
             />
-            {!isResolved && (
-              <LightPrimaryButton
-                onPress={() =>
-                  run(
-                    () => updateEscalationAssessment(id, { adminIssueType: issueType, fault, adminSummary: summary || null }),
-                    setSavingAssessment
-                  )
-                }
-                loading={savingAssessment}
-                style={styles.saveButton}>
-                Save assessment
-              </LightPrimaryButton>
-            )}
+            <LightPrimaryButton
+              onPress={() =>
+                run(
+                  () => updateEscalationAssessment(id, { adminIssueType: issueType, fault, adminSummary: summary || null }),
+                  setSavingAssessment
+                )
+              }
+              loading={savingAssessment}
+              style={styles.saveButton}>
+              Save assessment
+            </LightPrimaryButton>
           </LightCard>
 
           <LightCard style={styles.card}>
             <LightSectionHeader title="Notes (client-visible)" />
             {notes.length === 0 && <Text style={styles.bodyText}>No notes yet.</Text>}
             {notes.map((n) => (
-              <Text key={n.id} style={styles.bodyText}>
-                {n.note}
-              </Text>
+              <View key={n.id} style={styles.noteRow}>
+                <Text style={styles.bodyText}>{n.note}</Text>
+                <Text style={styles.noteMeta}>
+                  {n.authorName ?? 'Admin'} · {formatDate(n.created_at)} · {formatTime(n.created_at)}
+                </Text>
+              </View>
             ))}
-            {!isResolved && (
-              <>
-                <LightTextField
-                  placeholder="Add a note…"
-                  value={newNote}
-                  onChangeText={setNewNote}
-                  multiline
-                  style={styles.multilineInput}
-                  accessibilityLabel="New note"
-                />
-                <LightPrimaryButton
-                  onPress={() =>
-                    run(async () => {
-                      if (!newNote.trim()) throw new Error('Write a note first.');
-                      await addEscalationNote(id, newNote.trim());
-                      setNewNote('');
-                    }, setSavingNote)
-                  }
-                  loading={savingNote}
-                  style={styles.saveButton}>
-                  Add note
-                </LightPrimaryButton>
-              </>
-            )}
+            <LightTextField
+              placeholder="Add a note…"
+              value={newNote}
+              onChangeText={setNewNote}
+              multiline
+              style={styles.multilineInput}
+              accessibilityLabel="New note"
+            />
+            <LightPrimaryButton
+              onPress={() =>
+                run(async () => {
+                  if (!newNote.trim()) throw new Error('Write a note first.');
+                  await addEscalationNote(id, newNote.trim());
+                  setNewNote('');
+                }, setSavingNote)
+              }
+              loading={savingNote}
+              style={styles.saveButton}>
+              Add note
+            </LightPrimaryButton>
           </LightCard>
 
           {!isResolved && (
@@ -264,6 +296,8 @@ const styles = StyleSheet.create({
   metaLine: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
   bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary, marginTop: 2 },
   label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted, marginTop: 6 },
+  noteRow: { marginTop: 4 },
+  noteMeta: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: LightBrand.textMuted, marginTop: 1 },
   multilineInput: { minHeight: 60, textAlignVertical: 'top' },
   saveButton: { marginTop: 6 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },

@@ -24,6 +24,7 @@ export type AdminCoachChangeRequest = {
   id: string;
   clientId: string;
   clientName: string;
+  clientPhotoUrl: string | null;
   currentCoachId: string | null;
   currentCoachName: string | null;
   reason: string;
@@ -40,10 +41,21 @@ function pickName(rel: unknown): string | null {
   return profile?.full_name ?? null;
 }
 
+function pickPhoto(rel: unknown): string | null {
+  const row = Array.isArray(rel) ? rel[0] : rel;
+  if (!row) return null;
+  const profile = Array.isArray((row as { profiles?: unknown }).profiles)
+    ? ((row as { profiles?: unknown[] }).profiles as { photo_url?: string }[])[0]
+    : ((row as { profiles?: { photo_url?: string } }).profiles ?? null);
+  return profile?.photo_url ?? null;
+}
+
 export async function listCoachChangeRequests(status: 'pending' | 'resolved'): Promise<AdminCoachChangeRequest[]> {
   let query = supabase
     .from('coach_change_requests')
-    .select('id, client_id, current_coach_id, reason, status, created_at, client_profiles(profiles(full_name)), coach_profiles!coach_change_requests_current_coach_id_fkey(profiles(full_name))')
+    .select(
+      'id, client_id, current_coach_id, reason, status, created_at, client_profiles(profiles(full_name, photo_url)), coach_profiles!coach_change_requests_current_coach_id_fkey(profiles(full_name))'
+    )
     .order('created_at', { ascending: false });
   query = status === 'pending' ? query.eq('status', 'pending') : query.neq('status', 'pending');
 
@@ -54,6 +66,7 @@ export async function listCoachChangeRequests(status: 'pending' | 'resolved'): P
     id: row.id,
     clientId: row.client_id,
     clientName: pickName(row.client_profiles) ?? 'Client',
+    clientPhotoUrl: pickPhoto(row.client_profiles),
     currentCoachId: row.current_coach_id,
     currentCoachName: pickName((row as unknown as Record<string, unknown>).coach_profiles),
     reason: row.reason,
@@ -97,7 +110,30 @@ export async function approveCoachChangeRequestBlank(id: string): Promise<void> 
   );
 }
 
-/** Approve + pick the new coach directly — repoints the client's existing recurring pattern immediately. */
+/**
+ * Approve + pick the new coach directly — REPOINTS the client's existing
+ * recurring pattern and upcoming bookings onto the new coach, same day/time.
+ *
+ * Web ground truth (`coachChange.service.ts` `resolveCoachChangeRequest` ->
+ * `clients.service.ts` `reassignClientCoach`): this fast path never cancels
+ * or recreates anything — it keeps the SAME `recurring_slots`/`bookings`
+ * rows and just updates `coach_id`, scoped to the OLD coach
+ * (`current_coach_id`) so it can't touch slots/bookings belonging to some
+ * other coach. It also blocks if the new coach has no availability on a
+ * day the client is already booked — web has no "force" override on this
+ * screen, so this mirrors that: the guard always applies, matching
+ * `transferClientCoach` in `admin-clients.ts` (the other place this exact
+ * repoint pattern already exists correctly, for the manual "Transfer Coach"
+ * action — not reused directly here to avoid a cross-file dependency,
+ * logic intentionally kept in lockstep with it).
+ *
+ * Previously (until this fix) this function instead cancelled ALL of the
+ * client's active recurring_slots and upcoming bookings outright (not
+ * scoped to the old coach) and recreated only 4 new bookings per slot —
+ * wrong shape (web repoints, doesn't cancel+recreate, for this specific
+ * "admin picks the coach directly, same schedule" path) and unsafe (could
+ * cancel bookings with an unrelated coach, e.g. a demo/assessment booking).
+ */
 export async function approveCoachChangeRequestWithCoach(id: string, clientId: string, newCoachId: string): Promise<void> {
   const {
     data: { user },
@@ -109,43 +145,46 @@ export async function approveCoachChangeRequestWithCoach(id: string, clientId: s
     .eq('id', id)
     .single();
   if (requestError) throw requestError;
+  const oldCoachId = requestRow.current_coach_id as string | null;
 
-  const { data: activeSlots, error: slotsError } = await supabase
-    .from('recurring_slots')
-    .select('day_of_week, start_time, duration_minutes, subscription_id')
-    .eq('client_id', clientId)
-    .eq('status', 'active');
-  if (slotsError) throw slotsError;
-
-  const { error: cancelError } = await supabase.from('recurring_slots').update({ status: 'cancelled' }).eq('client_id', clientId).eq('status', 'active');
-  if (cancelError) throw cancelError;
-
-  // GAP-03 / web spec BR-32: cancel the client's still-upcoming bookings with the old coach
-  // BEFORE generating new ones below — see coach-change-actions/index.ts's identical fix for
-  // the client self-serve path (same bug, same reasoning, mirrored here for the admin path).
-  const { error: cancelBookingsError } = await supabase
-    .from('bookings')
-    .update({ status: 'cancelled', cancelled_by: 'system', cancel_reason: 'Client changed coaches' })
-    .eq('client_id', clientId)
-    .eq('status', 'upcoming');
-  if (cancelBookingsError) throw cancelBookingsError;
-
-  for (const slot of activeSlots ?? []) {
-    const { data: newSlot, error: insertError } = await supabase
+  if (oldCoachId) {
+    const { data: activeSlots, error: slotsError } = await supabase
       .from('recurring_slots')
-      .insert({
-        client_id: clientId,
-        coach_id: newCoachId,
-        subscription_id: slot.subscription_id,
-        day_of_week: slot.day_of_week,
-        start_time: slot.start_time,
-        duration_minutes: slot.duration_minutes,
-        status: 'active',
-      })
-      .select('id')
-      .single();
-    if (insertError) throw insertError;
-    await supabase.rpc('generate_bookings_from_recurring_slot', { p_recurring_slot_id: newSlot.id, p_count: 4 });
+      .select('day_of_week')
+      .eq('client_id', clientId)
+      .eq('coach_id', oldCoachId)
+      .eq('status', 'active');
+    if (slotsError) throw slotsError;
+
+    const { data: availability, error: availabilityError } = await supabase
+      .from('coach_availability')
+      .select('day_of_week')
+      .eq('coach_id', newCoachId)
+      .eq('is_active', true);
+    if (availabilityError) throw availabilityError;
+    const availableDays = new Set((availability ?? []).map((a) => a.day_of_week));
+    const uncovered = (activeSlots ?? []).some((s) => !availableDays.has(s.day_of_week));
+    if (uncovered) {
+      throw new Error('This coach has not set availability for one or more of the client’s scheduled days.');
+    }
+
+    const { error: slotUpdateError } = await supabase
+      .from('recurring_slots')
+      .update({ coach_id: newCoachId })
+      .eq('client_id', clientId)
+      .eq('coach_id', oldCoachId)
+      .eq('status', 'active');
+    if (slotUpdateError) throw slotUpdateError;
+  }
+
+  if (oldCoachId) {
+    const { error: bookingUpdateError } = await supabase
+      .from('bookings')
+      .update({ coach_id: newCoachId })
+      .eq('client_id', clientId)
+      .eq('coach_id', oldCoachId)
+      .eq('status', 'upcoming');
+    if (bookingUpdateError) throw bookingUpdateError;
   }
 
   await supabase.from('conversations').update({ status: 'closed', closed_at: new Date().toISOString() }).eq('client_id', clientId).eq('status', 'active');

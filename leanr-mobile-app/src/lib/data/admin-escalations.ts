@@ -6,13 +6,15 @@
  * `escalation_notes_admin_all` give admin full read/write, no
  * restrictions beyond `is_admin()`.
  *
- * Rule 22's call-gate is enforced client-side here (same UX as the web
- * app's `requireCalledClient()` guard, for a fast, friendly error) AND by
- * a DB trigger (`escalations_call_gate` / `escalation_notes_call_gate`,
- * see supabase/migrations/20260907120000_escalation_call_gate_trigger.sql)
- * that rejects the same mutations at the database layer — the real trust
- * boundary for a client that talks to Supabase directly, since there is
- * no server-action layer in front of it here.
+ * Rule 22's call-gate is enforced by a DB trigger (`escalations_call_gate` /
+ * `escalation_notes_call_gate`, see
+ * supabase/migrations/20260907120000_escalation_call_gate_trigger.sql) that
+ * rejects the same mutations at the database layer — the real trust
+ * boundary for a client that talks to Supabase directly, since there is no
+ * server-action layer in front of it here. The functions below do not
+ * duplicate the check client-side; the UI (escalation/[id].tsx) simply
+ * hides the assessment/notes/resolve UI until `called_client_at` is set,
+ * so the trigger's rejection is never actually exercised in normal use.
  *
  * `admin_issue_type` is a free-text column (no DB constraint); `fault` is
  * free-text at the column level but DB CHECK-constrained to exactly 6
@@ -31,16 +33,19 @@ export type AdminEscalation = {
   category: string | null;
   status: EscalationStatus;
   created_at: string;
+  resolved_at: string | null;
   called_client_at: string | null;
   admin_issue_type: string | null;
   fault: string | null;
   admin_summary: string | null;
   resolution_notes: string | null;
+  clientCode: string | null;
   clientName: string | null;
   coachName: string | null;
+  packageName: string | null;
 };
 
-export type EscalationNote = { id: string; note: string; created_at: string };
+export type EscalationNote = { id: string; note: string; created_at: string; authorName: string | null };
 
 function pickName(rel: unknown): string | null {
   const row = Array.isArray(rel) ? rel[0] : rel;
@@ -51,71 +56,80 @@ function pickName(rel: unknown): string | null {
   return profile?.full_name ?? null;
 }
 
-export async function getAllEscalations(tab: 'active' | 'resolved'): Promise<AdminEscalation[]> {
-  let query = supabase
-    .from('escalations')
-    .select(
-      'id, reason, description, category, status, created_at, called_client_at, admin_issue_type, fault, admin_summary, resolution_notes, client_profiles(profiles(full_name)), coach_profiles(profiles(full_name))'
-    )
-    .order('created_at', { ascending: false });
-  query = tab === 'active' ? query.neq('status', 'resolved') : query.eq('status', 'resolved');
+const ESCALATION_FIELDS =
+  'id, client_id, reason, description, category, status, created_at, resolved_at, called_client_at, admin_issue_type, fault, admin_summary, resolution_notes, client_profiles(client_code, profiles(full_name)), coach_profiles(profiles(full_name))';
 
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return (data ?? []).map((row) => ({
+function mapEscalation(row: any, packageName: string | null): AdminEscalation {
+  const clientRow = Array.isArray(row.client_profiles) ? row.client_profiles[0] : row.client_profiles;
+  return {
     id: row.id,
     reason: row.reason,
     description: row.description,
     category: row.category,
     status: row.status,
     created_at: row.created_at,
+    resolved_at: row.resolved_at,
     called_client_at: row.called_client_at,
     admin_issue_type: row.admin_issue_type,
     fault: row.fault,
     admin_summary: row.admin_summary,
     resolution_notes: row.resolution_notes,
+    clientCode: clientRow?.client_code ?? null,
     clientName: pickName(row.client_profiles),
     coachName: pickName(row.coach_profiles),
-  }));
+    packageName,
+  };
+}
+
+// Matches web's list card (AdminEscalationsClient.tsx:60-80), which shows
+// `· {packageName}` from the client's active subscription -> package tier.
+async function getPackageNamesByClientId(clientIds: string[]): Promise<Map<string, string>> {
+  if (clientIds.length === 0) return new Map();
+  const { data, error } = await supabase.from('subscriptions').select('client_id, package:package_tiers(name)').eq('status', 'active').in('client_id', clientIds);
+  if (error) throw error;
+  const map = new Map<string, string>();
+  for (const s of data ?? []) {
+    const pkg = Array.isArray(s.package) ? s.package[0] : s.package;
+    if (pkg?.name) map.set(s.client_id, pkg.name);
+  }
+  return map;
+}
+
+export async function getAllEscalations(tab: 'active' | 'resolved'): Promise<AdminEscalation[]> {
+  let query = supabase.from('escalations').select(ESCALATION_FIELDS).order('created_at', { ascending: false });
+  query = tab === 'active' ? query.neq('status', 'resolved') : query.eq('status', 'resolved');
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const rows = data ?? [];
+  const clientIds = [...new Set(rows.map((r: any) => r.client_id).filter(Boolean))] as string[];
+  const packageByClient = await getPackageNamesByClientId(clientIds);
+  return rows.map((row: any) => mapEscalation(row, packageByClient.get(row.client_id) ?? null));
 }
 
 export async function getEscalationById(id: string): Promise<AdminEscalation | null> {
-  const { data, error } = await supabase
-    .from('escalations')
-    .select(
-      'id, reason, description, category, status, created_at, called_client_at, admin_issue_type, fault, admin_summary, resolution_notes, client_profiles(profiles(full_name)), coach_profiles(profiles(full_name))'
-    )
-    .eq('id', id)
-    .maybeSingle();
+  const { data, error } = await supabase.from('escalations').select(ESCALATION_FIELDS).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return null;
 
-  return {
-    id: data.id,
-    reason: data.reason,
-    description: data.description,
-    category: data.category,
-    status: data.status,
-    created_at: data.created_at,
-    called_client_at: data.called_client_at,
-    admin_issue_type: data.admin_issue_type,
-    fault: data.fault,
-    admin_summary: data.admin_summary,
-    resolution_notes: data.resolution_notes,
-    clientName: pickName(data.client_profiles),
-    coachName: pickName(data.coach_profiles),
-  };
+  const packageByClient = await getPackageNamesByClientId(data.client_id ? [data.client_id] : []);
+  return mapEscalation(data, packageByClient.get(data.client_id) ?? null);
 }
 
 export async function getEscalationNotes(escalationId: string): Promise<EscalationNote[]> {
   const { data, error } = await supabase
     .from('escalation_notes')
-    .select('id, note, created_at')
+    .select('id, note, created_at, author:profiles(full_name)')
     .eq('escalation_id', escalationId)
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as EscalationNote[];
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    note: row.note,
+    created_at: row.created_at,
+    authorName: (Array.isArray(row.author) ? row.author[0]?.full_name : row.author?.full_name) ?? null,
+  }));
 }
 
 export async function confirmCalledClient(id: string): Promise<void> {

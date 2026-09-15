@@ -27,14 +27,16 @@ export default function AdminSalesScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (sales ?? []).filter((s) => !q || s.clientName.toLowerCase().includes(q) || s.packageName.toLowerCase().includes(q));
+    return (sales ?? []).filter(
+      (s) => !q || s.clientName.toLowerCase().includes(q) || s.clientCode.toLowerCase().includes(q) || s.packageName.toLowerCase().includes(q)
+    );
   }, [sales, query]);
 
   const total = filtered.reduce((sum, s) => sum + s.amount, 0);
 
   return (
     <LightScreenScaffold title="Sales" subtitle={`Total: ${formatCurrency(total)}`}>
-      <LightTextField icon="search-outline" placeholder="Search by client or plan" value={query} onChangeText={setQuery} />
+      <LightTextField icon="search-outline" placeholder="Search by client, ID, or plan" value={query} onChangeText={setQuery} />
 
       {loading && <LightLoadingState />}
       {error && <LightErrorState message={error} onRetry={reload} />}

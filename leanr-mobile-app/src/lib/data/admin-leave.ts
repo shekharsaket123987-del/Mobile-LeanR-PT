@@ -16,6 +16,7 @@ import type { LeaveStatus, LeaveType } from './coach-availability';
 
 export type AdminLeaveRequest = {
   id: string;
+  coachId: string;
   coachName: string;
   starts_on: string;
   ends_on: string;
@@ -30,7 +31,7 @@ export type AdminLeaveRequest = {
 export async function getPendingLeaveRequests(): Promise<AdminLeaveRequest[]> {
   const { data, error } = await supabase
     .from('coach_leave')
-    .select('id, starts_on, ends_on, leave_type, partial_start_time, partial_end_time, reason, status, created_at, coach_profiles(profiles(full_name))')
+    .select('id, coach_id, starts_on, ends_on, leave_type, partial_start_time, partial_end_time, reason, status, created_at, coach_profiles(profiles(full_name))')
     .eq('status', 'pending')
     .order('starts_on', { ascending: true });
   if (error) throw error;
@@ -40,6 +41,7 @@ export async function getPendingLeaveRequests(): Promise<AdminLeaveRequest[]> {
     const profile = coachProfile ? (Array.isArray(coachProfile.profiles) ? coachProfile.profiles[0] : coachProfile.profiles) : null;
     return {
       id: row.id,
+      coachId: row.coach_id,
       coachName: profile?.full_name ?? 'Coach',
       starts_on: row.starts_on,
       ends_on: row.ends_on,

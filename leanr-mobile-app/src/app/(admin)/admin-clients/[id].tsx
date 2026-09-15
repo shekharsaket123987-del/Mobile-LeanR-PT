@@ -16,13 +16,14 @@ import { LightBadge } from '@/components/light/light-badge';
 import { LightPrimaryButton, LightSecondaryButton, LightDestructiveButton } from '@/components/light/light-button';
 import { LightCard } from '@/components/light/light-card';
 import { LightChip, LightChipGrid } from '@/components/light/light-chip';
+import { LightMeasurementChart, type ChartPoint } from '@/components/light/light-measurement-chart';
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightSegmentedControl } from '@/components/light/light-segmented-control';
 import { LightTextField } from '@/components/light/light-text-field';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightBrand } from '@/constants/light-theme';
-import { assignShadowCoach } from '@/lib/data/admin-shadow';
+import { assignShadowCoach, previewShadowAssignmentPlan, type ShadowAssignmentPlan } from '@/lib/data/admin-shadow';
 import {
   adjustClientSessions,
   getAdminClientDetail,
@@ -35,7 +36,6 @@ import {
   logMeasurement,
   logRefundRequest,
   pauseClientSubscription,
-  resumeClientSubscription,
   transferClientCoach,
   type MeasurementInput,
 } from '@/lib/data/admin-clients';
@@ -63,6 +63,9 @@ const STATUS_LABEL: Record<DerivedClientStatus, string> = {
 function formatDate(iso: string | null) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function formatMonth(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
 }
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -137,6 +140,19 @@ export default function AdminClientDetailScreen() {
           </View>
           <LightBadge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
         </View>
+        <View style={styles.demoRow}>
+          <Text style={styles.demoItem}>{client.demographics?.heightCm ? `${client.demographics.heightCm} cm` : '—'}</Text>
+          <Text style={styles.demoItem}>{client.demographics?.weightKg ? `${client.demographics.weightKg} kg` : '—'}</Text>
+          <Text style={styles.demoItem}>{client.demographics?.bmi ? `BMI ${client.demographics.bmi}` : '—'}</Text>
+        </View>
+        <View style={styles.demoBlock}>
+          <Text style={styles.demoLabel}>Goals</Text>
+          <Text style={styles.demoValue}>{client.goals.length > 0 ? client.goals.join(', ') : '—'}</Text>
+        </View>
+        <View style={styles.demoBlock}>
+          <Text style={styles.demoLabel}>Medical Notes</Text>
+          <Text style={styles.demoValue}>{client.medicalNotes ?? '—'}</Text>
+        </View>
       </LightCard>
 
       <LightSegmentedControl
@@ -163,6 +179,27 @@ export default function AdminClientDetailScreen() {
             {client.sessionsTotal != null && <Row label="Sessions Used" value={`${client.sessionsUsed ?? 0} / ${client.sessionsTotal}`} />}
             {client.pauseDaysAllowed != null && <Row label="Pause Days Allowed" value={String(client.pauseDaysAllowed)} />}
           </LightCard>
+
+          {client.progressHistory.length > 0 && (
+            <LightCard style={styles.card}>
+              <LightSectionHeader title="Progress Over Time" />
+              <LightMeasurementChart
+                points={[...client.progressHistory]
+                  .reverse()
+                  .filter((l) => l.weight != null)
+                  .map((l): ChartPoint => ({ label: formatMonth(l.loggedAt), value: l.weight as number }))}
+              />
+              {client.progressHistory[0] && (
+                <View style={styles.latestMeasurementGrid}>
+                  <Row label="Weight" value={client.progressHistory[0].weight != null ? `${client.progressHistory[0].weight} kg` : '—'} />
+                  <Row label="Body Fat" value={client.progressHistory[0].bodyFatPct != null ? `${client.progressHistory[0].bodyFatPct}%` : '—'} />
+                  <Row label="Muscle" value={client.progressHistory[0].musclePct != null ? `${client.progressHistory[0].musclePct}%` : '—'} />
+                  <Row label="Waist" value={client.progressHistory[0].waist != null ? `${client.progressHistory[0].waist} cm` : '—'} />
+                  <Row label="Logged" value={formatDate(client.progressHistory[0].loggedAt)} />
+                </View>
+              )}
+            </LightCard>
+          )}
 
           <LightSectionHeader title="Manual Controls" />
           <LightCard style={styles.card}>
@@ -197,36 +234,20 @@ export default function AdminClientDetailScreen() {
             </LightSecondaryButton>
             {panel === 'assignShadow' && client.coachId && (
               <AssignShadowPanel
-                coachOptions={(coachOptions ?? []).filter((c) => c.id !== client.coachId)}
-                busy={busy}
-                error={actionError}
-                onSubmit={(shadowCoachId, startsOn, endsOn, reason) =>
-                  run(() =>
-                    assignShadowCoach({
-                      clientId: id,
-                      clientName: client.full_name,
-                      primaryCoachId: client.coachId!,
-                      primaryCoachName: client.coachName ?? 'Coach',
-                      shadowCoachId,
-                      shadowCoachName: (coachOptions ?? []).find((c) => c.id === shadowCoachId)?.full_name ?? 'Coach',
-                      startsOn,
-                      endsOn,
-                      reason: reason || null,
-                    })
-                  )
-                }
+                clientId={id}
+                clientName={client.full_name}
+                primaryCoachId={client.coachId}
+                primaryCoachName={client.coachName ?? 'Coach'}
+                onAssigned={() => {
+                  setPanel(null);
+                  reload();
+                }}
               />
             )}
 
-            {client.subscriptionStatus === 'paused' ? (
-              <LightSecondaryButton onPress={() => run(() => resumeClientSubscription(client.subscriptionId!))} disabled={!client.subscriptionId || busy} style={styles.controlButton}>
-                Resume Subscription
-              </LightSecondaryButton>
-            ) : (
-              <LightSecondaryButton onPress={() => run(() => pauseClientSubscription(client.subscriptionId!))} disabled={!client.subscriptionId || busy} style={styles.controlButton}>
-                Pause Subscription
-              </LightSecondaryButton>
-            )}
+            <LightSecondaryButton onPress={() => run(() => pauseClientSubscription(client.subscriptionId!))} disabled={!client.subscriptionId || busy} style={styles.controlButton}>
+              Pause Subscription
+            </LightSecondaryButton>
 
             <LightSecondaryButton onPress={() => togglePanel('logMeasurement')} style={styles.controlButton}>
               Log Measurement
@@ -302,9 +323,18 @@ export default function AdminClientDetailScreen() {
         <>
           {client.sessionHistory.length === 0 && <LightEmptyState message="No sessions yet." icon="calendar-outline" />}
           {client.sessionHistory.map((b) => (
-            <LightCard key={b.id} style={styles.sessionRow}>
-              <Text style={styles.timelineTitle}>{formatDateTime(b.scheduled_start)}</Text>
-              <LightBadge label={b.status} tone={b.status === 'completed' ? 'green' : b.status === 'cancelled' ? 'red' : 'teal'} />
+            <LightCard key={b.id} style={styles.timelineCard}>
+              <View style={styles.sessionRow}>
+                <View style={styles.sessionBadges}>
+                  <LightBadge
+                    label={b.session_type === 'assessment' ? `Assessment · ${b.amount_paid ? `₹${b.amount_paid.toLocaleString('en-IN')}` : 'Free'}` : 'Regular'}
+                    tone="gray"
+                  />
+                  <LightBadge label={b.status} tone={b.status === 'completed' ? 'green' : b.status === 'cancelled' || b.status === 'missed' ? 'red' : 'teal'} />
+                </View>
+                <Text style={styles.timelineDate}>{formatDateTime(b.scheduled_start)}</Text>
+              </View>
+              {b.rating_note && <Text style={styles.timelineDesc}>{b.rating_note}</Text>}
             </LightCard>
           ))}
         </>
@@ -392,36 +422,126 @@ function TransferCoachPanel({
   );
 }
 
+/**
+ * Ad-hoc manual assign — independent of any `coach_leave` record, matching
+ * web's client-detail "Assign Shadow Coach" button + ShadowCoachAssignModal
+ * (the one legitimate manual path for a coach who never applied for leave).
+ * Same scored/availability-aware preview-then-confirm flow as the Shadow
+ * Coverage screen's queue-driven GapCard (shadow.tsx), just with an
+ * admin-chosen date range instead of one derived from an approved leave.
+ */
 function AssignShadowPanel({
-  coachOptions,
-  busy,
-  error,
-  onSubmit,
+  clientId,
+  clientName,
+  primaryCoachId,
+  primaryCoachName,
+  onAssigned,
 }: {
-  coachOptions: { id: string; full_name: string }[];
-  busy: boolean;
-  error: string | null;
-  onSubmit: (shadowCoachId: string, startsOn: string, endsOn: string, reason: string) => void;
+  clientId: string;
+  clientName: string;
+  primaryCoachId: string;
+  primaryCoachName: string;
+  onAssigned: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [selected, setSelected] = useState<string | null>(null);
   const [startsOn, setStartsOn] = useState(today);
   const [endsOn, setEndsOn] = useState(today);
   const [reason, setReason] = useState('');
+  const [plan, setPlan] = useState<ShadowAssignmentPlan | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const findCoverage = async () => {
+    setLoadingPlan(true);
+    setError(null);
+    setPlan(null);
+    try {
+      setPlan(await previewShadowAssignmentPlan(clientId, primaryCoachId, startsOn, endsOn));
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoadingPlan(false);
+    }
+  };
+
+  const confirm = async () => {
+    if (!plan || plan.assignments.length === 0) return;
+    setAssigning(true);
+    setError(null);
+    try {
+      for (const item of plan.assignments) {
+        await assignShadowCoach({
+          clientId,
+          clientName,
+          primaryCoachId,
+          primaryCoachName,
+          shadowCoachId: item.shadowCoachId,
+          shadowCoachName: item.shadowCoachName,
+          startsOn: item.startsOn,
+          endsOn: item.endsOn,
+          reason: reason || null,
+        });
+      }
+      onAssigned();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   return (
     <View style={styles.panel}>
-      <LightChipGrid>
-        {coachOptions.map((c) => (
-          <LightChip key={c.id} label={c.full_name} selected={selected === c.id} onPress={() => setSelected(c.id)} />
-        ))}
-      </LightChipGrid>
-      <LightTextField placeholder="From (YYYY-MM-DD)" value={startsOn} onChangeText={setStartsOn} accessibilityLabel="From date" />
-      <LightTextField placeholder="To (YYYY-MM-DD)" value={endsOn} onChangeText={setEndsOn} accessibilityLabel="To date" />
+      <Text style={styles.demoValue}>
+        Finds the best-matching free coach for each of this client&apos;s sessions in the range — different sessions can land on different coaches.
+      </Text>
+      <LightTextField
+        placeholder="From (YYYY-MM-DD)"
+        value={startsOn}
+        onChangeText={(v) => {
+          setStartsOn(v);
+          setPlan(null);
+        }}
+        accessibilityLabel="From date"
+      />
+      <LightTextField
+        placeholder="To (YYYY-MM-DD)"
+        value={endsOn}
+        onChangeText={(v) => {
+          setEndsOn(v);
+          setPlan(null);
+        }}
+        accessibilityLabel="To date"
+      />
       <LightTextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
       <PanelError error={error} />
-      <LightPrimaryButton loading={busy} disabled={!selected} onPress={() => selected && onSubmit(selected, startsOn, endsOn, reason)}>
-        Assign Coverage
-      </LightPrimaryButton>
+      {plan === null ? (
+        <LightPrimaryButton loading={loadingPlan} onPress={findCoverage}>
+          Find Coverage
+        </LightPrimaryButton>
+      ) : (
+        <>
+          {plan.assignments.length === 0 && plan.uncoveredDates.length === 0 && (
+            <Text style={styles.demoValue}>This client has no upcoming sessions with {primaryCoachName} in that range.</Text>
+          )}
+          {plan.assignments.map((a, i) => (
+            <Text key={i} style={styles.demoValue}>
+              {a.shadowCoachName} — {a.startsOn}
+              {a.endsOn !== a.startsOn ? ` – ${a.endsOn}` : ''}
+            </Text>
+          ))}
+          {plan.uncoveredDates.length > 0 && <Text style={styles.errorText}>No coach free on: {plan.uncoveredDates.join(', ')}</Text>}
+          <LightSecondaryButton loading={loadingPlan} onPress={findCoverage}>
+            Re-check availability
+          </LightSecondaryButton>
+          {plan.assignments.length > 0 && (
+            <LightPrimaryButton loading={assigning} onPress={confirm}>
+              Confirm Assignment{plan.assignments.length > 1 ? 's' : ''}
+            </LightPrimaryButton>
+          )}
+        </>
+      )}
     </View>
   );
 }
@@ -528,4 +648,11 @@ const styles = StyleSheet.create({
   chatSender: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: LightBrand.textMuted },
   chatBody: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary },
   sessionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sessionBadges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  demoRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
+  demoItem: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
+  demoBlock: { marginTop: 8 },
+  demoLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, textTransform: 'uppercase', color: LightBrand.textMuted, marginBottom: 2 },
+  demoValue: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  latestMeasurementGrid: { marginTop: 4 },
 });

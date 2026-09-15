@@ -24,7 +24,13 @@ export type MeasurementStatus = { stale: boolean; lastLoggedAt: string | null };
 
 export async function getMeasurementStatus(): Promise<MeasurementStatus> {
   const clientId = await getMyClientProfileId();
-  if (!clientId) return { stale: true, lastLoggedAt: null };
+  // Bug fix: this gate is a CLIENT-only business rule. A caller with no resolvable
+  // client_profiles row at all (a coach or admin — e.g. zoom.ts::openZoomLink is called
+  // from both the client's and the coach's Join buttons) isn't "a client with stale
+  // data", they're not a client — treat as not-stale so the gate never blocks a coach's
+  // own join. A genuine client always resolves a clientId, so this doesn't weaken the
+  // real staleness check for clients at all.
+  if (!clientId) return { stale: false, lastLoggedAt: null };
 
   const { data, error } = await supabase
     .from('progress_logs')

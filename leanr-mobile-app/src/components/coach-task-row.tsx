@@ -17,8 +17,9 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import { LightBadge } from '@/components/light/light-badge';
 import { LightCard } from '@/components/light/light-card';
@@ -26,10 +27,21 @@ import { LightBrand } from '@/constants/light-theme';
 import { attendanceEligible, markAttendance, markJoined } from '@/lib/data/coach-portal';
 import { getErrorMessage } from '@/lib/data/errors';
 import type { Booking } from '@/lib/data/types';
-import { openZoomLink } from '@/lib/data/zoom';
+import { getJoinState, openZoomLink } from '@/lib/data/zoom';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+/** Client's request: same countdown + 5-minute pulsing Join treatment as the client dashboard's demo card, mirrored here for the coach's own Join button. */
+const JOIN_BLINK_WINDOW_MS = 5 * 60_000;
+
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h}h : ${String(m).padStart(2, '0')}m : ${String(s).padStart(2, '0')}s`;
 }
 
 const ATTENDANCE_OPTIONS: { key: 'present' | 'late' | 'absent'; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
@@ -48,6 +60,28 @@ export function CoachTaskRow({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Ticks regardless of which branch below ultimately renders — hooks can't be called
+  // conditionally, so this (and the blink effect after it) must live above every early return.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const joinState = getJoinState(booking);
+  const msToStart = new Date(booking.scheduled_start).getTime() - now;
+  const blinking = joinState === 'joinable' && msToStart <= JOIN_BLINK_WINDOW_MS;
+
+  const joinOpacity = useSharedValue(1);
+  useEffect(() => {
+    if (blinking) {
+      joinOpacity.value = withRepeat(withSequence(withTiming(0.35, { duration: 600 }), withTiming(1, { duration: 600 })), -1, true);
+    } else {
+      joinOpacity.value = withTiming(1, { duration: 200 });
+    }
+  }, [blinking, joinOpacity]);
+  const joinBlinkStyle = useAnimatedStyle(() => ({ opacity: joinOpacity.value }));
 
   const openDetail = () => router.push({ pathname: '/session/[id]', params: { id: booking.id } });
 
@@ -120,10 +154,15 @@ export function CoachTaskRow({
       <View style={styles.headerRow}>
         <Text style={styles.time}>{formatTime(booking.scheduled_start)}</Text>
       </View>
-      <Pressable onPress={onJoin} disabled={busy} accessibilityRole="button" style={styles.joinRow}>
-        <Ionicons name={booking.coach_joined_at ? 'checkmark-circle' : 'videocam-outline'} size={17} color={LightBrand.teal} />
-        <Text style={styles.joinText}>{booking.coach_joined_at ? 'Joined — reopen Zoom' : 'Join'}</Text>
-      </Pressable>
+      {!booking.coach_joined_at && joinState !== 'ended' && (
+        <Text style={styles.countdownText}>{msToStart > 0 ? formatCountdown(msToStart) : 'Starting now'}</Text>
+      )}
+      <Animated.View style={joinBlinkStyle}>
+        <Pressable onPress={onJoin} disabled={busy} accessibilityRole="button" style={styles.joinRow}>
+          <Ionicons name={booking.coach_joined_at ? 'checkmark-circle' : 'videocam-outline'} size={17} color={LightBrand.teal} />
+          <Text style={styles.joinText}>{booking.coach_joined_at ? 'Joined — reopen Zoom' : 'Join'}</Text>
+        </Pressable>
+      </Animated.View>
       <View style={styles.attendanceRow}>
         {ATTENDANCE_OPTIONS.map((opt) => (
           <Pressable
@@ -150,6 +189,7 @@ const styles = StyleSheet.create({
   time: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
   joinRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
   joinText: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.teal },
+  countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: LightBrand.navy },
   attendanceRow: { flexDirection: 'row', gap: 8 },
   attendanceBtn: {
     flex: 1,

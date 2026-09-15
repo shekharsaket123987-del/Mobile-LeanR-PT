@@ -8,6 +8,7 @@
  * required `client_id`/`coach_id` FKs pulled from the booking itself.
  */
 import { getMyCoachProfileId } from '@/lib/data/identity';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking, ClientProfile } from './types';
 
@@ -218,6 +219,8 @@ export async function markAttendance(booking: Booking, status: 'present' | 'late
       .update({ status: 'missed', no_show_party: 'client' })
       .eq('id', booking.id);
     if (bookingError) throw bookingError;
+
+    await logTimelineEvent(booking.client_id, 'session_missed', 'Session Done', { metadata: { bookingId: booking.id } });
     return;
   }
 
@@ -270,6 +273,13 @@ export async function submitSessionNotes(
 
   const { error: bookingError } = await supabase.from('bookings').update({ status: 'completed' }).eq('id', booking.id);
   if (bookingError) throw bookingError;
+
+  // web spec §3: both fire together at notes-submission time, not at the earlier
+  // present/late marking step -- a booking doesn't close (and isn't "done" yet) until
+  // notes land, matching the pipeline booking.status stays 'upcoming' until here.
+  await logTimelineEvent(booking.client_id, 'session_completed', 'Session Done', { metadata: { bookingId: booking.id } });
+  await logTimelineEvent(booking.client_id, 'attendance_marked_present', 'Attendance marked', { metadata: { bookingId: booking.id } });
+  await logTimelineEvent(booking.client_id, 'coach_notes_uploaded', 'Session Note Updated', { metadata: { bookingId: booking.id } });
 }
 
 /**

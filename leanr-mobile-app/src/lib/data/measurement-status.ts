@@ -22,16 +22,7 @@ const STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type MeasurementStatus = { stale: boolean; lastLoggedAt: string | null };
 
-export async function getMeasurementStatus(): Promise<MeasurementStatus> {
-  const clientId = await getMyClientProfileId();
-  // Bug fix: this gate is a CLIENT-only business rule. A caller with no resolvable
-  // client_profiles row at all (a coach or admin — e.g. zoom.ts::openZoomLink is called
-  // from both the client's and the coach's Join buttons) isn't "a client with stale
-  // data", they're not a client — treat as not-stale so the gate never blocks a coach's
-  // own join. A genuine client always resolves a clientId, so this doesn't weaken the
-  // real staleness check for clients at all.
-  if (!clientId) return { stale: false, lastLoggedAt: null };
-
+async function computeMeasurementStatus(clientId: string): Promise<MeasurementStatus> {
   const { data, error } = await supabase
     .from('progress_logs')
     .select('logged_at')
@@ -44,6 +35,29 @@ export async function getMeasurementStatus(): Promise<MeasurementStatus> {
 
   const stale = Date.now() - new Date(data.logged_at).getTime() >= STALE_AFTER_MS;
   return { stale, lastLoggedAt: data.logged_at };
+}
+
+export async function getMeasurementStatus(): Promise<MeasurementStatus> {
+  const clientId = await getMyClientProfileId();
+  // Bug fix: this gate is a CLIENT-only business rule. A caller with no resolvable
+  // client_profiles row at all (a coach or admin — e.g. zoom.ts::openZoomLink is called
+  // from both the client's and the coach's Join buttons) isn't "a client with stale
+  // data", they're not a client — treat as not-stale so the gate never blocks a coach's
+  // own join. A genuine client always resolves a clientId, so this doesn't weaken the
+  // real staleness check for clients at all.
+  if (!clientId) return { stale: false, lastLoggedAt: null };
+  return computeMeasurementStatus(clientId);
+}
+
+/**
+ * mobile-app-reference/audit/timeline.md §5.6: the client-timeline's standalone
+ * "measurements overdue" banner is live-computed for WHICHEVER client's timeline
+ * an admin/coach is viewing, not the caller's own — a different resolution path
+ * from getMeasurementStatus() above (which always checks the caller's own
+ * client_profiles row).
+ */
+export async function getMeasurementStatusForClient(clientId: string): Promise<MeasurementStatus> {
+  return computeMeasurementStatus(clientId);
 }
 
 /** Same literal message the web app throws (New PRD.md §6) — thrown, not just returned, so callers can't accidentally proceed past it. */

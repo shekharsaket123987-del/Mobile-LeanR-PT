@@ -119,12 +119,16 @@ async function handleCreateClient(admin: any, body: Record<string, unknown>): Pr
     .single();
   if (subError) return jsonResponse({ error: subError.message }, 500);
 
+  // mobile-app-reference/audit/timeline.md §3: a client migration is just an
+  // admin-triggered `plan_purchased` ("Migrated onto {package}"), not its own
+  // event type -- there's no `client_migrated` in the spec's 25-value enum.
+  const { data: pkg } = await admin.from("package_tiers").select("name").eq("id", packageId).maybeSingle();
   await admin.from("client_timeline_events").insert({
     client_id: clientId,
-    event_type: "client_migrated",
-    title: "Client migrated",
+    event_type: "plan_purchased",
+    title: pkg?.name ? `Migrated onto ${pkg.name}` : "Migrated onto plan",
     description: originalPlanSize ? `Migrated from an external roster (original plan size: ${originalPlanSize}).` : "Migrated from an external roster.",
-    metadata: { originalPlanSize },
+    metadata: { originalPlanSize, packageId, subscriptionId: subscription.id },
   });
 
   if (coachId && Array.isArray(days) && days.length > 0 && hour !== null) {
@@ -139,6 +143,11 @@ async function handleCreateClient(admin: any, body: Record<string, unknown>): Pr
       await admin.rpc("generate_bookings_from_recurring_slot", { p_recurring_slot_id: slot.id, p_count: 4 });
     }
     await admin.from("conversations").insert({ client_id: clientId, coach_id: coachId, status: "active", opened_at: new Date().toISOString() });
+
+    await admin.from("client_timeline_events").insert([
+      { client_id: clientId, event_type: "coach_assigned", title: "Coach assigned", metadata: { coachId } },
+      { client_id: clientId, event_type: "slot_assigned", title: "Recurring schedule set", metadata: { days, hour, durationMinutes } },
+    ]);
   }
 
   return jsonResponse({ clientId });

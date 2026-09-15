@@ -11,6 +11,7 @@
  * status", not the raw column, per New PRD.md line 800.
  */
 import { getMyCoachProfileId } from '@/lib/data/identity';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking } from './types';
 
@@ -24,6 +25,40 @@ export function deriveClientStatus(subscriptionStatuses: string[], hasDemoBookin
   if (subscriptionStatuses.length > 0) return 'expired';
   if (hasDemoBooking) return 'demo';
   return 'not_paid';
+}
+
+const STATUS_LABELS: Record<DerivedClientStatus, string> = {
+  active: 'Active',
+  paused: 'Paused',
+  created: 'Created',
+  expired: 'Expired',
+  demo: 'Demo',
+  not_paid: 'Not Paid',
+};
+
+/** Single-client version of the roster list's batch status query, for before/after comparison. */
+export async function getClientStatusSnapshot(clientId: string): Promise<DerivedClientStatus> {
+  const [subsRes, demoRes] = await Promise.all([
+    supabase.from('subscriptions').select('status').eq('client_id', clientId),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('client_id', clientId).eq('session_type', 'assessment'),
+  ]);
+  if (subsRes.error) throw subsRes.error;
+  if (demoRes.error) throw demoRes.error;
+  return deriveClientStatus((subsRes.data ?? []).map((s) => s.status as string), (demoRes.count ?? 0) > 0);
+}
+
+/**
+ * mobile-app-reference/audit/timeline.md §3/§7.4: logs client_status_changed only when the
+ * derived status actually differs across a mutation -- call with a snapshot taken BEFORE the
+ * mutation; this re-derives the AFTER status itself. Best-effort, wired at the highest-value
+ * transition points (subscription activation, first assessment booking) rather than every
+ * possible status-affecting action -- there's no existing generic "status changed" hook point
+ * to generalize from in this app.
+ */
+export async function logClientStatusChangeIfDifferent(clientId: string, before: DerivedClientStatus): Promise<void> {
+  const after = await getClientStatusSnapshot(clientId);
+  if (after === before) return;
+  await logTimelineEvent(clientId, 'client_status_changed', `Status changed to ${STATUS_LABELS[after]}`, { metadata: { from: before, to: after } });
 }
 
 export type CoachClientListRow = {

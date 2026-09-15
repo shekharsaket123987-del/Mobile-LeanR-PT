@@ -13,6 +13,7 @@
  * pre-check alone can't catch), mirroring the web app's one-time-insert UX.
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { ClientOnboarding, FitnessGoal } from './types';
 
@@ -90,4 +91,6 @@ export async function submitOnboarding(input: OnboardingInput): Promise<void> {
     thigh: input.thigh ?? null,
   });
   if (progressError) throw progressError;
+
+  await logTimelineEvent(clientId, 'onboarding_completed', 'Onboarding Completed');
 }

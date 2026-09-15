@@ -10,6 +10,7 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { notifyProfile } from './notify';
+import { logTimelineEvent } from './timeline';
 import type { Booking, BookingStatus } from './types';
 
 function formatSessionTime(iso: string): string {
@@ -123,12 +124,20 @@ export async function cancelSessionAsAdmin(bookingId: string, reason: string | n
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: booking, error: bookingError } = await supabase.from('bookings').select('scheduled_start').eq('id', bookingId).maybeSingle();
+  const { data: booking, error: bookingError } = await supabase.from('bookings').select('client_id, scheduled_start').eq('id', bookingId).maybeSingle();
   if (bookingError) throw bookingError;
   const context = await getSessionNotifyContext(bookingId);
 
   const { error } = await supabase.rpc('cancel_booking', { p_booking_id: bookingId, p_cancelled_by: user?.id, p_reason: reason, p_enforce_cutoff: false });
   if (error) throw error;
+
+  if (booking?.client_id) {
+    await logTimelineEvent(booking.client_id, 'session_cancelled', 'Session cancelled', {
+      description: reason ?? undefined,
+      actorId: user?.id ?? null,
+      metadata: { bookingId },
+    });
+  }
 
   if (context && booking) {
     const reasonLine = reason ? ` (${reason})` : '';
@@ -147,7 +156,7 @@ export async function cancelSessionAsAdmin(bookingId: string, reason: string | n
 // server-side (migration 0018). Web's admin UI never collects a duration for
 // reschedule, so it always passes null; mobile must match, not hardcode one.
 export async function rescheduleSessionAsAdmin(bookingId: string, newStart: string, newDurationMinutes?: number | null): Promise<void> {
-  const { data: booking, error: bookingError } = await supabase.from('bookings').select('scheduled_start').eq('id', bookingId).maybeSingle();
+  const { data: booking, error: bookingError } = await supabase.from('bookings').select('client_id, scheduled_start').eq('id', bookingId).maybeSingle();
   if (bookingError) throw bookingError;
   const context = await getSessionNotifyContext(bookingId);
 
@@ -158,6 +167,16 @@ export async function rescheduleSessionAsAdmin(bookingId: string, newStart: stri
     p_enforce_cutoff: false,
   });
   if (error) throw error;
+
+  if (booking?.client_id) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await logTimelineEvent(booking.client_id, 'session_rescheduled', 'Session rescheduled', {
+      actorId: user?.id ?? null,
+      metadata: { bookingId, newStart },
+    });
+  }
 
   if (context && booking) {
     const oldTime = formatSessionTime(booking.scheduled_start);

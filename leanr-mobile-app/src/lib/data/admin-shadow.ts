@@ -55,6 +55,7 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { notifyAdmins, notifyProfile, resolveProfileIdForClient, resolveProfileIdForCoach, resolveProfileIdsForClients, formatDateRange } from './notify';
+import { logTimelineEvent } from './timeline';
 
 /** Fixed, no-DST offset — IST is always UTC+5:30. Matches booking-wizard.ts. */
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -210,6 +211,10 @@ export async function assignShadowCoach(input: {
     p_reason: input.reason,
   });
   if (error) throw error;
+
+  await logTimelineEvent(input.clientId, 'shadow_coach_assigned', 'Shadow coach assigned', {
+    metadata: { primaryCoachId: input.primaryCoachId, shadowCoachId: input.shadowCoachId, startsOn: input.startsOn, endsOn: input.endsOn },
+  });
 
   const range = formatDateRange(input.startsOn, input.endsOn);
   const [clientProfileId, shadowProfileId] = await Promise.all([

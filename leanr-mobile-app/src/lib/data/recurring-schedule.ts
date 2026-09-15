@@ -53,6 +53,7 @@ import { getMyCoach } from '@/lib/data/coach';
 import { getActiveCoachesByUtilization } from '@/lib/data/coach-utilization';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { getMySubscription } from '@/lib/data/subscription';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 
 function pad(n: number) {
@@ -267,6 +268,12 @@ export async function carryOverRecurringSchedule(newSubscriptionId: string): Pro
     if (genError) throw genError;
     results.push({ dayOfWeek: slot.day_of_week as number, requested: 4, confirmed: (generated ?? []).length });
   }
+
+  // web spec §3: carrying over the same weekly pattern onto a new subscription IS the
+  // renewal flow's final step -- the coach itself isn't newly "assigned" (same as before).
+  await logTimelineEvent(clientId, 'plan_renewed', 'Plan renewed', { metadata: { subscriptionId: newSubscriptionId } });
+  await logTimelineEvent(clientId, 'slot_assigned', 'Recurring schedule set', { metadata: { subscriptionId: newSubscriptionId, pattern: pattern.length } });
+
   return results;
 }
 
@@ -320,6 +327,12 @@ export async function setUpRecurringSchedule(
     if (genError) throw genError;
     results.push({ dayOfWeek, requested: 4, confirmed: (generated ?? []).length });
   }
+
+  // web spec §3: fires on first-time schedule setup (new client) -- coach-CHANGE flows log
+  // their own `coach_changed` event separately (coach-change.ts/admin-coach-change.ts), so this
+  // path is specifically "a coach being assigned for the first time", not a replacement.
+  await logTimelineEvent(clientId, 'coach_assigned', 'Coach assigned', { metadata: { coachId: targetCoachId } });
+  await logTimelineEvent(clientId, 'slot_assigned', 'Recurring schedule set', { metadata: { subscriptionId: subscription.id, days: daysOfWeek, hour } });
 
   return results;
 }

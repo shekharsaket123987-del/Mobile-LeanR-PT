@@ -11,6 +11,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ClientTimeline } from '@/components/client-timeline';
 import { LightAvatar } from '@/components/light/light-avatar';
 import { LightBadge } from '@/components/light/light-badge';
 import { LightPrimaryButton, LightSecondaryButton, LightDestructiveButton } from '@/components/light/light-button';
@@ -28,7 +29,6 @@ import {
   adjustClientSessions,
   getAdminClientDetail,
   getClientChatsForAdmin,
-  getClientTimeline,
   grantPauseDays,
   listAdminCoachOptions,
   listEscalationsForClient,
@@ -92,7 +92,6 @@ export default function AdminClientDetailScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: coachOptions } = useAsync(listAdminCoachOptions, []);
-  const { data: timeline } = useAsync(() => getClientTimeline(id), [id, tab]);
   const { data: escalations } = useAsync(() => listEscalationsForClient(id), [id, tab]);
   const { data: chatMessages } = useAsync(() => getClientChatsForAdmin(id), [id, tab]);
 
@@ -270,18 +269,7 @@ export default function AdminClientDetailScreen() {
         </>
       )}
 
-      {tab === 'timeline' && (
-        <>
-          {(timeline?.length ?? 0) === 0 && <LightEmptyState message="No activity logged yet." icon="time-outline" />}
-          {timeline?.map((t) => (
-            <LightCard key={t.id} style={styles.timelineCard}>
-              <Text style={styles.timelineTitle}>{t.title}</Text>
-              {t.description && <Text style={styles.timelineDesc}>{t.description}</Text>}
-              <Text style={styles.timelineDate}>{formatDateTime(t.created_at)}</Text>
-            </LightCard>
-          ))}
-        </>
-      )}
+      {tab === 'timeline' && <ClientTimeline clientId={id} />}
 
       {tab === 'escalations' && (
         <>

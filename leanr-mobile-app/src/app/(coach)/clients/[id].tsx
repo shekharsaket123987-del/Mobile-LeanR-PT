@@ -2,10 +2,14 @@
  * Client Detail — New PRD.md §4.B: "100% read-only — no forms/buttons
  * anywhere on this page" (mockup frame 4, minus its "Edit Details"
  * button, which has no backing here — see the coach-portal plan's
- * decision log). Overview/Plan/Sessions/Notes tabs. "View Journey" maps
- * to the session-history list below (this app's nearest real equivalent
- * to the web's 26-event-type `ClientTimeline` component, which doesn't
- * exist on mobile) rather than a separate action.
+ * decision log). Overview/Plan/Timeline/Sessions/Notes tabs.
+ *
+ * "Progress Timeline" tab (mobile-app-reference/audit/timeline.md §4):
+ * the shared `ClientTimeline` component, same as the admin Client Detail
+ * screen's "Client Journey Timeline" section — a coach sees this in full
+ * for their own linked clients, or read-only (via the banner below) for
+ * any other client found via Global Search; RLS (`timeline_select_by_any_coach`)
+ * is what actually widens the read, not a separate mode in the component itself.
  *
  * Read-only banner shown when reached via Search and not actually
  * assigned — exact copy per PRD.
@@ -14,6 +18,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { ClientTimeline } from '@/components/client-timeline';
 import { LightAvatar } from '@/components/light/light-avatar';
 import { LightBadge, LightStatusBadge } from '@/components/light/light-badge';
 import { LightCard } from '@/components/light/light-card';
@@ -50,7 +55,7 @@ function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-type Tab = 'overview' | 'plan' | 'sessions' | 'notes';
+type Tab = 'overview' | 'plan' | 'timeline' | 'sessions' | 'notes';
 
 export default function CoachClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -98,6 +103,7 @@ export default function CoachClientDetailScreen() {
         options={[
           { key: 'overview', label: 'Overview' },
           { key: 'plan', label: 'Plan' },
+          { key: 'timeline', label: 'Timeline' },
           { key: 'sessions', label: 'Sessions' },
           { key: 'notes', label: 'Notes' },
         ]}
@@ -129,6 +135,13 @@ export default function CoachClientDetailScreen() {
             </>
           )}
         </LightCard>
+      )}
+
+      {tab === 'timeline' && (
+        <>
+          <LightSectionHeader title="Progress Timeline" />
+          <ClientTimeline clientId={id} />
+        </>
       )}
 
       {tab === 'sessions' && (

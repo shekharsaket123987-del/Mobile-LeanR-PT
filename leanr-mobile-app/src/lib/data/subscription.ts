@@ -5,7 +5,9 @@
  * subscription's completed bookings.
  */
 import { extractFunctionErrorMessage } from '@/lib/data/edge-functions';
+import { getClientStatusSnapshot, logClientStatusChangeIfDifferent } from '@/lib/data/coach-clients';
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { Subscription } from './types';
 
@@ -74,13 +76,25 @@ async function invokeLifecycle(action: 'activate' | 'pause' | 'resume', body: Re
 
 /** `startDateIso` should be an IST calendar date (>= tomorrow) — enforced server-side regardless of client input. */
 export async function activateSubscription(subscriptionId: string, startDateIso: string): Promise<void> {
+  const clientId = await getMyClientProfileId();
+  const before = clientId ? await getClientStatusSnapshot(clientId) : null;
+
   await invokeLifecycle('activate', { subscriptionId, startDate: startDateIso });
+
+  if (clientId) {
+    await logTimelineEvent(clientId, 'plan_activated', 'Plan activated', { metadata: { subscriptionId, startDate: startDateIso } });
+    if (before) await logClientStatusChangeIfDifferent(clientId, before);
+  }
 }
 
 export async function pauseSubscription(subscriptionId: string): Promise<void> {
   await invokeLifecycle('pause', { subscriptionId });
+  const clientId = await getMyClientProfileId();
+  if (clientId) await logTimelineEvent(clientId, 'pause_started', 'Subscription paused', { metadata: { subscriptionId } });
 }
 
 export async function resumeSubscription(subscriptionId: string): Promise<void> {
   await invokeLifecycle('resume', { subscriptionId });
+  const clientId = await getMyClientProfileId();
+  if (clientId) await logTimelineEvent(clientId, 'pause_ended', 'Subscription resumed', { metadata: { subscriptionId } });
 }

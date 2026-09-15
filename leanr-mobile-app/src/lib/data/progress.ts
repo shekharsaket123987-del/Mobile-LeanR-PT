@@ -8,6 +8,7 @@
 import { getMyCoach } from '@/lib/data/coach';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { notifyProfile, resolveProfileIdForCoach } from '@/lib/data/notify';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { ProgressLog } from './types';
 
@@ -78,6 +79,8 @@ export async function logProgress(entry: LogProgressInput, options?: { skipWeekl
     logged_at: new Date().toISOString(),
   });
   if (error) throw error;
+
+  await logTimelineEvent(clientId, 'weekly_measurements_updated', 'Weekly measurements updated');
 
   // ClientPortal.md §15: "Progress/measurement updated" notifies the client's current coach,
   // in-app only. Best-effort — a notification failure must never surface as a save error.

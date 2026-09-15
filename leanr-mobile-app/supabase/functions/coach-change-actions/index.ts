@@ -164,5 +164,15 @@ async function handleRequest(req: Request): Promise<Response> {
     .eq("id", requestId);
   if (updateRequestError) return jsonResponse({ error: updateRequestError.message }, 500);
 
+  // mobile-app-reference/audit/timeline.md §3: fixed internal-side event even though
+  // the client themselves triggered this completion step (via an approved request).
+  await admin.from("client_timeline_events").insert({
+    client_id: clientId,
+    event_type: "coach_changed",
+    title: "Coach changed",
+    actor_id: userData.user.id,
+    metadata: { fromCoachId: request.current_coach_id, toCoachId: newCoachId },
+  });
+
   return jsonResponse({ success: true });
 }

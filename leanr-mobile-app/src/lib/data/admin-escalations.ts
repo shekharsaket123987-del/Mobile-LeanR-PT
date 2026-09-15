@@ -24,6 +24,7 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { notifyProfile, resolveProfileIdForClient } from './notify';
+import { logTimelineEvent } from './timeline';
 import type { EscalationStatus } from './concerns';
 
 export type AdminEscalation = {
@@ -177,6 +178,8 @@ export async function resolveEscalation(id: string, resolutionNotes: string): Pr
     })
     .eq('id', id);
   if (error) throw error;
+
+  await logTimelineEvent(row.client_id, 'escalation_resolved', 'Escalation resolved', { description: resolutionNotes, metadata: { escalationId: id } });
 
   const clientProfileId = await resolveProfileIdForClient(row.client_id);
   await notifyProfile(clientProfileId, 'feedback', 'Your concern was resolved', `We resolved your concern (${row.reason}): ${resolutionNotes}`, 'escalation_resolved_client');

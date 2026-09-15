@@ -8,6 +8,7 @@
  */
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { notifyAdmins, notifyProfile, resolveProfileIdForClient, resolveProfileIdForCoach } from '@/lib/data/notify';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking, BookingStatus } from './types';
 
@@ -105,7 +106,7 @@ export async function getClientBookingById(bookingId: string): Promise<Booking |
 /** §8f: RPC cancel_booking(p_booking_id, p_cancelled_by, p_reason, p_enforce_cutoff). */
 export async function cancelBooking(bookingId: string, reason: string | null, enforceCutoff = true) {
   const { data: userData } = await supabase.auth.getUser();
-  const { data: booking } = await supabase.from('bookings').select('coach_id, scheduled_start').eq('id', bookingId).maybeSingle();
+  const { data: booking } = await supabase.from('bookings').select('client_id, coach_id, scheduled_start').eq('id', bookingId).maybeSingle();
 
   const { error } = await supabase.rpc('cancel_booking', {
     p_booking_id: bookingId,
@@ -114,6 +115,16 @@ export async function cancelBooking(bookingId: string, reason: string | null, en
     p_enforce_cutoff: enforceCutoff,
   });
   if (error) throw error;
+
+  // web spec §2.4/§3: session_cancelled is actor-dependent (client vs staff) —
+  // listClientTimeline() resolves the side per-row from this actorId at read time.
+  if (booking?.client_id) {
+    await logTimelineEvent(booking.client_id, 'session_cancelled', 'Session cancelled', {
+      description: reason ?? undefined,
+      actorId: userData.user?.id ?? null,
+      metadata: { bookingId },
+    });
+  }
 
   // ClientPortal.md §15: cancelled-by-client notifies the coach + all admins (the cancelling
   // client is not re-notified of their own action).
@@ -223,6 +234,12 @@ export async function rescheduleBooking(
 
   const { error } = await supabase.rpc('reschedule_booking', rpcArgs);
   if (error) throw error;
+
+  // web spec §2.4/§3: session_rescheduled is actor-dependent -- this path is always the
+  // client's own action (guarded by the clientId check above), so actor defaults to them.
+  await logTimelineEvent(clientId, 'session_rescheduled', 'Session rescheduled', {
+    metadata: { bookingId, newStart, newCoachId: newCoachId ?? null },
+  });
 
   // GAP-12 / web spec §14: "Session rescheduled" always notifies the client too, regardless of
   // who initiated it — the earlier omission here (on the theory the client "already knows,

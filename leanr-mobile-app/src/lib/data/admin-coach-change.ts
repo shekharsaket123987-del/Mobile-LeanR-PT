@@ -19,6 +19,7 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import { notifyProfile, resolveProfileIdForClient, resolveProfileIdForCoach } from './notify';
+import { logTimelineEvent } from './timeline';
 
 export type AdminCoachChangeRequest = {
   id: string;
@@ -195,6 +196,8 @@ export async function approveCoachChangeRequestWithCoach(id: string, clientId: s
     .update({ status: 'approved', new_coach_id: newCoachId, resolved_by: user?.id, resolved_at: new Date().toISOString() })
     .eq('id', id);
   if (updateError) throw updateError;
+
+  await logTimelineEvent(clientId, 'coach_changed', 'Coach changed', { metadata: { fromCoachId: oldCoachId, toCoachId: newCoachId } });
 
   const clientProfile = Array.isArray(requestRow.client_profiles) ? requestRow.client_profiles[0] : requestRow.client_profiles;
   const clientProfileRow = clientProfile ? (Array.isArray(clientProfile.profiles) ? clientProfile.profiles[0] : clientProfile.profiles) : null;

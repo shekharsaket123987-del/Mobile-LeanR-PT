@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase/client';
 import { getBookingSettings } from './booking-wizard';
 import { deriveClientStatus, type DerivedClientStatus } from './coach-clients';
 import { notifyProfile, resolveProfileIdForCoach } from './notify';
+import { logTimelineEvent } from './timeline';
 import type { Booking } from './types';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -252,13 +253,37 @@ export async function getAdminClientDetail(clientId: string): Promise<AdminClien
 }
 
 export async function adjustClientSessions(subscriptionId: string, newTotal: number): Promise<void> {
+  const { data: sub, error: fetchError } = await supabase.from('subscriptions').select('client_id').eq('id', subscriptionId).maybeSingle();
+  if (fetchError) throw fetchError;
+
   const { error } = await supabase.from('subscriptions').update({ sessions_total: newTotal }).eq('id', subscriptionId);
   if (error) throw error;
+
+  if (sub) {
+    await logTimelineEvent(sub.client_id, 'plan_extended', `Plan extended to ${newTotal} sessions`, { metadata: { subscriptionId, newTotal } });
+  }
 }
 
 export async function grantPauseDays(subscriptionId: string, newPauseDaysAllowed: number): Promise<void> {
+  const { data: sub, error: fetchError } = await supabase
+    .from('subscriptions')
+    .select('client_id, pause_days_allowed')
+    .eq('id', subscriptionId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+
   const { error } = await supabase.from('subscriptions').update({ pause_days_allowed: newPauseDaysAllowed }).eq('id', subscriptionId);
   if (error) throw error;
+
+  if (sub) {
+    const additionalDays = newPauseDaysAllowed - (sub.pause_days_allowed ?? 0);
+    await logTimelineEvent(
+      sub.client_id,
+      'plan_promise_adjusted',
+      `Pause-days allowance ${additionalDays >= 0 ? 'increased' : 'decreased'} by ${Math.abs(additionalDays)}`,
+      { metadata: { subscriptionId, additionalDays } }
+    );
+  }
 }
 
 /** Resolves the client + assigned coach + plan name for a subscription, for the pause/resume notifications below. */
@@ -283,8 +308,15 @@ async function getSubscriptionNotifyContext(subscriptionId: string): Promise<{ c
 }
 
 export async function pauseClientSubscription(subscriptionId: string): Promise<void> {
+  const { data: sub, error: fetchError } = await supabase.from('subscriptions').select('client_id').eq('id', subscriptionId).maybeSingle();
+  if (fetchError) throw fetchError;
+
   const { error } = await supabase.from('subscriptions').update({ status: 'paused', paused_at: new Date().toISOString() }).eq('id', subscriptionId);
   if (error) throw error;
+
+  if (sub) {
+    await logTimelineEvent(sub.client_id, 'pause_started', 'Subscription paused', { metadata: { subscriptionId } });
+  }
 
   const { clientProfileId, coachProfileId, planName } = await getSubscriptionNotifyContext(subscriptionId);
   await notifyProfile(clientProfileId, 'system', 'Subscription paused', `Your ${planName} subscription has been paused.`, 'subscription_paused_client');
@@ -344,6 +376,8 @@ export async function transferClientCoach(clientId: string, newCoachId: string, 
   const newCoachProfile = newCoachRow.data ? (Array.isArray(newCoachRow.data.profiles) ? newCoachRow.data.profiles[0] : newCoachRow.data.profiles) : null;
   const newCoachName = newCoachProfile?.full_name ?? 'your new coach';
 
+  await logTimelineEvent(clientId, 'coach_changed', 'Coach changed', { metadata: { fromCoachId: oldCoachId, toCoachId: newCoachId } });
+
   await notifyProfile(clientRow.data?.profile_id ?? null, 'booking', 'Coach changed', `You've been moved to ${newCoachName}.`, 'coach_changed_client');
   if (oldCoachId) {
     const oldCoachProfileId = await resolveProfileIdForCoach(oldCoachId);
@@ -368,11 +402,20 @@ export type MeasurementInput = {
 export async function logMeasurement(clientId: string, input: MeasurementInput): Promise<void> {
   const { error } = await supabase.from('progress_logs').insert({ client_id: clientId, logged_at: new Date().toISOString(), ...input });
   if (error) throw error;
+
+  // web spec §2.3/§3: fixed customer-side event even when an admin logs it on the
+  // client's behalf — logTimelineEvent's default actor (the admin) resolves to
+  // actor_source "staff" while the card itself still renders on the customer side.
+  await logTimelineEvent(clientId, 'weekly_measurements_updated', 'Weekly measurements updated');
 }
 
 export async function logEscalation(clientId: string, coachId: string | null, reason: string, description: string | null): Promise<void> {
   const { error } = await supabase.from('escalations').insert({ client_id: clientId, coach_id: coachId, reason, description, status: 'open', raised_by: null });
   if (error) throw error;
+
+  // web spec §3: title is the escalation's own reason text, no actor recorded
+  // (matches `raised_by: null` above — admin intake on the client's behalf).
+  await logTimelineEvent(clientId, 'escalation_created', reason, { description: description ?? undefined, actorId: null });
 
   if (coachId) {
     const [coachProfileId, clientRow] = await Promise.all([
@@ -392,31 +435,10 @@ export async function logEscalation(clientId: string, coachId: string | null, re
  * live) — there is no other admin-writable audit surface for this.
  */
 export async function logRefundRequest(clientId: string, amount: number, reason: string): Promise<void> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { error } = await supabase.from('client_timeline_events').insert({
-    client_id: clientId,
-    event_type: 'refund_requested',
-    title: 'Refund requested',
+  await logTimelineEvent(clientId, 'refund_requested', `Refund requested: ₹${amount.toLocaleString('en-IN')}`, {
     description: reason,
     metadata: { amount },
-    actor_id: user?.id ?? null,
   });
-  if (error) throw error;
-}
-
-export type ClientTimelineEvent = { id: string; event_type: string; title: string; description: string | null; created_at: string };
-
-export async function getClientTimeline(clientId: string): Promise<ClientTimelineEvent[]> {
-  const { data, error } = await supabase
-    .from('client_timeline_events')
-    .select('id, event_type, title, description, created_at')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (error) throw error;
-  return (data ?? []) as ClientTimelineEvent[];
 }
 
 export type AdminChatMessage = { id: string; sender_role: string; body: string | null; attachment_url: string | null; created_at: string };

@@ -13,6 +13,7 @@ import RazorpayCheckout from 'react-native-razorpay';
 
 import { extractFunctionErrorMessage } from '@/lib/data/edge-functions';
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import { Brand } from '@/constants/theme';
 import type { Payment } from './types';
@@ -83,6 +84,13 @@ export async function purchasePackage(
     throw new Error(
       await extractFunctionErrorMessage(verifyError, 'Payment succeeded but could not be verified — contact support.')
     );
+  }
+
+  const clientId = await getMyClientProfileId();
+  if (clientId) {
+    await logTimelineEvent(clientId, 'plan_purchased', `Purchased ${packageName}`, {
+      metadata: { packageId, subscriptionId: verifyData.subscriptionId },
+    });
   }
 
   return { subscriptionId: verifyData.subscriptionId };

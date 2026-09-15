@@ -14,6 +14,7 @@
 import { getMyCoach } from '@/lib/data/coach';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { notifyProfile, resolveProfileIdForCoach } from '@/lib/data/notify';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 
 export type ConcernCategory =
@@ -109,6 +110,8 @@ export async function raiseConcern(input: {
     category: input.category,
   });
   if (error) throw error;
+
+  await logTimelineEvent(clientId, 'client_raised_concern', input.reason, { description: input.description ?? undefined });
 
   // ClientPortal.md §15: "Escalation raised (with a linked coach)" notifies that coach —
   // same template key the admin-initiated path already uses, for consistency.

@@ -32,8 +32,10 @@
  * (recurring-schedule.ts) since it doesn't use the hold->confirm
  * mechanism at all — see leanr-mobile-app/README.md for both.
  */
+import { getClientStatusSnapshot, logClientStatusChangeIfDifferent } from '@/lib/data/coach-clients';
 import { assertMeasurementsFresh } from '@/lib/data/measurement-status';
 import { getMyClientProfileId } from '@/lib/data/identity';
+import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 
 /** Fixed, no-DST offset — IST is always UTC+5:30. */
@@ -288,6 +290,12 @@ export async function confirmHold(
 ): Promise<string> {
   await assertMeasurementsFresh(); // New PRD.md §6 — applies to regular AND demo bookings, both funnel through here
 
+  // web spec §3/§7.4: a client's very first demo booking is the highest-value
+  // client_status_changed transition (not_paid -> demo) -- snapshot before confirming.
+  const isAssessment = options?.sessionType === 'assessment';
+  const preBookingClientId = isAssessment ? await getMyClientProfileId() : null;
+  const statusBefore = preBookingClientId ? await getClientStatusSnapshot(preBookingClientId) : null;
+
   const params: Record<string, unknown> = {
     p_temp_booking_id: tempBookingId,
     p_subscription_id: subscriptionId,
@@ -302,6 +310,24 @@ export async function confirmHold(
   const { data, error } = await supabase.rpc('confirm_booking', params);
   if (error) throw error;
   const bookingId = data as string;
+
+  // web spec §3/§7.4: confirmHold always passes p_recurring_slot_id: null (recurring
+  // occurrences are generated via a separate RPC, not this path), so every booking
+  // created here is by definition the "one-off (non-recurring booking)" manual_session_added
+  // covers -- ad-hoc regular sessions and demo bookings alike.
+  const [clientId, bookingRow] = await Promise.all([
+    getMyClientProfileId(),
+    supabase.from('bookings').select('scheduled_start, coach_id').eq('id', bookingId).maybeSingle().then((r) => r.data),
+  ]);
+  if (clientId) {
+    await logTimelineEvent(clientId, 'manual_session_added', 'Session added', {
+      description: bookingRow ? new Date(bookingRow.scheduled_start).toLocaleString() : undefined,
+      metadata: { bookingId, coachId: bookingRow?.coach_id ?? null },
+    });
+  }
+  if (statusBefore && preBookingClientId) {
+    await logClientStatusChangeIfDifferent(preBookingClientId, statusBefore);
+  }
 
   // GAP-07 / web spec §14: client + coach must be notified on any regular or demo booking —
   // best-effort, mirrors this codebase's own established pattern of never failing the primary

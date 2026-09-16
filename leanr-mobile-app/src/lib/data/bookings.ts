@@ -89,6 +89,12 @@ export async function getWorkoutNotesForBookings(bookingIds: string[]): Promise<
   return notesById;
 }
 
+/** Mirrors coach-portal.ts's `markJoined` — lets the no-show cron (see the session-reminders Edge Function) tell whether the client actually tapped Join, not just whether the coach did. */
+export async function markClientJoined(bookingId: string) {
+  const { error } = await supabase.from('bookings').update({ client_joined_at: new Date().toISOString() }).eq('id', bookingId);
+  if (error) throw error;
+}
+
 export async function getClientBookingById(bookingId: string): Promise<Booking | null> {
   const clientId = await getMyClientProfileId();
   if (!clientId) return null;

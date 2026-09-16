@@ -35,7 +35,7 @@ import { DisplayFont } from '@/constants/theme';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
-import { getUpcomingBookings, rateSession } from '@/lib/data/bookings';
+import { getUpcomingBookings, markClientJoined, rateSession } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
 import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
 import { getClientJourneyStage, getClientJourneyState } from '@/lib/data/journey';
@@ -103,6 +103,7 @@ function DemoJoinRow({ booking }: { booking: Booking }) {
   const onJoin = async () => {
     setJoining(true);
     try {
+      await markClientJoined(booking.id);
       await openZoomLink(booking);
     } catch (err) {
       Alert.alert('Could not join', getErrorMessage(err));
@@ -275,6 +276,7 @@ function EnrolledJoinRow({ booking }: { booking: Booking }) {
   const onJoin = async () => {
     setJoining(true);
     try {
+      await markClientJoined(booking.id);
       await openZoomLink(booking);
     } catch (err) {
       Alert.alert('Could not join', getErrorMessage(err));

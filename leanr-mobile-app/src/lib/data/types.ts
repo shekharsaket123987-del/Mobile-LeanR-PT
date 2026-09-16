@@ -27,6 +27,7 @@ export type Booking = {
   attendance_overdue: boolean;
   notes_overdue: boolean;
   coach_joined_at: string | null;
+  client_joined_at: string | null;
   zoom_join_url: string | null;
   zoom_start_url: string | null;
   cancelled_by: string | null; // free text column (e.g. "admin"/"coach"/"client"), not an enum

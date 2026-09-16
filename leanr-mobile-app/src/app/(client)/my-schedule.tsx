@@ -1,9 +1,15 @@
 /**
- * My Schedule (recurring weekly pattern) — LEANR_PT_MOBILE_PRD.md §15
- * "Recurring pattern" mechanism, §13 rules 18-19. See git history for the
- * confirmed schema/RLS detail and deliberate simplifications (leave-
- * agnostic time matching, same-coach-only matching, simplified fallback
- * ladder) — unchanged by this relight, business logic untouched.
+ * My Schedule (recurring weekly pattern) — LEANR_PT_MOBILE_PRD.md §15,
+ * recurrsing-slot.md §4.1/§9.7 "Recurring pattern" mechanism. Step 2 is a
+ * strict 3-tier fallback, in this exact order: (1) the 3 curated weekly
+ * patterns (Mon/Wed/Fri, Tue/Thu/Sat, 6-day) as the primary choice; (2) if
+ * none fit, "2 Days a Week" — one of the 6 curated pairs that are subsets
+ * of those same two trios, never an arbitrary day combination; (3) only as
+ * the last resort, "Choose Your Own Days" (2-5 free-picked days, Mon-Sat).
+ * See git history for the confirmed schema/RLS detail and remaining
+ * deliberate simplifications (leave-agnostic time matching, same-coach-
+ * only matching within a chosen pattern) — unchanged by this relight,
+ * business logic untouched beyond the pattern-tier fix above.
  *
  * Relit + restructured for the post-purchase light theme (mockup frames
  * 6-7, "Schedule Setup" — continuing onboarding's step numbering: this
@@ -33,12 +39,17 @@ import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/lig
 import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
 import { LightSectionHeader } from '@/components/light/light-section-header';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightTextLink } from '@/components/light/light-tappable';
 import { LightBrand } from '@/constants/light-theme';
-import { getBookingSettings } from '@/lib/data/booking-wizard';
+import { formatLocalHourLabel, getBookingSettings } from '@/lib/data/booking-wizard';
 import { getMyCoach } from '@/lib/data/coach';
 import {
   findCoachForSchedule,
+  findDayCoverage,
   getMyActiveRecurringSlots,
+  PAIRS_MWF,
+  PAIRS_TTS,
+  PATTERN_PRESETS,
   setUpRecurringSchedule,
   WEEKDAYS,
   type CoachMatchCandidate,
@@ -52,32 +63,28 @@ import type { CoachProfile } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
 
+/** Shows each slot in the viewer's own device timezone (e.g. "7:30 AM EST" for a US client), not always IST — the underlying match is still computed in IST; only the label changes per viewer. */
 function formatHourLabel(hour: number) {
-  const h12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h12}:00 ${hour >= 12 ? 'PM' : 'AM'} IST`;
+  return formatLocalHourLabel(hour);
 }
 
 function dayLabel(dow: number) {
   return WEEKDAYS.find((d) => d.dow === dow)?.short ?? String(dow);
 }
 
-type SlotType = 'standard' | 'pair' | 'custom';
-const STANDARD_DAYS = [1, 3, 5];
+type SlotType = 'mwf' | 'tts' | 'sixday' | 'pair' | 'custom';
+
+/** recurrsing-slot.md §4.1: both trios' curated pairs presented together as one flat list of 6. */
+const ALL_PAIRS: [number, number][] = [...PAIRS_MWF, ...PAIRS_TTS];
 
 type Phase = 'pick' | 'saving' | 'success';
 
 export default function MyScheduleScreen() {
   const { data, loading, error, reload } = useAsync(async () => {
-    const [coach, subscription, currentSlots, settings] = await Promise.all([
-      getMyCoach(),
-      getMySubscription(),
-      getMyActiveRecurringSlots(),
-      getBookingSettings(),
-    ]);
-    return { coach, subscription, currentSlots, settings };
+    const [subscription, currentSlots, settings] = await Promise.all([getMySubscription(), getMyActiveRecurringSlots(), getBookingSettings()]);
+    return { subscription, currentSlots, settings };
   }, []);
 
-  const coach = data?.coach ?? null;
   const subscription = data?.subscription ?? null;
   const currentSlots = data?.currentSlots ?? [];
   const settings = data?.settings ?? null;
@@ -89,13 +96,22 @@ export default function MyScheduleScreen() {
   const isChangeContext = currentSlots.length > 0;
 
   const [wizardStep, setWizardStep] = useState<2 | 3>(2);
-  const [slotType, setSlotType] = useState<SlotType>('standard');
-  const [selectedDays, setSelectedDays] = useState<number[]>(STANDARD_DAYS);
+  const [slotType, setSlotType] = useState<SlotType>('mwf');
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [trainerPreference, setTrainerPreference] = useState<TrainerPreference>('same');
   const [trainerGender, setTrainerGender] = useState<TrainerGenderPreference>('no_preference');
   const genderChosen = !isChangeContext || trainerGender !== 'no_preference';
+
+  // First-time clients have no existing coach to mean "Same trainer" against — default them
+  // to the whole-roster search instead of a preference that can only ever return no match.
+  useEffect(() => {
+    if (!loading && !isChangeContext) setTrainerPreference('no_preference');
+  }, [loading, isChangeContext]);
+
   const [hours, setHours] = useState<number[] | null>(null);
   const [matchedCoach, setMatchedCoach] = useState<CoachMatchCandidate | null>(null);
+  const [dayCoverage, setDayCoverage] = useState<Record<number, boolean> | null>(null);
   const [assignedCoach, setAssignedCoach] = useState<CoachProfile | null>(null);
   const [hoursLoading, setHoursLoading] = useState(false);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
@@ -103,29 +119,45 @@ export default function MyScheduleScreen() {
   const [results, setResults] = useState<SetupResult[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const onSelectSlotType = (type: SlotType) => {
-    setSlotType(type);
+  const onSelectPattern = (preset: (typeof PATTERN_PRESETS)[number]) => {
+    setSlotType(preset.key);
     setSelectedHour(null);
-    if (type === 'standard') setSelectedDays(STANDARD_DAYS);
-    else setSelectedDays([]);
+    setSelectedDays([...preset.days]);
   };
 
-  const toggleDay = (dow: number) => {
+  const onSelectPair = (pair: [number, number]) => {
+    setSlotType('pair');
     setSelectedHour(null);
+    setSelectedDays(pair);
+  };
+
+  /** Switches into custom mode on the first tap (starting a fresh 1-day selection), then behaves as a plain multi-select toggle. */
+  const toggleCustomDay = (dow: number) => {
+    setSelectedHour(null);
+    if (slotType !== 'custom') {
+      setSlotType('custom');
+      setSelectedDays([dow]);
+      return;
+    }
     setSelectedDays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)));
   };
 
   const daysValid =
-    slotType === 'standard' ? true : slotType === 'pair' ? selectedDays.length === 2 : selectedDays.length >= 2 && selectedDays.length <= 5;
+    slotType === 'mwf' || slotType === 'tts' || slotType === 'sixday'
+      ? true
+      : slotType === 'pair'
+        ? selectedDays.length === 2
+        : selectedDays.length >= 2 && selectedDays.length <= 5;
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!coach || !settings || selectedDays.length === 0 || wizardStep !== 3 || !genderChosen) {
+    if (!settings || selectedDays.length === 0 || wizardStep !== 3 || !genderChosen) {
       Promise.resolve().then(() => {
         if (!cancelled) {
           setHours(null);
           setMatchedCoach(null);
+          setDayCoverage(null);
         }
       });
       return () => {
@@ -137,20 +169,22 @@ export default function MyScheduleScreen() {
       if (cancelled) return;
       setHours(null);
       setMatchedCoach(null);
+      setDayCoverage(null);
       setSelectedHour(null);
       setHoursLoading(true);
     });
-    findCoachForSchedule(
-      selectedDays,
-      settings.defaultSessionDurationMinutes,
-      { startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour },
-      trainerPreference,
-      trainerGender
-    )
-      .then((match) => {
+    const window = { startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour };
+    findCoachForSchedule(selectedDays, settings.defaultSessionDurationMinutes, window, trainerPreference, trainerGender)
+      .then(async (match) => {
         if (cancelled) return;
         setHours(match?.hours ?? []);
         setMatchedCoach(match?.coach ?? null);
+        // No coach covers every selected day at any common hour — pinpoint which
+        // specific day(s) are the blocker instead of a bare "no match" message.
+        if (!match) {
+          const coverage = await findDayCoverage(selectedDays, settings.defaultSessionDurationMinutes, window, trainerGender);
+          if (!cancelled) setDayCoverage(coverage);
+        }
       })
       .catch((err) => {
         if (!cancelled) setActionError(getErrorMessage(err));
@@ -161,7 +195,7 @@ export default function MyScheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [coach, settings, selectedDays, trainerPreference, trainerGender, wizardStep, genderChosen]);
+  }, [settings, selectedDays, trainerPreference, trainerGender, wizardStep, genderChosen]);
 
   const onConfirm = async () => {
     if (!settings || selectedHour === null || selectedDays.length === 0 || !matchedCoach) return;
@@ -202,14 +236,6 @@ export default function MyScheduleScreen() {
         <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
           View plans
         </LightPrimaryButton>
-      </LightScreenScaffold>
-    );
-  }
-
-  if (!coach) {
-    return (
-      <LightScreenScaffold title="Set Up Your Schedule">
-        <LightEmptyState message="You need a coach assigned before setting up a recurring schedule." icon="person-outline" />
       </LightScreenScaffold>
     );
   }
@@ -273,25 +299,51 @@ export default function MyScheduleScreen() {
       {wizardStep === 2 && (
         <>
           <LightCard>
-            <LightSectionHeader title="Select your slots type" />
+            <LightSectionHeader title="Choose your weekly pattern" />
             <LightChipGrid>
-              <LightChip label="Standard (Mon, Wed, Fri)" selected={slotType === 'standard'} onPress={() => onSelectSlotType('standard')} />
-              <LightChip label="Pair (Any 2 days)" selected={slotType === 'pair'} onPress={() => onSelectSlotType('pair')} />
-              <LightChip label="Custom (Choose 2–5 days)" selected={slotType === 'custom'} onPress={() => onSelectSlotType('custom')} />
+              {PATTERN_PRESETS.map((preset) => (
+                <LightChip
+                  key={preset.key}
+                  label={preset.key === 'sixday' ? '6 Days a Week — Mon–Sat' : `${preset.label} — 3 sessions a week`}
+                  selected={slotType === preset.key}
+                  onPress={() => onSelectPattern(preset)}
+                />
+              ))}
             </LightChipGrid>
 
-            {slotType !== 'standard' && (
+            {!showMoreOptions && (
+              <LightTextLink onPress={() => setShowMoreOptions(true)} style={styles.moreOptionsLink}>
+                Not happy with these slots?
+              </LightTextLink>
+            )}
+
+            {showMoreOptions && (
               <>
-                <LightSectionHeader title="Select days" />
+                <LightSectionHeader title="2 Days a Week" />
                 <LightChipGrid>
-                  {WEEKDAYS.map((d) => (
-                    <LightChip key={d.dow} label={d.short} selected={selectedDays.includes(d.dow)} onPress={() => toggleDay(d.dow)} />
+                  {ALL_PAIRS.map((pair) => (
+                    <LightChip
+                      key={`${pair[0]}-${pair[1]}`}
+                      label={`${dayLabel(pair[0])} + ${dayLabel(pair[1])}`}
+                      selected={slotType === 'pair' && selectedDays[0] === pair[0] && selectedDays[1] === pair[1]}
+                      onPress={() => onSelectPair(pair)}
+                    />
                   ))}
                 </LightChipGrid>
-                {!daysValid && selectedDays.length > 0 && (
-                  <Text style={styles.hintText}>
-                    {slotType === 'pair' ? 'Pick exactly 2 days.' : 'Pick between 2 and 5 days.'}
-                  </Text>
+
+                <LightSectionHeader title="Choose Your Own Days (2–5 days)" />
+                <LightChipGrid>
+                  {WEEKDAYS.map((d) => (
+                    <LightChip
+                      key={d.dow}
+                      label={d.short}
+                      selected={slotType === 'custom' && selectedDays.includes(d.dow)}
+                      onPress={() => toggleCustomDay(d.dow)}
+                    />
+                  ))}
+                </LightChipGrid>
+                {slotType === 'custom' && !daysValid && selectedDays.length > 0 && (
+                  <Text style={styles.hintText}>Pick between 2 and 5 days.</Text>
                 )}
               </>
             )}
@@ -320,33 +372,63 @@ export default function MyScheduleScreen() {
             </LightChipGrid>
             {isChangeContext && !genderChosen && <Text style={styles.hintText}>Pick a preferred coach gender to continue.</Text>}
 
-            <LightSectionHeader title="Trainer preference" />
-            <LightChipGrid>
-              <LightChip label="Same trainer" selected={trainerPreference === 'same'} onPress={() => setTrainerPreference('same')} />
-              <LightChip label="New trainer" selected={trainerPreference === 'new'} onPress={() => setTrainerPreference('new')} />
-              <LightChip
-                label="Any Available (Best Match)"
-                selected={trainerPreference === 'no_preference'}
-                onPress={() => setTrainerPreference('no_preference')}
-              />
-            </LightChipGrid>
+            {isChangeContext && (
+              <>
+                <LightSectionHeader title="Trainer preference" />
+                <LightChipGrid>
+                  <LightChip label="Same trainer" selected={trainerPreference === 'same'} onPress={() => setTrainerPreference('same')} />
+                  <LightChip label="New trainer" selected={trainerPreference === 'new'} onPress={() => setTrainerPreference('new')} />
+                  <LightChip
+                    label="Any Available (Best Match)"
+                    selected={trainerPreference === 'no_preference'}
+                    onPress={() => setTrainerPreference('no_preference')}
+                  />
+                </LightChipGrid>
+              </>
+            )}
           </LightCard>
 
           <LightCard>
             <LightSectionHeader title="Select preferred time" />
             {hoursLoading && <LightLoadingState rows={1} />}
             {!hoursLoading && hours && hours.length === 0 && (
-              <LightEmptyState message="No single time works across all those days — try a different trainer preference." />
-            )}
-            {!hoursLoading && hours && hours.length > 0 && (
               <>
-                {matchedCoach && trainerPreference !== 'same' && (
+                <LightEmptyState message="No coach can be assigned — none are free across every one of those days." />
+                {dayCoverage && (
+                  <View style={styles.coverageBlock}>
+                    {selectedDays.map((d) => (
+                      <Text key={d} style={dayCoverage[d] ? styles.coverageOk : styles.coverageBad}>
+                        {dayLabel(d)}: {dayCoverage[d] ? 'a coach is free that day' : 'no coach is free at all that day'}
+                      </Text>
+                    ))}
+                    <Text style={styles.hintText}>Try dropping the day(s) marked above, or a different trainer preference.</Text>
+                  </View>
+                )}
+              </>
+            )}
+            {!hoursLoading && settings && (
+              <>
+                {hours && hours.length > 0 && matchedCoach && trainerPreference !== 'same' && (
                   <Text style={styles.matchedCoachText}>Matched with {matchedCoach.full_name}</Text>
                 )}
+                {/* Full 5am-9pm-style grid (the live booking window) is always shown — hours with
+                    no available coach render disabled rather than disappearing, so the client can
+                    see the whole day at a glance instead of just a filtered subset. */}
                 <LightChipGrid>
-                  {hours.map((h) => (
-                    <LightChip key={h} label={formatHourLabel(h)} selected={h === selectedHour} onPress={() => setSelectedHour(h)} />
-                  ))}
+                  {Array.from({ length: settings.bookingWindowEndHour - settings.bookingWindowStartHour }, (_, i) => settings.bookingWindowStartHour + i).map(
+                    (h) => {
+                      const available = hours?.includes(h) ?? false;
+                      return (
+                        <LightChip
+                          key={h}
+                          label={formatHourLabel(h)}
+                          selected={h === selectedHour}
+                          disabled={!available}
+                          onPress={() => setSelectedHour(h)}
+                        />
+                      );
+                    }
+                  )}
                 </LightChipGrid>
               </>
             )}
@@ -385,6 +467,10 @@ const styles = StyleSheet.create({
   slotRow: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: LightBrand.textSecondary, marginTop: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
   hintText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 2 },
+  coverageBlock: { gap: 4, marginTop: 8 },
+  coverageOk: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark },
+  coverageBad: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.alertRed },
+  moreOptionsLink: { marginTop: 10 },
   warningText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.amber, marginTop: 8 },
   matchedCoachText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary, marginBottom: 4 },
   successCard: { gap: 8 },

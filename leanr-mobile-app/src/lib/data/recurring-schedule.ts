@@ -76,6 +76,16 @@ export const PATTERN_PRESETS = [
   { key: 'sixday', label: 'Mon – Sat', days: [1, 2, 3, 4, 5, 6] },
 ] as const;
 
+/**
+ * recurrsing-slot.md §4.1/§9.7: "2 Days a Week" is 6 curated fixed pairs
+ * only, not any arbitrary 2-of-6 combination — subsets of the two 3-day
+ * trios above. Free choice of any 2-5 days lives separately under
+ * "Choose Your Own Days" (§4.1's `custom` mode), offered only as the
+ * last-resort fallback if a client doesn't want any of these either.
+ */
+export const PAIRS_MWF: [number, number][] = [[1, 3], [1, 5], [3, 5]];
+export const PAIRS_TTS: [number, number][] = [[2, 4], [2, 6], [4, 6]];
+
 export type RecurringSlot = {
   id: string;
   day_of_week: number;
@@ -211,6 +221,35 @@ export async function findCoachForSchedule(
     if (hours.length > 0) return { coach: candidate, hours };
   }
   return null;
+}
+
+/**
+ * Diagnostic for when `findCoachForSchedule` finds nobody free across the
+ * WHOLE requested day-set at any common hour: checks each day on its own
+ * (ignoring the others) so the client can see exactly which day is the
+ * blocker rather than just "no match" — e.g. "Tue has no coach available;
+ * Wed and Fri do" points straight at which day to drop or swap.
+ */
+export async function findDayCoverage(
+  daysOfWeek: number[],
+  durationMinutes: number,
+  window: { startHour: number; endHour: number },
+  genderPreference: TrainerGenderPreference
+): Promise<Record<number, boolean>> {
+  const candidates = await listCandidateCoaches(genderPreference);
+  const coverage: Record<number, boolean> = {};
+  for (const day of daysOfWeek) {
+    let covered = false;
+    for (const candidate of candidates) {
+      const hours = await getCommonAvailableHours(candidate.id, [day], durationMinutes, window);
+      if (hours.length > 0) {
+        covered = true;
+        break;
+      }
+    }
+    coverage[day] = covered;
+  }
+  return coverage;
 }
 
 export type SetupResult = { dayOfWeek: number; requested: number; confirmed: number };

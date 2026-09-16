@@ -93,6 +93,26 @@ export function formatIstTimeLabel(slotStartIso: string): string {
   return `${h12}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'} IST`;
 }
 
+/**
+ * Human label for a *recurring* IST hour-of-day (no specific date attached
+ * yet — coach availability/pattern matching all operate in IST wall-clock
+ * terms, business-wide), converted to whatever timezone the viewer's own
+ * device is actually in, e.g. "7:30 AM EST" for a US-based client instead
+ * of always showing "IST". Country-to-country display, not storage — the
+ * underlying match is still computed in IST; only the label changes.
+ *
+ * Uses today's IST date purely as a reference point for resolving the
+ * viewer's own DST offset (IST itself never observes DST, so which date is
+ * used doesn't affect the IST side of the conversion) — a recurring weekly
+ * slot's local-time label can therefore shift by an hour across a DST
+ * transition in the viewer's zone, same as any calendar app showing a
+ * recurring event across timezones.
+ */
+export function formatLocalHourLabel(hour: number, minute = 0): string {
+  const instant = istHourToUtcInstant(todayIst(), hour, minute);
+  return instant.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+}
+
 export type BookingSettings = {
   bookingWindowStartHour: number;
   bookingWindowEndHour: number;

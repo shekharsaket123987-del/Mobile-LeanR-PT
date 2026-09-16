@@ -11,6 +11,15 @@
  * payment/order concerns; this one is scoped to subscription-state
  * transitions, mirroring the web app's own `planPurchase.service.ts` vs
  * `payments.service.ts` split.
+ *
+ * The real POST carries an Authorization header, which forces a browser CORS
+ * preflight (OPTIONS) first. This function had no OPTIONS handler or CORS
+ * headers at all — unlike every other client-facing function in this project
+ * (razorpay, admin-provisioning, coach-change-actions, zoom-meeting all hit
+ * and fixed this same issue) — so the preflight fell through to "Method not
+ * allowed", the browser never sent the real POST, and supabase-js surfaced
+ * that as a generic "Failed to send a request to the Edge Function" with no
+ * further detail. Activate/pause/resume were all silently broken on web.
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -19,11 +28,17 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 /** Fixed, no-DST offset — IST is always UTC+5:30. Mirrors src/lib/data/booking-wizard.ts's client-side math. */
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
 }
 
 /** IST calendar-day key (YYYY-MM-DD) for an ISO instant, ignoring time-of-day. */
@@ -58,6 +73,7 @@ async function resolveAssignedCoachProfileId(admin: ReturnType<typeof createClie
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   try {
     return await handleRequest(req);
   } catch (err) {

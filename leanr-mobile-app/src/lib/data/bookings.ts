@@ -145,30 +145,45 @@ function istDayKey(iso: string): string {
 }
 
 const RESCHEDULE_WEEKLY_CAP = 2;
+const RESCHEDULE_WINDOW_DAYS = 30;
 
 /**
- * New PRD.md §6: "reschedules-this-week >= 2" rejects. Re-derived here
- * (client-side, before calling the RPC) because — confirmed directly
- * against the live `reschedule_booking` function body — the RPC itself
- * enforces only the cutoff, not this cap or the same-day check below; the
- * PRD itself notes these are web-JS-only checks, not DB-enforced.
- *
- * Approximation, noted rather than hidden: this counts *bookings* flagged
- * `was_rescheduled` with a recent `updated_at`, not a reschedule-event log
- * (none exists) — rescheduling the exact same booking twice in one week
- * would undercount by one. A reasonable proxy given the schema, not a
- * precise event count.
+ * reschedule.md §4.3/§11.4: max 2 reschedules per Monday-start calendar
+ * week, counted from `session_rescheduled` timeline events in the current
+ * week — not a rolling window, and not a `bookings.was_rescheduled` flag
+ * (which would undercount a booking rescheduled twice in the same week).
+ * The client can't SELECT `client_timeline_events` directly (timeline is
+ * staff/coach-visible only — see the RLS hardening migration), so this
+ * goes through a SECURITY DEFINER RPC that exposes only the count, never
+ * the underlying rows (see 20260916060000_count_my_reschedules_this_week.sql).
  */
-async function countReschedulesThisWeek(clientId: string): Promise<number> {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { count, error } = await supabase
-    .from('bookings')
-    .select('id', { count: 'exact', head: true })
-    .eq('client_id', clientId)
-    .eq('was_rescheduled', true)
-    .gte('updated_at', sevenDaysAgo);
+async function countReschedulesThisWeek(): Promise<number> {
+  const { data, error } = await supabase.rpc('count_my_reschedules_this_week');
   if (error) throw error;
-  return count ?? 0;
+  return (data as number | null) ?? 0;
+}
+
+export type SchedulingRules = {
+  cancellationCutoffHours: number;
+  rescheduleCutoffHours: number;
+  reschedulesUsedThisWeek: number;
+  reschedulesRemaining: number;
+};
+
+/** reschedule.md §6.1/§11.5 `getSchedulingRulesAction` — live settings + live weekly-usage count, for the My Sessions row display (advisory only; the server-side RPCs re-validate independently). */
+export async function getSchedulingRules(): Promise<SchedulingRules> {
+  const [{ data: settings, error: settingsError }, reschedulesUsedThisWeek] = await Promise.all([
+    supabase.from('system_settings').select('key, value').in('key', ['cancellation_cutoff_hours', 'reschedule_cutoff_hours']),
+    countReschedulesThisWeek(),
+  ]);
+  if (settingsError) throw settingsError;
+  const byKey = Object.fromEntries((settings ?? []).map((row) => [row.key, row.value as number]));
+  return {
+    cancellationCutoffHours: byKey.cancellation_cutoff_hours ?? 12,
+    rescheduleCutoffHours: byKey.reschedule_cutoff_hours ?? 1,
+    reschedulesUsedThisWeek,
+    reschedulesRemaining: Math.max(0, RESCHEDULE_WEEKLY_CAP - reschedulesUsedThisWeek),
+  };
 }
 
 /** New PRD.md §6: "the new date already has another upcoming booking for this client" rejects. */
@@ -207,11 +222,20 @@ export async function rescheduleBooking(
   if (!clientId) throw new Error('Could not resolve your client profile.');
 
   if (enforceCutoff) {
-    // Both caps are client-only rules (New PRD.md §6) — admin reschedules
-    // (enforceCutoff=false, not used by this client-facing screen today)
-    // bypass them exactly like the web app's own admin path does.
+    // All three are client-only rules (reschedule.md §4.3) — admin reschedules
+    // (enforceCutoff=false) bypass them exactly like the web app's own admin
+    // path does. Re-checked here, not just at the UI layer, since the UI's
+    // calendar/slot bounds are advisory (reschedule.md §11: "never trust a
+    // client-submitted allowed flag").
+    const now = Date.now();
+    const windowEnd = now + RESCHEDULE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    const newStartMs = new Date(newStart).getTime();
+    if (newStartMs < now || newStartMs >= windowEnd) {
+      throw new Error(`The new session time must fall within the next ${RESCHEDULE_WINDOW_DAYS} days.`);
+    }
+
     const [weeklyCount, sameDayConflict] = await Promise.all([
-      countReschedulesThisWeek(clientId),
+      countReschedulesThisWeek(),
       hasAnotherUpcomingBookingOnDate(clientId, newStart, bookingId),
     ]);
     if (weeklyCount >= RESCHEDULE_WEEKLY_CAP) {

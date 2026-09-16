@@ -26,7 +26,16 @@ import { LightBadge, LightStatusBadge } from '@/components/light/light-badge';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
 import { LightTextLink } from '@/components/light/light-tappable';
 import { LightBrand } from '@/constants/light-theme';
-import { cancelBooking, canRateThisWeek, getRescheduledSessions, getSessionsByStatus, getWorkoutNotesForBookings, rateSession } from '@/lib/data/bookings';
+import {
+  cancelBooking,
+  canRateThisWeek,
+  getRescheduledSessions,
+  getSchedulingRules,
+  getSessionsByStatus,
+  getWorkoutNotesForBookings,
+  rateSession,
+  type SchedulingRules,
+} from '@/lib/data/bookings';
 import { getMyClientProfileId } from '@/lib/data/identity';
 import { acknowledgeShadowCoverage, getMyActiveShadowCoverage } from '@/lib/data/shadow-coverage';
 import { getLatestSubscription } from '@/lib/data/subscription';
@@ -52,14 +61,83 @@ function formatSessionTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function hoursUntil(iso: string): number {
+  return (new Date(iso).getTime() - Date.now()) / 3600_000;
+}
+
+/**
+ * reschedule.md §6.1/§11.7 — per-row policy display, computed from the same
+ * live cutoff settings + weekly-usage count the server-side action would
+ * use. Advisory only: the Cancel/Reschedule actions themselves re-validate
+ * independently (reschedule.md §11: "never trust a client-computed allowed
+ * flag as authorization").
+ */
+function SchedulingActionRow({
+  booking,
+  rules,
+  onCancel,
+}: {
+  booking: Booking;
+  rules: SchedulingRules;
+  onCancel: () => void;
+}) {
+  const hrs = hoursUntil(booking.scheduled_start);
+  const canCancel = hrs > rules.cancellationCutoffHours;
+  const canReschedule = hrs > rules.rescheduleCutoffHours && rules.reschedulesRemaining > 0;
+  const cancellableUntil = new Date(new Date(booking.scheduled_start).getTime() - rules.cancellationCutoffHours * 3600_000);
+  const reschedulableUntil = new Date(new Date(booking.scheduled_start).getTime() - rules.rescheduleCutoffHours * 3600_000);
+
+  return (
+    <View>
+      <View style={lightStyles.actionRow}>
+        <LightTextLink onPress={() => router.push(`/reschedule/${booking.id}`)} disabled={!canReschedule} style={!canReschedule && lightStyles.actionDisabled}>
+          Reschedule
+        </LightTextLink>
+        <LightTextLink onPress={onCancel} disabled={!canCancel} style={[lightStyles.cancelLink, !canCancel && lightStyles.actionDisabled]}>
+          Cancel
+        </LightTextLink>
+      </View>
+      <Text style={lightStyles.cutoffHint}>
+        {canCancel ? `Cancellable until ${formatSessionTime(cancellableUntil.toISOString())}` : 'Cancellation window closed'}
+      </Text>
+      <Text style={lightStyles.cutoffHint}>
+        {rules.reschedulesRemaining <= 0
+          ? 'No reschedules left this week'
+          : canReschedule
+            ? `Reschedulable until ${formatSessionTime(reschedulableUntil.toISOString())}`
+            : 'Reschedule window closed'}
+      </Text>
+    </View>
+  );
+}
+
+function SchedulingPolicyBanner({ rules }: { rules: SchedulingRules }) {
+  return (
+    <LightCard variant="teal" style={lightStyles.policyBanner}>
+      <Text style={lightStyles.policyText}>
+        Sessions must be cancelled at least {rules.cancellationCutoffHours} hour{rules.cancellationCutoffHours === 1 ? '' : 's'} before start, or
+        rescheduled at least {rules.rescheduleCutoffHours} hour{rules.rescheduleCutoffHours === 1 ? '' : 's'} before start.
+      </Text>
+      <Text style={lightStyles.policyText}>
+        {rules.reschedulesRemaining} of 2 reschedules left this week.
+      </Text>
+    </LightCard>
+  );
+}
+
 type SimpleTab = 'upcoming' | 'past';
 
 function PrePurchaseSessionsScreen() {
   const [activeTab, setActiveTab] = useState<SimpleTab>('upcoming');
-  const { data: sessions, loading, error, reload } = useAsync(
-    () => (activeTab === 'upcoming' ? getSessionsByStatus('upcoming') : getSessionsByStatus('completed')),
-    [activeTab]
-  );
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [sessions, rules] = await Promise.all([
+      activeTab === 'upcoming' ? getSessionsByStatus('upcoming') : getSessionsByStatus('completed'),
+      getSchedulingRules(),
+    ]);
+    return { sessions, rules };
+  }, [activeTab]);
+  const sessions = data?.sessions;
+  const rules = data?.rules;
 
   useFocusEffect(
     useCallback(() => {
@@ -99,6 +177,7 @@ function PrePurchaseSessionsScreen() {
 
       {loading && <LightLoadingState />}
       {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && activeTab === 'upcoming' && rules && <SchedulingPolicyBanner rules={rules} />}
       {!loading && !error && (sessions?.length ?? 0) === 0 && <LightEmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />}
       {!loading &&
         !error &&
@@ -112,14 +191,7 @@ function PrePurchaseSessionsScreen() {
             <View style={lightStyles.modeRow}>
               <Text style={lightStyles.mode}>Online (Zoom)</Text>
             </View>
-            {booking.status === 'upcoming' && (
-              <View style={lightStyles.actionRow}>
-                <LightTextLink onPress={() => router.push(`/reschedule/${booking.id}`)}>Reschedule</LightTextLink>
-                <LightTextLink onPress={() => onCancel(booking.id)} style={lightStyles.cancelLink}>
-                  Cancel
-                </LightTextLink>
-              </View>
-            )}
+            {booking.status === 'upcoming' && rules && <SchedulingActionRow booking={booking} rules={rules} onCancel={() => onCancel(booking.id)} />}
           </LightCard>
         ))}
     </LightScreenScaffold>
@@ -128,12 +200,14 @@ function PrePurchaseSessionsScreen() {
 
 function EnrolledSessionCard({
   booking,
+  rules,
   canRate,
   notes,
   onCancelled,
   onRated,
 }: {
   booking: Booking;
+  rules: SchedulingRules;
   canRate: boolean;
   notes?: string;
   onCancelled: () => void;
@@ -177,14 +251,7 @@ function EnrolledSessionCard({
           <Text style={lightStyles.notesText}>{notes}</Text>
         </View>
       )}
-      {booking.status === 'upcoming' && (
-        <View style={lightStyles.actionRow}>
-          <LightTextLink onPress={() => router.push(`/reschedule/${booking.id}`)}>Reschedule</LightTextLink>
-          <LightTextLink onPress={onCancel} style={lightStyles.cancelLink}>
-            Cancel session
-          </LightTextLink>
-        </View>
-      )}
+      {booking.status === 'upcoming' && <SchedulingActionRow booking={booking} rules={rules} onCancel={onCancel} />}
       {booking.status === 'completed' && !alreadyRated && (
         <View style={lightStyles.actionRow}>
           <LightTextLink onPress={() => (canRate ? setRateSheetOpen(true) : Alert.alert("Can't rate yet", 'You can rate one session every 7 days.'))}>
@@ -208,12 +275,12 @@ function EnrolledSessionCard({
 function EnrolledSessionsScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('upcoming');
   const { data, loading, error, reload } = useAsync(async () => {
-    const [sessions, clientId] = await Promise.all([getSessionsForTab(activeTab), getMyClientProfileId()]);
+    const [sessions, clientId, rules] = await Promise.all([getSessionsForTab(activeTab), getMyClientProfileId(), getSchedulingRules()]);
     const canRate = clientId ? await canRateThisWeek(clientId) : false;
     // GAP-04: only completed sessions can have coach notes worth fetching.
     const completedIds = sessions.filter((s) => s.status === 'completed').map((s) => s.id);
     const notesById = await getWorkoutNotesForBookings(completedIds);
-    return { sessions, canRate, notesById };
+    return { sessions, canRate, notesById, rules };
   }, [activeTab]);
 
   // GAP-05: one-time acknowledgeable "Covering for {coach}" banner — separate load so it
@@ -258,21 +325,27 @@ function EnrolledSessionsScreen() {
 
       {loading && <LightLoadingState />}
       {error && <LightErrorState message={error} onRetry={reload} />}
+      {!loading && !error && activeTab === 'upcoming' && data?.rules && <SchedulingPolicyBanner rules={data.rules} />}
       {!loading && !error && (data?.sessions.length ?? 0) === 0 && (
         <LightEmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />
       )}
       {!loading &&
         !error &&
-        data?.sessions.map((booking) => (
-          <EnrolledSessionCard
-            key={booking.id}
-            booking={booking}
-            canRate={data.canRate}
-            notes={data.notesById.get(booking.id)}
-            onCancelled={reload}
-            onRated={reload}
-          />
-        ))}
+        data?.rules &&
+        (() => {
+          const rules = data.rules;
+          return data.sessions.map((booking) => (
+            <EnrolledSessionCard
+              key={booking.id}
+              booking={booking}
+              rules={rules}
+              canRate={data.canRate}
+              notes={data.notesById.get(booking.id)}
+              onCancelled={reload}
+              onRated={reload}
+            />
+          ));
+        })()}
     </LightScreenScaffold>
   );
 }
@@ -296,4 +369,8 @@ const lightStyles = StyleSheet.create({
   notesLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 0.6, color: LightBrand.textMuted },
   notesText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary, lineHeight: 19 },
   shadowText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.tealDark, lineHeight: 19, marginBottom: 6 },
+  actionDisabled: { color: LightBrand.textMuted },
+  cutoffHint: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 4 },
+  policyBanner: { gap: 4 },
+  policyText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark, lineHeight: 17 },
 });

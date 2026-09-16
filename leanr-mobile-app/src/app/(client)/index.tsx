@@ -411,7 +411,19 @@ function EnrolledHomeScreen() {
     });
   }, [completedBookings]);
 
-  if (gate === 'checking') return null; // launch animation overlay still covers this briefly; avoids flashing dashboard widgets before the gate resolves
+  // On native, the launch splash screen covers this briefly. On web there's no
+  // equivalent, so a bare `return null` here rendered as a genuinely blank/black
+  // page for as long as the async journey-stage check took — looked identical
+  // to a frozen app rather than a loading state.
+  if (gate === 'checking') {
+    return (
+      <View style={lightStyles.root}>
+        <SafeAreaView style={lightStyles.flex} edges={['top']}>
+          <LightLoadingState />
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={lightStyles.root}>
@@ -492,7 +504,15 @@ function EnrolledHomeScreen() {
 
 export default function HomeScreen() {
   const { data: subscription, loading } = useAsync(getLatestSubscription, []);
-  if (loading) return null;
+  if (loading) {
+    return (
+      <View style={lightStyles.root}>
+        <SafeAreaView style={lightStyles.flex} edges={['top']}>
+          <LightLoadingState />
+        </SafeAreaView>
+      </View>
+    );
+  }
   return subscription ? <EnrolledHomeScreen /> : <PrePurchaseHomeScreen />;
 }
 

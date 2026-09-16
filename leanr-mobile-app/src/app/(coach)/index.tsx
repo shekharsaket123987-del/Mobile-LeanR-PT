@@ -8,7 +8,8 @@
  * bare list of today's sessions with zero KPI cards or widgets — this
  * was a real functionality gap, not just an unthemed screen.
  */
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CoachTaskRow } from '@/components/coach-task-row';
@@ -73,6 +74,13 @@ export default function CoachDashboard() {
       latestReview: recentReviews[0] ?? null,
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   if (loading) {
     return (

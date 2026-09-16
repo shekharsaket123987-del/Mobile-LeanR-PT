@@ -18,8 +18,8 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -142,6 +142,13 @@ function PrePurchaseHomeScreen() {
   }, []);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
   const [feedbackDismissed, setFeedbackDismissed] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
   const nextBooking = data?.nextBookings?.[0] ?? null;
@@ -377,6 +384,13 @@ function EnrolledHomeScreen() {
     return { nextBookings, subscription, coach, completedBookings, sessionsUsed };
   }, []);
   const [milestone, setMilestone] = useState<number | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
   const { nextBookings, coach, completedBookings } = data ?? { nextBookings: [], subscription: null, coach: null, completedBookings: [], sessionsUsed: null };

@@ -47,7 +47,7 @@ import {
   todayIst,
   type IstDate,
 } from '@/lib/data/booking-wizard';
-import { getClientBookingById, rescheduleBooking } from '@/lib/data/bookings';
+import { getClientBookingById, getSchedulingRules, rescheduleBooking } from '@/lib/data/bookings';
 import { getActiveCoachesByUtilization, type UtilizationRankedCoach } from '@/lib/data/coach-utilization';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -63,8 +63,8 @@ type SubstituteCandidate = { coachId: string; coachName: string; slots: string[]
 export default function RescheduleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, loading, error, reload } = useAsync(async () => {
-    const [booking, settings] = await Promise.all([getClientBookingById(id), getBookingSettings()]);
-    return { booking, settings };
+    const [booking, settings, rules] = await Promise.all([getClientBookingById(id), getBookingSettings(), getSchedulingRules()]);
+    return { booking, settings, rules };
   }, [id]);
 
   const [mode, setMode] = useState<CoachMode>('own');
@@ -84,6 +84,7 @@ export default function RescheduleScreen() {
 
   const booking = data?.booking ?? null;
   const settings = data?.settings ?? null;
+  const rules = data?.rules ?? null;
 
   // "My Coach" path — the original/default behavior, unchanged.
   useEffect(() => {
@@ -236,6 +237,30 @@ export default function RescheduleScreen() {
     );
   }
 
+  // reschedule.md §6.3/§11.5 `getRescheduleOptionsAction`: cutoff/weekly-cap are
+  // validated up front, before showing any picker UI — not just disabling the
+  // "Reschedule" link on the sessions list, in case this screen is reached some
+  // other way (e.g. a stale deep link) after the cap was already hit.
+  if (rules) {
+    const hoursUntilStart = (new Date(booking.scheduled_start).getTime() - Date.now()) / 3600_000;
+    if (hoursUntilStart <= rules.rescheduleCutoffHours) {
+      return (
+        <LightScreenScaffold title="Reschedule">
+          <LightEmptyState
+            message={`Too close to the session start to reschedule (cutoff is ${rules.rescheduleCutoffHours} hour${rules.rescheduleCutoffHours === 1 ? '' : 's'}).`}
+          />
+        </LightScreenScaffold>
+      );
+    }
+    if (rules.reschedulesRemaining <= 0) {
+      return (
+        <LightScreenScaffold title="Reschedule">
+          <LightEmptyState message="You have already used your maximum reschedule limit for this week (2 per week)." />
+        </LightScreenScaffold>
+      );
+    }
+  }
+
   if (phase === 'success') {
     return (
       <LightScreenScaffold title="Rescheduled!">
@@ -262,6 +287,12 @@ export default function RescheduleScreen() {
         hour: 'numeric',
         minute: '2-digit',
       })}`}>
+      {rules && (
+        <Text style={styles.remainingText}>
+          {rules.reschedulesRemaining} of 2 reschedules left this week.
+        </Text>
+      )}
+
       <LightCard>
         <LightSegmentedControl
           options={[
@@ -386,4 +417,5 @@ const styles = StyleSheet.create({
   selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
   substituteBlock: { gap: 6, marginBottom: 12 },
+  remainingText: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.tealDark, marginBottom: 4 },
 });

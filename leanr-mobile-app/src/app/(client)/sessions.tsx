@@ -15,8 +15,9 @@
  */
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { CancelSessionSheet } from '@/components/cancel-session-sheet';
 import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { LightCard } from '@/components/light/light-card';
 import { LightPrimaryButton } from '@/components/light/light-button';
@@ -41,7 +42,6 @@ import { acknowledgeShadowCoverage, getMyActiveShadowCoverage } from '@/lib/data
 import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Booking, BookingStatus } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
-import { getErrorMessage } from '@/lib/data/errors';
 
 type TabKey = BookingStatus | 'rescheduled';
 
@@ -75,12 +75,13 @@ function hoursUntil(iso: string): number {
 function SchedulingActionRow({
   booking,
   rules,
-  onCancel,
+  onCancelled,
 }: {
   booking: Booking;
   rules: SchedulingRules;
-  onCancel: () => void;
+  onCancelled: () => void;
 }) {
+  const [cancelSheetOpen, setCancelSheetOpen] = useState(false);
   const hrs = hoursUntil(booking.scheduled_start);
   const canCancel = hrs > rules.cancellationCutoffHours;
   const canReschedule = hrs > rules.rescheduleCutoffHours && rules.reschedulesRemaining > 0;
@@ -93,7 +94,7 @@ function SchedulingActionRow({
         <LightTextLink onPress={() => router.push(`/reschedule/${booking.id}`)} disabled={!canReschedule} style={!canReschedule && lightStyles.actionDisabled}>
           Reschedule
         </LightTextLink>
-        <LightTextLink onPress={onCancel} disabled={!canCancel} style={[lightStyles.cancelLink, !canCancel && lightStyles.actionDisabled]}>
+        <LightTextLink onPress={() => setCancelSheetOpen(true)} disabled={!canCancel} style={[lightStyles.cancelLink, !canCancel && lightStyles.actionDisabled]}>
           Cancel
         </LightTextLink>
       </View>
@@ -107,6 +108,17 @@ function SchedulingActionRow({
             ? `Reschedulable until ${formatSessionTime(reschedulableUntil.toISOString())}`
             : 'Reschedule window closed'}
       </Text>
+
+      <CancelSessionSheet
+        visible={cancelSheetOpen}
+        booking={booking}
+        rules={rules}
+        onClose={() => setCancelSheetOpen(false)}
+        onConfirm={async (bookingId, reason) => {
+          await cancelBooking(bookingId, reason);
+          onCancelled();
+        }}
+      />
     </View>
   );
 }
@@ -146,24 +158,6 @@ function PrePurchaseSessionsScreen() {
     }, [])
   );
 
-  const onCancel = (bookingId: string) => {
-    Alert.alert('Cancel session?', 'This cannot be undone.', [
-      { text: 'Keep session', style: 'cancel' },
-      {
-        text: 'Cancel session',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await cancelBooking(bookingId, null);
-            reload();
-          } catch (err) {
-            Alert.alert('Could not cancel', getErrorMessage(err));
-          }
-        },
-      },
-    ]);
-  };
-
   return (
     <LightScreenScaffold title="My Schedule">
       <LightSegmentedControl
@@ -191,7 +185,7 @@ function PrePurchaseSessionsScreen() {
             <View style={lightStyles.modeRow}>
               <Text style={lightStyles.mode}>Online (Zoom)</Text>
             </View>
-            {booking.status === 'upcoming' && rules && <SchedulingActionRow booking={booking} rules={rules} onCancel={() => onCancel(booking.id)} />}
+            {booking.status === 'upcoming' && rules && <SchedulingActionRow booking={booking} rules={rules} onCancelled={reload} />}
           </LightCard>
         ))}
     </LightScreenScaffold>
@@ -216,24 +210,6 @@ function EnrolledSessionCard({
   const [rateSheetOpen, setRateSheetOpen] = useState(false);
   const alreadyRated = booking.quality_rating != null || booking.trainer_rating != null;
 
-  const onCancel = () => {
-    Alert.alert('Cancel session?', 'This cannot be undone.', [
-      { text: 'Keep session', style: 'cancel' },
-      {
-        text: 'Cancel session',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await cancelBooking(booking.id, null);
-            onCancelled();
-          } catch (err) {
-            Alert.alert('Could not cancel', getErrorMessage(err));
-          }
-        },
-      },
-    ]);
-  };
-
   return (
     <LightCard>
       <View style={lightStyles.topRow}>
@@ -251,12 +227,14 @@ function EnrolledSessionCard({
           <Text style={lightStyles.notesText}>{notes}</Text>
         </View>
       )}
-      {booking.status === 'upcoming' && <SchedulingActionRow booking={booking} rules={rules} onCancel={onCancel} />}
+      {booking.status === 'upcoming' && <SchedulingActionRow booking={booking} rules={rules} onCancelled={onCancelled} />}
       {booking.status === 'completed' && !alreadyRated && (
         <View style={lightStyles.actionRow}>
-          <LightTextLink onPress={() => (canRate ? setRateSheetOpen(true) : Alert.alert("Can't rate yet", 'You can rate one session every 7 days.'))}>
-            Rate session
-          </LightTextLink>
+          {canRate ? (
+            <LightTextLink onPress={() => setRateSheetOpen(true)}>Rate session</LightTextLink>
+          ) : (
+            <Text style={lightStyles.cutoffHint}>You can rate one session every 7 days.</Text>
+          )}
         </View>
       )}
       <RateSessionSheet

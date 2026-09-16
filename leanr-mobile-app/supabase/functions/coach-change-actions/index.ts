@@ -126,9 +126,12 @@ async function handleRequest(req: Request): Promise<Response> {
     // dangling as duplicate sessions with a coach the client no longer has a schedule with.
     // Scoped by recurring_slot_id (not just client+status) to match web exactly and avoid
     // cancelling an unrelated upcoming booking (e.g. a one-off demo/assessment session).
+    // `cancelled_by` is a uuid column (FK-shaped, not free text) — the client themselves
+    // triggered this cascade by completing the coach change, so attribute it to them,
+    // not the literal string "system" (which would fail Postgres's uuid cast outright).
     const { error: cancelBookingsError } = await admin
       .from("bookings")
-      .update({ status: "cancelled", cancelled_by: "system", cancel_reason: "Client changed coaches" })
+      .update({ status: "cancelled", cancelled_by: userData.user.id, cancel_reason: "Client changed coaches" })
       .in("recurring_slot_id", oldSlotIds)
       .eq("status", "upcoming");
     if (cancelBookingsError) return jsonResponse({ error: cancelBookingsError.message }, 500);

@@ -41,9 +41,9 @@
  *   it falls straight through to `listCandidateCoaches`'s
  *   utilization-ranked search, same as the coach-change/renewal path.
  * - Changing an existing schedule cancels the old `recurring_slots` rows
- *   and inserts new ones — it does NOT cancel bookings already generated
- *   under the old pattern (no cascade spec found for this in the PRD);
- *   those stay visible in Sessions until their own status changes.
+ *   AND every still-upcoming `bookings` row generated under them
+ *   (recurrsing-slot.md §5.3/§9.12) — retire-then-recreate, not a bare
+ *   insert of new rows on top of old ones left dangling.
  * - Not atomic: each day's insert + generate call is a separate request
  *   (no client-side transactions against Supabase REST/RPC), so a
  *   failure partway through can leave a partial pattern. Documented, not
@@ -216,65 +216,42 @@ export async function findCoachForSchedule(
 export type SetupResult = { dayOfWeek: number; requested: number; confirmed: number };
 
 /**
- * Renewal `renewal_scheduling`'s "Keep My Schedule" (ClientPortal.md §9) —
- * re-bills the client's most recent recurring pattern (day/time/coach)
- * against the new subscription, one click, no re-picking. Reads the
- * client's most recently-created recurring_slots rows regardless of
- * status (the old subscription's own rows may already be inactive by the
- * time this runs) and re-inserts the same day/time/coach combination
- * against `newSubscriptionId`, generating fresh occurrences exactly like
- * `setUpRecurringSchedule` does for a fresh pick.
+ * Renewal `renewal_scheduling`'s "Keep My Schedule" — recurrsing-slot.md
+ * §6.1/§9.12/§11.6 `keepRenewalSchedule`: the client's existing ACTIVE
+ * `recurring_slots` rows are simply repointed (`subscription_id` updated)
+ * to the new subscription — coach/days/time carry over completely
+ * untouched, zero bookings cancelled or regenerated. This is one of only
+ * two repoint-in-place exceptions to the platform's usual retire-then-
+ * recreate rule (the other being admin's fast-path coach reassignment,
+ * `transferClientCoach` in admin-clients.ts) — deliberately NOT a
+ * cancel-and-recreate, unlike `setUpRecurringSchedule` below.
+ *
+ * Previously this created a brand-new set of `recurring_slots` (copying
+ * day/time/coach) and generated 4 fresh bookings instead of repointing —
+ * wrong shape (the old rows are never cancelled by anything when a
+ * subscription retires, confirmed via pg_trigger: no cascade exists — so
+ * they're still `status='active'` at this point) and would have left the
+ * client with two overlapping sets of upcoming bookings for the same
+ * day/time once both this and generate_bookings_from_recurring_slot ran.
  */
-export async function carryOverRecurringSchedule(newSubscriptionId: string): Promise<SetupResult[]> {
+export async function carryOverRecurringSchedule(newSubscriptionId: string): Promise<void> {
   const clientId = await getMyClientProfileId();
   if (!clientId) throw new Error('Could not resolve your client profile.');
 
-  const { data: priorSlots, error } = await supabase
-    .from('recurring_slots')
-    .select('day_of_week, start_time, duration_minutes, coach_id, created_at')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false });
+  const { data: activeSlots, error } = await supabase.from('recurring_slots').select('id').eq('client_id', clientId).eq('status', 'active');
   if (error) throw error;
-  if (!priorSlots || priorSlots.length === 0) throw new Error('No previous schedule found to carry over.');
+  if (!activeSlots || activeSlots.length === 0) throw new Error('No active recurring schedule to carry over — set one up instead.');
 
-  // The most recently-created pattern generation: every row sharing that newest row's
-  // coach/time/duration (one row per selected weekday, per setUpRecurringSchedule's own shape).
-  const newest = priorSlots[0];
-  const pattern = priorSlots.filter(
-    (s) => s.coach_id === newest.coach_id && s.start_time === newest.start_time && s.duration_minutes === newest.duration_minutes
-  );
+  const { error: repointError } = await supabase
+    .from('recurring_slots')
+    .update({ subscription_id: newSubscriptionId })
+    .in('id', activeSlots.map((s) => s.id));
+  if (repointError) throw repointError;
 
-  const results: SetupResult[] = [];
-  for (const slot of pattern) {
-    const { data: created, error: insertError } = await supabase
-      .from('recurring_slots')
-      .insert({
-        client_id: clientId,
-        coach_id: slot.coach_id,
-        subscription_id: newSubscriptionId,
-        day_of_week: slot.day_of_week,
-        start_time: slot.start_time,
-        duration_minutes: slot.duration_minutes,
-        status: 'active',
-      })
-      .select('id')
-      .single();
-    if (insertError) throw insertError;
-
-    const { data: generated, error: genError } = await supabase.rpc('generate_bookings_from_recurring_slot', {
-      p_recurring_slot_id: created.id,
-      p_count: 4,
-    });
-    if (genError) throw genError;
-    results.push({ dayOfWeek: slot.day_of_week as number, requested: 4, confirmed: (generated ?? []).length });
-  }
-
-  // web spec §3: carrying over the same weekly pattern onto a new subscription IS the
-  // renewal flow's final step -- the coach itself isn't newly "assigned" (same as before).
-  await logTimelineEvent(clientId, 'plan_renewed', 'Plan renewed', { metadata: { subscriptionId: newSubscriptionId } });
-  await logTimelineEvent(clientId, 'slot_assigned', 'Recurring schedule set', { metadata: { subscriptionId: newSubscriptionId, pattern: pattern.length } });
-
-  return results;
+  await logTimelineEvent(clientId, 'plan_renewed', 'Plan renewed', {
+    description: 'Kept the same trainer and schedule',
+    metadata: { subscriptionId: newSubscriptionId },
+  });
 }
 
 export async function setUpRecurringSchedule(
@@ -294,12 +271,33 @@ export async function setUpRecurringSchedule(
   const subscription = await getMySubscription();
   if (!subscription) throw new Error('You need an active plan first.');
 
-  const { error: cancelError } = await supabase
+  // recurrsing-slot.md §5.3/§9.12: changing a schedule is retire-THEN-recreate — the
+  // old slots' still-upcoming bookings must be cancelled too, or they're left dangling
+  // as duplicate sessions with a coach/time the client no longer has a pattern for.
+  // Already fixed once for the coach-change edge function's equivalent path
+  // (supabase/functions/coach-change-actions/index.ts's "GAP-03" comment) but missed here.
+  const { data: oldSlots, error: oldSlotsError } = await supabase
     .from('recurring_slots')
-    .update({ status: 'cancelled' })
+    .select('id')
     .eq('client_id', clientId)
     .eq('status', 'active');
-  if (cancelError) throw cancelError;
+  if (oldSlotsError) throw oldSlotsError;
+  const oldSlotIds = (oldSlots ?? []).map((s) => s.id as string);
+
+  if (oldSlotIds.length > 0) {
+    const { error: cancelSlotsError } = await supabase.from('recurring_slots').update({ status: 'cancelled' }).in('id', oldSlotIds);
+    if (cancelSlotsError) throw cancelSlotsError;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { error: cancelBookingsError } = await supabase
+      .from('bookings')
+      .update({ status: 'cancelled', cancelled_by: user?.id ?? null, cancel_reason: 'Client changed their recurring schedule' })
+      .in('recurring_slot_id', oldSlotIds)
+      .eq('status', 'upcoming');
+    if (cancelBookingsError) throw cancelBookingsError;
+  }
 
   const startTime = `${pad(hour)}:00:00`;
   const results: SetupResult[] = [];

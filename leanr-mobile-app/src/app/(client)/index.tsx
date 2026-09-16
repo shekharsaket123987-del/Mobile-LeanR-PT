@@ -116,7 +116,7 @@ function DemoJoinRow({ booking }: { booking: Booking }) {
       {state !== 'ended' && (
         <Text style={lightStyles.countdownText}>{msToStart > 0 ? formatCountdown(msToStart) : 'Starting now'}</Text>
       )}
-      {state === 'too-early' && <Text style={lightStyles.joinHint}>Join opens 10 min before start</Text>}
+      {state === 'too-early' && <Text style={lightStyles.joinHint}>Join opens 5 min before start</Text>}
       {state === 'joinable' && (
         <Animated.View style={blinkStyle}>
           <LightPrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
@@ -261,7 +261,7 @@ function PrePurchaseHomeScreen() {
 }
 
 const JOIN_LABEL: Record<ReturnType<typeof getJoinState>, string | null> = {
-  'too-early': 'Join opens 10 min before start',
+  'too-early': 'Join opens 5 min before start',
   joinable: 'Join session',
   ended: null,
 };

@@ -13,9 +13,8 @@
  * exist yet.
  *
  * Join-window thresholds: original PRD §15 mentions "Join in Nm"/"Live
- * now"/"Session ended" without exact minute values, so this keeps the
- * same reasonable default as before (open 10 minutes before start,
- * through the scheduled end).
+ * now"/"Session ended" without exact minute values; opens 5 minutes
+ * before start, through the scheduled end.
  */
 import * as Linking from 'expo-linking';
 
@@ -24,7 +23,7 @@ import { assertMeasurementsFresh } from '@/lib/data/measurement-status';
 import { supabase } from '@/lib/supabase/client';
 import type { Booking } from './types';
 
-const JOIN_WINDOW_BEFORE_MIN = 10;
+const JOIN_WINDOW_BEFORE_MIN = 5;
 
 export type JoinState = 'too-early' | 'joinable' | 'ended';
 

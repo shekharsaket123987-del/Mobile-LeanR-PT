@@ -169,6 +169,13 @@ async function handleCreateCoach(admin: any, body: Record<string, unknown>): Pro
     return jsonResponse({ error: "fullName, employeeCode, email, password, specialization, at least one language, and at least one weekly slot are required." }, 400);
   }
 
+  // Checked up front, before auth.admin.createUser: employee_code has a DB
+  // UNIQUE constraint, but that update happens *after* the auth account is
+  // created below, so a collision caught only there would leave an orphaned
+  // login with no completed coach profile. Failing fast here avoids that.
+  const { data: existingCode } = await admin.from("coach_profiles").select("id").eq("employee_code", employeeCode).maybeSingle();
+  if (existingCode) return jsonResponse({ error: `Employee code "${employeeCode}" is already in use by another coach.` }, 409);
+
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password,

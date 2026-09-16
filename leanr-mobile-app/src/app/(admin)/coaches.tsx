@@ -4,8 +4,8 @@
  * Status, row -> Coach Detail, header "+ Add Coach".
  */
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LightAvatar } from '@/components/light/light-avatar';
@@ -24,6 +24,13 @@ const STATUS_TONE: Record<string, 'teal' | 'green' | 'red' | 'gray'> = { active:
 export default function AdminCoachesScreen() {
   const { data: coaches, loading, error, reload } = useAsync(listAdminCoaches, []);
   const [query, setQuery] = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

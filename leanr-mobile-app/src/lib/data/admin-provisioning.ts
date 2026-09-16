@@ -7,6 +7,7 @@
  * instead of a direct `supabase.from()`/`.rpc()` call, same pattern
  * already established by `coach-change-actions`.
  */
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 
 export type CreateClientInput = {
@@ -37,7 +38,18 @@ export type CreateCoachInput = {
 
 async function invoke<T>(action: string, payload: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('admin-provisioning', { body: { action, ...payload } });
-  if (error) throw error;
+  if (error) {
+    // The edge function always returns its real reason as `{ error }` JSON in
+    // the body, even on a non-2xx status — but supabase-js's FunctionsHttpError
+    // only carries a generic "non-2xx status code" message, so the body has to
+    // be read separately or the actual reason (e.g. a password-policy failure)
+    // never reaches the UI.
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      if (body?.error) throw new Error(body.error);
+    }
+    throw error;
+  }
   if (data?.error) throw new Error(data.error);
   return data as T;
 }

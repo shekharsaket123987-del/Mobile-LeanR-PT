@@ -70,6 +70,19 @@ export default function AdminAddCoachScreen() {
   const hasValidSlot = slots.some((s) => s.days.length > 0);
   const canSubmit = fullName.trim() && employeeCode.trim() && email.trim() && password.trim() && specialization.trim() && languages.length > 0 && hasValidSlot;
 
+  const resetForm = () => {
+    setFullName('');
+    setEmployeeCode('');
+    setEmail('');
+    setPassword(randomPassword());
+    setSpecialization(COACH_SKILLS[0]);
+    setAdditionalSkills([]);
+    setLanguages([]);
+    setSlots([{ days: [], hour: HOUR_OPTIONS[0] }]);
+    setError(null);
+    setResult(null);
+  };
+
   const onSubmit = async () => {
     setError(null);
     setSubmitting(true);
@@ -102,7 +115,7 @@ export default function AdminAddCoachScreen() {
           <Text style={styles.credential}>Temporary Password: {password}</Text>
         </LightCard>
         <LightPrimaryButton onPress={() => router.replace({ pathname: '/coaches/[id]', params: { id: result.coachId } })}>Back to Coaches</LightPrimaryButton>
-        <LightGhostButton onPress={() => router.replace('/coaches/new')}>Add Another Coach</LightGhostButton>
+        <LightGhostButton onPress={resetForm}>Add Another Coach</LightGhostButton>
       </LightScreenScaffold>
     );
   }

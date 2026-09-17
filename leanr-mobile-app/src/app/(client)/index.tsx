@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -240,7 +240,7 @@ function PrePurchaseHomeScreen() {
           </IconButton>
         </View>
 
-        <View style={lightStyles.scroll}>
+        <ScrollView contentContainerStyle={lightStyles.scroll}>
           {loading && <LightLoadingState />}
           {error && <LightErrorState message={error} onRetry={reload} />}
 
@@ -302,7 +302,7 @@ function PrePurchaseHomeScreen() {
               </LightPrimaryButton>
             </>
           )}
-        </View>
+        </ScrollView>
       </SafeAreaView>
 
       <RateSessionSheet
@@ -558,7 +558,7 @@ function EnrolledHomeScreen() {
           </IconButton>
         </View>
 
-        <View style={lightStyles.scroll}>
+        <ScrollView contentContainerStyle={lightStyles.scroll}>
           {loading && <LightLoadingState />}
           {error && <LightErrorState message={error} onRetry={reload} />}
 
@@ -678,7 +678,7 @@ function EnrolledHomeScreen() {
               </LightPrimaryButton>
             </>
           )}
-        </View>
+        </ScrollView>
       </SafeAreaView>
 
       {milestone && (
@@ -713,7 +713,7 @@ const lightStyles = StyleSheet.create({
   greetingCol: { flex: 1, gap: 4, paddingRight: 12 },
   greeting: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 22, color: LightBrand.navy, lineHeight: 26 },
   journeySubtitleText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
-  scroll: { flex: 1, padding: 20, paddingTop: 16, gap: 16 },
+  scroll: { flexGrow: 1, padding: 20, paddingTop: 16, paddingBottom: 40, gap: 16 },
   heroCard: { gap: 6, paddingVertical: 18 },
   heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.teal },
   heroDate: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },

@@ -52,7 +52,13 @@ function GapCard({ gap, onAssigned }: { gap: ShadowGap; onAssigned: () => void }
     setError(null);
     setPlan(null);
     try {
-      setPlan(await previewShadowAssignmentPlan(gap.clientId, gap.primaryCoachId, gap.startsOn, gap.endsOn));
+      setPlan(
+        await previewShadowAssignmentPlan(gap.clientId, gap.primaryCoachId, gap.startsOn, gap.endsOn, {
+          leaveType: gap.leaveType,
+          partialStartTime: gap.partialStartTime,
+          partialEndTime: gap.partialEndTime,
+        })
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

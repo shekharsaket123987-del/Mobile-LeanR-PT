@@ -133,6 +133,7 @@ export default function CoachLayout() {
         <Tabs.Screen name="pending-tasks" options={{ href: null, title: 'Pending Tasks' }} />
         <Tabs.Screen name="availability" options={{ href: null, title: 'Availability' }} />
         <Tabs.Screen name="leave-requests" options={{ href: null, title: 'Leave Requests' }} />
+        <Tabs.Screen name="shadow-assignments" options={{ href: null, title: 'My Shadow Assignments' }} />
         <Tabs.Screen name="escalations" options={{ href: null, title: 'Escalations' }} />
         <Tabs.Screen name="renewals" options={{ href: null, title: 'Renewals' }} />
         <Tabs.Screen name="performance" options={{ href: null, title: 'Performance' }} />

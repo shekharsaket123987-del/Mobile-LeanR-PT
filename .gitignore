@@ -41,3 +41,6 @@ Thumbs.db
 
 # typescript
 *.tsbuildinfo
+
+# local-only credentials, never commit
+ADMIN_CREDENTIALS.local.md

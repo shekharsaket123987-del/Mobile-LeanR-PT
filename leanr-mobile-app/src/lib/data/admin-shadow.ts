@@ -84,6 +84,12 @@ export type ShadowGap = {
   startsOn: string;
   endsOn: string;
   affectedSessions: number;
+  /** Carried through so resolving this gap via the manual tool can re-apply the same
+   * partial-day time-window filter — otherwise a partial leave's manual "Find Coverage"
+   * would sweep in sessions outside the leave's actual time window (checklist item 8). */
+  leaveType: string;
+  partialStartTime: string | null;
+  partialEndTime: string | null;
 };
 
 /** Exclusive end bound for a date-only range filter — plain UTC date arithmetic, no timezone ambiguity. */
@@ -172,6 +178,9 @@ export async function getShadowCoverageGaps(): Promise<ShadowGap[]> {
         startsOn: leave.starts_on,
         endsOn: leave.ends_on,
         affectedSessions: occurrences.length,
+        leaveType: leave.leave_type,
+        partialStartTime: leave.partial_start_time,
+        partialEndTime: leave.partial_end_time,
       });
     }
   }
@@ -189,6 +198,36 @@ export async function getActiveCoachOptions(): Promise<ActiveCoachOption[]> {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     return { id: row.id as string, full_name: profile?.full_name ?? 'Coach' };
   });
+}
+
+/** Spec §11 exact copy — verbatim template text, not paraphrased on either call site. */
+async function notifyShadowAssignment(input: {
+  clientId: string;
+  clientName: string;
+  primaryCoachName: string;
+  shadowCoachId: string;
+  shadowCoachName: string;
+  startsOn: string;
+  endsOn: string;
+}): Promise<void> {
+  const [clientProfileId, shadowProfileId] = await Promise.all([
+    resolveProfileIdForClient(input.clientId),
+    resolveProfileIdForCoach(input.shadowCoachId),
+  ]);
+  await notifyProfile(
+    clientProfileId,
+    'booking',
+    'Temporary coach assigned',
+    `${input.shadowCoachName} will cover your sessions with ${input.primaryCoachName} from ${input.startsOn} to ${input.endsOn}.`,
+    'shadow_coach_assigned'
+  );
+  await notifyProfile(
+    shadowProfileId,
+    'booking',
+    'Shadow session assigned',
+    `You've been assigned as shadow coach for ${input.clientName}, covering ${input.primaryCoachName} from ${input.startsOn} to ${input.endsOn}.`,
+    'shadow_assignment_for_coach'
+  );
 }
 
 export async function assignShadowCoach(input: {
@@ -213,28 +252,66 @@ export async function assignShadowCoach(input: {
   if (error) throw error;
 
   await logTimelineEvent(input.clientId, 'shadow_coach_assigned', 'Shadow coach assigned', {
+    description: `Shadow coach assigned for ${input.clientName} (covering ${input.primaryCoachName}, ${input.startsOn} – ${input.endsOn}).`,
     metadata: { primaryCoachId: input.primaryCoachId, shadowCoachId: input.shadowCoachId, startsOn: input.startsOn, endsOn: input.endsOn },
   });
 
-  const range = formatDateRange(input.startsOn, input.endsOn);
-  const [clientProfileId, shadowProfileId] = await Promise.all([
-    resolveProfileIdForClient(input.clientId),
-    resolveProfileIdForCoach(input.shadowCoachId),
-  ]);
-  await notifyProfile(
-    clientProfileId,
-    'booking',
-    'Shadow coach assigned',
-    `${input.shadowCoachName} will cover your sessions with ${input.primaryCoachName} on ${range}.`,
-    'shadow_coach_assigned'
-  );
-  await notifyProfile(
-    shadowProfileId,
-    'booking',
-    'Shadow coverage assignment',
-    `You're covering ${input.clientName}'s sessions with ${input.primaryCoachName} on ${range}.`,
-    'shadow_assignment_for_coach'
-  );
+  await notifyShadowAssignment(input);
+}
+
+/**
+ * §9 cascading case: re-covers sessions when the SHADOW coach (not the
+ * primary) themselves goes on leave. Must match bookings on the OUTGOING
+ * shadow coach's id (`reassign_shadow_coverage` RPC, §14.3) — `assign_shadow_coach`
+ * only ever matches `coach_id = primary_coach_id`, which would find zero rows
+ * here since the affected bookings already sit at the outgoing shadow's id.
+ * Also marks the superseded `shadow_coach_assignments` row cancelled. The
+ * outgoing shadow is deliberately NOT notified here — their own leave-approval
+ * notification already told them.
+ */
+export async function reassignShadowCoverage(input: {
+  clientId: string;
+  clientName: string;
+  oldShadowCoachId: string;
+  newShadowCoachId: string;
+  newShadowCoachName: string;
+  primaryCoachId: string;
+  primaryCoachName: string;
+  startsOn: string;
+  endsOn: string;
+  reason: string | null;
+}): Promise<void> {
+  const { error } = await supabase.rpc('reassign_shadow_coverage', {
+    p_client_id: input.clientId,
+    p_old_shadow_coach_id: input.oldShadowCoachId,
+    p_new_shadow_coach_id: input.newShadowCoachId,
+    p_primary_coach_id: input.primaryCoachId,
+    p_starts_on: input.startsOn,
+    p_ends_on: input.endsOn,
+    p_reason: input.reason,
+  });
+  if (error) throw error;
+
+  await logTimelineEvent(input.clientId, 'shadow_coach_assigned', 'Shadow coach reassigned', {
+    description: `Shadow coach reassigned for ${input.clientName} (covering ${input.primaryCoachName}, ${input.startsOn} – ${input.endsOn}).`,
+    metadata: {
+      primaryCoachId: input.primaryCoachId,
+      oldShadowCoachId: input.oldShadowCoachId,
+      newShadowCoachId: input.newShadowCoachId,
+      startsOn: input.startsOn,
+      endsOn: input.endsOn,
+    },
+  });
+
+  await notifyShadowAssignment({
+    clientId: input.clientId,
+    clientName: input.clientName,
+    primaryCoachName: input.primaryCoachName,
+    shadowCoachId: input.newShadowCoachId,
+    shadowCoachName: input.newShadowCoachName,
+    startsOn: input.startsOn,
+    endsOn: input.endsOn,
+  });
 }
 
 type TimeWindow = { start_time: string; end_time: string };
@@ -465,8 +542,22 @@ export type ShadowAssignmentPlan = { assignments: ShadowAssignmentPlanItem[]; un
  * `runLeaveApprovalCascade` uses, so a different shadow coach can land on
  * different days if that's what's actually free. Does not require an approved
  * `coach_leave` row to exist.
+ *
+ * `leaveWindow` is optional and only passed when this preview is resolving a gap tied to a
+ * real (possibly partial-day) approved leave (shadow.tsx's GapCard) — the ad-hoc "undocumented
+ * absence" call site (admin-clients/[id].tsx) has no leave record at all, so it omits this and
+ * every booking in the picked range is treated as affected, same as before. When provided, the
+ * same `filterOccurrencesForLeaveWindow` predicate the automatic path uses is applied here too,
+ * so a partial leave's manual resolution never sweeps in sessions outside the leave's own time
+ * window (checklist item 8).
  */
-export async function previewShadowAssignmentPlan(clientId: string, primaryCoachId: string, startsOn: string, endsOn: string): Promise<ShadowAssignmentPlan> {
+export async function previewShadowAssignmentPlan(
+  clientId: string,
+  primaryCoachId: string,
+  startsOn: string,
+  endsOn: string,
+  leaveWindow?: { leaveType: string; partialStartTime: string | null; partialEndTime: string | null }
+): Promise<ShadowAssignmentPlan> {
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
     .select('id, scheduled_start, duration_minutes')
@@ -478,7 +569,14 @@ export async function previewShadowAssignmentPlan(clientId: string, primaryCoach
     .order('scheduled_start', { ascending: true });
   if (bookingsError) throw bookingsError;
 
-  const occurrences: Occurrence[] = (bookings ?? []).map((b) => ({ id: b.id, scheduledStart: b.scheduled_start, durationMinutes: b.duration_minutes }));
+  let occurrences: Occurrence[] = (bookings ?? []).map((b) => ({ id: b.id, scheduledStart: b.scheduled_start, durationMinutes: b.duration_minutes }));
+  if (leaveWindow) {
+    occurrences = filterOccurrencesForLeaveWindow(occurrences, {
+      leave_type: leaveWindow.leaveType,
+      partial_start_time: leaveWindow.partialStartTime,
+      partial_end_time: leaveWindow.partialEndTime,
+    });
+  }
   if (occurrences.length === 0) return { assignments: [], uncoveredDates: [] };
 
   const { data: primaryRow, error: primaryError } = await supabase.from('coach_profiles').select('specialization, languages').eq('id', primaryCoachId).single();
@@ -623,13 +721,14 @@ export async function runLeaveApprovalCascade(leave: {
     );
 
     for (const group of groups) {
-      await assignShadowCoach({
+      await reassignShadowCoverage({
         clientId: cov.client_id,
         clientName,
+        oldShadowCoachId: leave.coachId,
+        newShadowCoachId: group.shadowCoachId,
+        newShadowCoachName: group.shadowCoachName,
         primaryCoachId: cov.primary_coach_id,
         primaryCoachName: covPrimaryName,
-        shadowCoachId: group.shadowCoachId,
-        shadowCoachName: group.shadowCoachName,
         startsOn: group.startsOn,
         endsOn: group.endsOn,
         reason: 'Re-assigned: previous shadow coach also went on leave',

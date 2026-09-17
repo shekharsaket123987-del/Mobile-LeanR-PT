@@ -38,7 +38,13 @@ import {
   type SchedulingRules,
 } from '@/lib/data/bookings';
 import { getMyClientProfileId } from '@/lib/data/identity';
-import { acknowledgeShadowCoverage, getMyActiveShadowCoverage } from '@/lib/data/shadow-coverage';
+import {
+  acknowledgeShadowCoverage,
+  findShadowCoverageForBooking,
+  getMyActiveShadowCoverage,
+  listMyActiveShadowAssignments,
+  type ShadowAssignmentLite,
+} from '@/lib/data/shadow-coverage';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Booking, BookingStatus } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
@@ -63,6 +69,15 @@ function formatSessionTime(iso: string) {
 
 function hoursUntil(iso: string): number {
   return (new Date(iso).getTime() - Date.now()) / 3600_000;
+}
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+/** IST calendar-day key (YYYY-MM-DD) — matches shadow_coach_assignments.starts_on/ends_on's
+ * date format so a booking can be range-compared against them lexicographically. */
+function istDayKey(iso: string): string {
+  const d = new Date(new Date(iso).getTime() + IST_OFFSET_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -197,6 +212,7 @@ function EnrolledSessionCard({
   rules,
   canRate,
   notes,
+  shadowMatch,
   onCancelled,
   onRated,
 }: {
@@ -204,6 +220,7 @@ function EnrolledSessionCard({
   rules: SchedulingRules;
   canRate: boolean;
   notes?: string;
+  shadowMatch: ShadowAssignmentLite | null;
   onCancelled: () => void;
   onRated: () => void;
 }) {
@@ -219,7 +236,11 @@ function EnrolledSessionCard({
       <View style={lightStyles.metaRow}>
         {booking.coach_name && <Text style={lightStyles.meta}>with {booking.coach_name}</Text>}
         {booking.was_rescheduled && <LightBadge label="Rescheduled" tone="outline" />}
+        {shadowMatch && <LightBadge label="Shadow Coach" tone="teal" />}
       </View>
+      {/* Spec §10 (Client): never show just the shadow coach's name with no indication it's
+          temporary — this subtext is what makes the badge self-explanatory on its own. */}
+      {shadowMatch && <Text style={lightStyles.shadowSubtext}>Covering for {shadowMatch.primaryCoachName} while they&apos;re away</Text>}
       {/* GAP-04 / web spec §10, §12: read-only coach notes on a completed session. */}
       {notes && (
         <View style={lightStyles.notesBox}>
@@ -270,6 +291,10 @@ function EnrolledSessionsScreen() {
     reloadShadowCoverage();
   };
 
+  // Per-session "Shadow Coach" badge — every active assignment, not just the single latest
+  // unread one the banner shows (spec §10: banner and badge are complementary, not redundant).
+  const { data: shadowAssignments } = useAsync(listMyActiveShadowAssignments, []);
+
   useFocusEffect(
     useCallback(() => {
       reload();
@@ -319,6 +344,7 @@ function EnrolledSessionsScreen() {
               rules={rules}
               canRate={data.canRate}
               notes={data.notesById.get(booking.id)}
+              shadowMatch={findShadowCoverageForBooking(booking.coach_id, istDayKey(booking.scheduled_start), shadowAssignments ?? [])}
               onCancelled={reload}
               onRated={reload}
             />
@@ -347,6 +373,7 @@ const lightStyles = StyleSheet.create({
   notesLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 0.6, color: LightBrand.textMuted },
   notesText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary, lineHeight: 19 },
   shadowText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.tealDark, lineHeight: 19, marginBottom: 6 },
+  shadowSubtext: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted, marginTop: 2 },
   actionDisabled: { color: LightBrand.textMuted },
   cutoffHint: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 4 },
   policyBanner: { gap: 4 },

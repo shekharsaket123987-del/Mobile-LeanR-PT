@@ -23,6 +23,7 @@ type Row = {
     | '/search'
     | '/availability'
     | '/leave-requests'
+    | '/shadow-assignments'
     | '/renewals'
     | '/escalations'
     | '/performance'
@@ -32,6 +33,7 @@ type Row = {
     | 'search-outline'
     | 'calendar-outline'
     | 'airplane-outline'
+    | 'shield-checkmark-outline'
     | 'trending-up-outline'
     | 'alert-circle-outline'
     | 'bar-chart-outline'
@@ -46,6 +48,7 @@ const GROUPS: { section: string; rows: Row[] }[] = [
       { label: 'Global Client Search', href: '/search', icon: 'search-outline' },
       { label: 'Availability Management', href: '/availability', icon: 'calendar-outline' },
       { label: 'Leave Requests', href: '/leave-requests', icon: 'airplane-outline' },
+      { label: 'My Shadow Assignments', href: '/shadow-assignments', icon: 'shield-checkmark-outline' },
     ],
   },
   {

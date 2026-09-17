@@ -28,20 +28,27 @@ import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { RateSessionSheet } from '@/components/rate-session-sheet';
 import { IconButton } from '@/components/ui/button';
 import { LightAvatar } from '@/components/light/light-avatar';
+import { LightBadge } from '@/components/light/light-badge';
 import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
 import { LightCard } from '@/components/light/light-card';
 import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
+import { LightSectionHeader } from '@/components/light/light-section-header';
+import { LightStatCard } from '@/components/light/light-stat-card';
+import { LightTextLink } from '@/components/light/light-tappable';
 import { DisplayFont } from '@/constants/theme';
 import { LightBrand } from '@/constants/light-theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
-import { getUpcomingBookings, markClientJoined, rateSession } from '@/lib/data/bookings';
+import { getSessionsByStatus, getUpcomingBookings, markClientJoined, rateSession, sessionTypeLabel } from '@/lib/data/bookings';
 import { getMyCoach } from '@/lib/data/coach';
 import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
 import { getClientJourneyStage, getClientJourneyState } from '@/lib/data/journey';
-import { computeWeekStreak, getCompletedBookings, milestoneHitAt } from '@/lib/data/milestones';
+import { getMeasurementStatus } from '@/lib/data/measurement-status';
+import { computeWeekStreak, milestoneHitAt } from '@/lib/data/milestones';
+import { getPackageById } from '@/lib/data/plans';
+import { getBaselineProgressLog, getProgressLogs } from '@/lib/data/progress';
 import { getLatestSubscription, getMySubscription, getSessionsUsedCount } from '@/lib/data/subscription';
-import type { Booking } from '@/lib/data/types';
+import type { Booking, Plan, ProgressLog } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getJoinState, openZoomLink } from '@/lib/data/zoom';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -60,7 +67,7 @@ function formatCountdown(ms: number): string {
 const LAST_CELEBRATED_KEY = 'leanr.lastCelebratedMilestone';
 
 function formatSessionDay(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'long' });
+  return new Date(iso).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function formatSessionTime(iso: string) {
@@ -69,6 +76,47 @@ function formatSessionTime(iso: string) {
 
 function formatSessionDateTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+/** Whole-day count from `startIso`'s calendar date through today's, both inclusive — "Day 1" on the day a plan is activated, "Day 2" the next day, etc. */
+function dayOfJourney(startIso: string): number {
+  const start = new Date(startIso);
+  const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const now = new Date();
+  const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(1, Math.floor((nowDay - startDay) / 86_400_000) + 1);
+}
+
+/** Compact "Join in 2h 15m" countdown for the Next Session card — a coarser-grained sibling of `formatCountdown` above (minutes, not seconds; no colons), matching how far out an upcoming session actually needs to be signaled. */
+function formatCompactCountdown(ms: number): string {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60_000));
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+type ProgressMetricKey = 'weight' | 'body_fat_pct' | 'muscle_pct' | 'waist' | 'chest' | 'hip' | 'arms' | 'thigh';
+const PROGRESS_METRICS: { key: ProgressMetricKey; label: string; unit: string }[] = [
+  { key: 'weight', label: 'Weight', unit: 'kg' },
+  { key: 'body_fat_pct', label: 'Body Fat %', unit: '%' },
+  { key: 'muscle_pct', label: 'Muscle %', unit: '%' },
+  { key: 'waist', label: 'Waist', unit: 'in' },
+  { key: 'chest', label: 'Chest', unit: 'in' },
+  { key: 'hip', label: 'Hip', unit: 'in' },
+  { key: 'arms', label: 'Arms', unit: 'in' },
+  { key: 'thigh', label: 'Thigh', unit: 'in' },
+];
+
+function formatMetricValue(value: number | null) {
+  return value != null ? String(value) : '—';
+}
+
+/** "No change" when Day-1 baseline and latest are the same reading (typically because only the Day-1 entry exists yet) — a plain "+0.0" would misleadingly read as a fresh, unchanged-but-measured delta. */
+function formatMetricDelta(latest: number | null, baseline: number | null, unit: string) {
+  if (latest == null || baseline == null) return '—';
+  const delta = latest - baseline;
+  if (delta === 0) return 'No change';
+  return `${delta > 0 ? '+' : ''}${delta.toFixed(1)} ${unit}`;
 }
 
 /**
@@ -303,6 +351,34 @@ function EnrolledJoinRow({ booking }: { booking: Booking }) {
   );
 }
 
+/** "Join in 2h 15m" line for the Next Session card — only while still too early to join; the Join button/hint below it already covers the joinable/ended states, so this doesn't duplicate them. Minute-grained (not per-second like `DemoJoinRow`'s countdown) since a session this far out doesn't need second-level urgency. */
+function NextSessionCountdown({ booking }: { booking: Booking }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (getJoinState(booking) !== 'too-early') return null;
+  const msToStart = new Date(booking.scheduled_start).getTime() - now;
+  if (msToStart <= 0) return null;
+  return <Text style={lightStyles.joinCountdownText}>Join in {formatCompactCountdown(msToStart)}</Text>;
+}
+
+function RecentSessionRow({ booking }: { booking: Booking }) {
+  return (
+    <View style={lightStyles.recentRow}>
+      <View style={lightStyles.recentTextCol}>
+        <Text style={lightStyles.recentDate}>{formatSessionDay(booking.scheduled_start)}</Text>
+        <Text style={lightStyles.recentMeta}>
+          {sessionTypeLabel(booking.session_type)} · {booking.coach_name ?? 'Coach'}
+        </Text>
+      </View>
+      {booking.quality_rating != null && <Text style={lightStyles.recentRating}>★ {booking.quality_rating}</Text>}
+    </View>
+  );
+}
+
 function TodaysTasksCard() {
   const tasks = ['Log your water intake', 'Complete your meal plan', 'Track your workout'];
   return (
@@ -374,14 +450,30 @@ function EnrolledHomeScreen() {
   }, []);
 
   const { data, loading, error, reload } = useAsync(async () => {
-    const [nextBookings, subscription, coach, completedBookings] = await Promise.all([
+    const [nextBookings, subscription, coach, completedBookings, latestProgressLogs, baselineProgress, measurementStatus] = await Promise.all([
       getUpcomingBookings(1),
       getMySubscription(),
       getMyCoach(),
-      getCompletedBookings(),
+      getSessionsByStatus('completed'),
+      getProgressLogs(1),
+      getBaselineProgressLog(),
+      getMeasurementStatus(),
     ]);
-    const sessionsUsed = subscription ? await getSessionsUsedCount(subscription.id) : null;
-    return { nextBookings, subscription, coach, completedBookings, sessionsUsed };
+    const [pkg, sessionsUsed] = await Promise.all([
+      subscription ? getPackageById(subscription.package_id) : Promise.resolve(null),
+      subscription ? getSessionsUsedCount(subscription.id) : Promise.resolve(0),
+    ]);
+    return {
+      nextBookings,
+      subscription,
+      coach,
+      completedBookings,
+      latestProgress: latestProgressLogs[0] ?? null,
+      baselineProgress,
+      measurementStatus,
+      pkg,
+      sessionsUsed,
+    };
   }, []);
   const [milestone, setMilestone] = useState<number | null>(null);
 
@@ -393,9 +485,32 @@ function EnrolledHomeScreen() {
   );
 
   const greetingName = profile?.full_name?.split(' ')[0] ?? session?.user.email?.split('@')[0] ?? 'there';
-  const { nextBookings, coach, completedBookings } = data ?? { nextBookings: [], subscription: null, coach: null, completedBookings: [], sessionsUsed: null };
+  const {
+    nextBookings,
+    subscription,
+    coach,
+    completedBookings,
+    latestProgress,
+    baselineProgress,
+    measurementStatus,
+    pkg,
+    sessionsUsed,
+  } = data ?? {
+    nextBookings: [],
+    subscription: null,
+    coach: null,
+    completedBookings: [] as Booking[],
+    latestProgress: null as ProgressLog | null,
+    baselineProgress: null as ProgressLog | null,
+    measurementStatus: null,
+    pkg: null as Plan | null,
+    sessionsUsed: 0,
+  };
   const nextBooking = nextBookings?.[0] ?? null;
   const streakWeeks = completedBookings ? computeWeekStreak(completedBookings) : 0;
+  const sessionsLeft = subscription ? Math.max(subscription.sessions_total - (sessionsUsed ?? 0), 0) : 0;
+  const packageProgressPct = subscription && subscription.sessions_total > 0 ? Math.round(((sessionsUsed ?? 0) / subscription.sessions_total) * 100) : 0;
+  const journeyStartIso = subscription?.activated_at ?? subscription?.started_at ?? null;
 
   useEffect(() => {
     if (!completedBookings || completedBookings.length === 0) return;
@@ -430,7 +545,14 @@ function EnrolledHomeScreen() {
     <View style={lightStyles.root}>
       <SafeAreaView style={lightStyles.flex} edges={['top']}>
         <View style={lightStyles.topBar}>
-          <Text style={lightStyles.greeting}>Good Morning,{'\n'}{greetingName}!</Text>
+          <View style={lightStyles.greetingCol}>
+            <Text style={lightStyles.greeting}>Welcome back, {greetingName}</Text>
+            {journeyStartIso && (
+              <Text style={lightStyles.journeySubtitleText}>
+                Day {dayOfJourney(journeyStartIso)} of your journey — here&apos;s where things stand today.
+              </Text>
+            )}
+          </View>
           <IconButton accessibilityLabel="Notifications" onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={19} color={LightBrand.navy} />
           </IconButton>
@@ -442,31 +564,47 @@ function EnrolledHomeScreen() {
 
           {!loading && !error && (
             <>
-              <LightCard variant="teal" style={lightStyles.journeyCard}>
-                <View style={lightStyles.journeyRow}>
-                  <Ionicons name="leaf-outline" size={20} color={LightBrand.tealDark} />
-                  <View>
-                    <Text style={lightStyles.journeyTitle}>Your Journey</Text>
-                    <Text style={lightStyles.journeySubtitle}>
-                      {streakWeeks > 0 ? `${streakWeeks}-week streak — stay consistent!` : 'Complete this week to start your streak!'}
-                    </Text>
-                  </View>
-                </View>
-              </LightCard>
+              {subscription && (
+                <LightStatCard
+                  emphasize
+                  value={String(sessionsLeft)}
+                  label="Sessions left"
+                  trailing={
+                    <View style={lightStyles.sessionsLeftMeta}>
+                      <Text style={lightStyles.sessionsLeftPackage}>{pkg?.name ?? 'Your plan'}</Text>
+                      <Text style={lightStyles.sessionsLeftUsage}>
+                        {sessionsUsed ?? 0} of {subscription.sessions_total} sessions used
+                      </Text>
+                    </View>
+                  }
+                />
+              )}
 
               {nextBooking ? (
                 <LightCard style={lightStyles.heroCard}>
-                  <Text style={lightStyles.heroEyebrow}>NEXT SESSION</Text>
+                  <Text style={lightStyles.heroEyebrow}>NEXT UP</Text>
                   <Text style={lightStyles.heroDate}>{formatSessionDay(nextBooking.scheduled_start)}</Text>
                   <Text style={lightStyles.heroTime}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
 
                   <View style={lightStyles.coachRow}>
                     <LightAvatar photoUrl={coach?.photo_url} name={nextBooking.coach_name ?? coach?.full_name} size={36} />
-                    <Text style={lightStyles.coachName} numberOfLines={1}>
-                      with {nextBooking.coach_name ?? coach?.full_name ?? 'your coach'}
-                    </Text>
+                    <View style={lightStyles.coachTextCol}>
+                      <Text style={lightStyles.coachName} numberOfLines={1}>
+                        {nextBooking.coach_name ?? coach?.full_name ?? 'your coach'}
+                      </Text>
+                      <Text style={lightStyles.sessionTypeText}>{sessionTypeLabel(nextBooking.session_type)}</Text>
+                    </View>
                   </View>
 
+                  <View style={lightStyles.tagRow}>
+                    {coach?.specialization && <LightBadge label={coach.specialization} tone="teal" />}
+                    <View style={lightStyles.modeRow}>
+                      <Ionicons name="videocam-outline" size={14} color={LightBrand.teal} />
+                      <Text style={lightStyles.modeText}>Live Video Session</Text>
+                    </View>
+                  </View>
+
+                  <NextSessionCountdown booking={nextBooking} />
                   <EnrolledJoinRow booking={nextBooking} />
                 </LightCard>
               ) : (
@@ -477,6 +615,57 @@ function EnrolledHomeScreen() {
                     actionLabel="Manage my schedule"
                     onAction={() => router.push('/my-schedule')}
                   />
+                </LightCard>
+              )}
+
+              {subscription && (
+                <View style={lightStyles.statGrid}>
+                  <View style={lightStyles.statCell}>
+                    <LightStatCard value={String(completedBookings?.length ?? 0)} label="Sessions Completed" />
+                  </View>
+                  <View style={lightStyles.statCell}>
+                    <LightStatCard value={`${streakWeeks} wks`} label="Current Streak" />
+                  </View>
+                  <View style={lightStyles.statCell}>
+                    <LightStatCard value={`${packageProgressPct}%`} label="Package Progress" />
+                  </View>
+                </View>
+              )}
+
+              {subscription && latestProgress && (
+                <LightCard>
+                  <LightSectionHeader title="Progress Since Day 1" />
+                  {PROGRESS_METRICS.map((m) => (
+                    <View key={m.key} style={lightStyles.metricRow}>
+                      <Text style={lightStyles.metricLabel}>{m.label}</Text>
+                      <View style={lightStyles.metricValues}>
+                        <Text style={lightStyles.metricValue}>{formatMetricValue(latestProgress[m.key])}</Text>
+                        <Text style={lightStyles.metricDelta}>
+                          {formatMetricDelta(latestProgress[m.key], baselineProgress?.[m.key] ?? null, m.unit)}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  {measurementStatus?.stale ? (
+                    <LightTextLink onPress={() => router.push('/progress')} style={lightStyles.measurementUpdateLink}>
+                      Update your measurements to keep this up to date.
+                    </LightTextLink>
+                  ) : (
+                    <Text style={lightStyles.measurementFreshText}>
+                      You&apos;re all set on this week&apos;s measurement update — nice work staying consistent.
+                    </Text>
+                  )}
+                </LightCard>
+              )}
+
+              {subscription && (
+                <LightCard>
+                  <LightSectionHeader title="Recent Sessions" />
+                  {completedBookings && completedBookings.length > 0 ? (
+                    completedBookings.slice(0, 5).map((b) => <RecentSessionRow key={b.id} booking={b} />)
+                  ) : (
+                    <LightEmptyState message="No completed sessions yet." icon="time-outline" />
+                  )}
                 </LightCard>
               )}
 
@@ -521,7 +710,9 @@ const lightStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: LightBrand.bg },
   flex: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
+  greetingCol: { flex: 1, gap: 4, paddingRight: 12 },
   greeting: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 22, color: LightBrand.navy, lineHeight: 26 },
+  journeySubtitleText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
   scroll: { flex: 1, padding: 20, paddingTop: 16, gap: 16 },
   heroCard: { gap: 6, paddingVertical: 18 },
   heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.teal },
@@ -547,10 +738,41 @@ const lightStyles = StyleSheet.create({
   notifyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   joinBlock: { marginTop: 8 },
   countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, color: LightBrand.navy, letterSpacing: -0.3 },
-  journeyCard: { gap: 4 },
-  journeyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  journeyTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 15, color: LightBrand.navy },
-  journeySubtitle: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark },
+  sessionsLeftMeta: { marginTop: 8, gap: 2 },
+  sessionsLeftPackage: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.tealDark },
+  sessionsLeftUsage: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  coachTextCol: { flexShrink: 1 },
+  sessionTypeText: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  tagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
+  joinCountdownText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal, marginTop: 8 },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCell: { flexGrow: 1, flexBasis: '30%' },
+  metricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: LightBrand.border,
+  },
+  metricLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
+  metricValues: { alignItems: 'flex-end' },
+  metricValue: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
+  metricDelta: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textSecondary },
+  measurementFreshText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark, marginTop: 10 },
+  measurementUpdateLink: { marginTop: 10 },
+  recentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: LightBrand.border,
+  },
+  recentTextCol: { gap: 2 },
+  recentDate: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy },
+  recentMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  recentRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
   tasksHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   tasksTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
   comingSoonBadge: { fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, color: LightBrand.textMuted },

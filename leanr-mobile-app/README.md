@@ -1,5 +1,12 @@
 # LEANR by Fitelo — Mobile App
 
+## Repository
+
+- `origin` — https://github.com/shekharsaket123987-del/Mobile-LeanR-PT.git
+- `original` — https://github.com/shekharsaket123987-del/Mobile-LeanR-PT-Original.git
+
+Both remotes already exist in this checkout (`git remote -v`); push with `git push origin main` / `git push original main`.
+
 Expo (React Native + TypeScript) client app. See `../LEANR_PT_MOBILE_PRD.md`
 (functional/technical source of truth) and `../LEANR_PT_NEXTGEN_APP_PRD.md`
 (UX/motivation-layer + brand spec) in the repo root for the full spec —

@@ -28,6 +28,22 @@ export async function getProgressLogs(limit = 12) {
   return (data ?? []) as ProgressLog[];
 }
 
+/** The very first `progress_logs` row ever recorded (the Day-1 baseline seeded by `submitOnboarding`) — deliberately a dedicated oldest-first query rather than the last entry of `getProgressLogs`'s default page, so a long-tenured client's true baseline is never pushed off a limited page. */
+export async function getBaselineProgressLog(): Promise<ProgressLog | null> {
+  const clientId = await getMyClientProfileId();
+  if (!clientId) return null;
+
+  const { data, error } = await supabase
+    .from('progress_logs')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('logged_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as ProgressLog | null;
+}
+
 export type LogProgressInput = {
   weight?: number;
   notes?: string;

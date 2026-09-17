@@ -419,6 +419,7 @@ function EnrolledHomeScreen() {
     return (
       <View style={lightStyles.root}>
         <SafeAreaView style={lightStyles.flex} edges={['top']}>
+          <Text style={lightStyles.gateCheckingText}>Setting things up…</Text>
           <LightLoadingState />
         </SafeAreaView>
       </View>
@@ -534,6 +535,14 @@ const lightStyles = StyleSheet.create({
   calendarButton: { marginTop: 10 },
   coachProfileButton: { marginTop: 8 },
   joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textMuted, marginTop: 10 },
+  gateCheckingText: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 12.5,
+    color: LightBrand.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
   joinButton: { marginTop: 10, alignSelf: 'flex-start' },
   notifyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   joinBlock: { marginTop: 8 },

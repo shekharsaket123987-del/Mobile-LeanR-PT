@@ -43,34 +43,28 @@ export async function getMyCoach(): Promise<CoachProfile | null> {
   const clientId = await getMyClientProfileId();
   if (!clientId) return null;
 
-  const { data: slot } = await supabase
-    .from('recurring_slots')
-    .select('coach_id')
-    .eq('client_id', clientId)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle();
-  if (slot?.coach_id) {
-    const coach = await getCoachProfileById(slot.coach_id);
-    return coach ? { ...coach, source: 'recurring' } : null;
-  }
+  // Recurring-slot coach and demo-booking coach are independent, mutually-exclusive lookups
+  // (a client has one or the other, never both matter at once) — firing them together instead
+  // of awaiting one before starting the next halves this function's round-trip latency.
+  const [{ data: slot }, { data: demoBooking }] = await Promise.all([
+    supabase.from('recurring_slots').select('coach_id').eq('client_id', clientId).eq('status', 'active').limit(1).maybeSingle(),
+    // No recurring coach — fall back to the coach of a still-*upcoming* demo booking only.
+    // Once the demo lapses (completed/missed) with no plan purchased, this correctly reverts
+    // to no-coach (ClientPortal.md §12: "a deliberate design choice per code comments, not a bug").
+    supabase
+      .from('bookings')
+      .select('coach_id')
+      .eq('client_id', clientId)
+      .eq('session_type', 'assessment')
+      .eq('status', 'upcoming')
+      .order('scheduled_start', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  // No recurring coach — fall back to the coach of a still-*upcoming* demo booking only.
-  // Once the demo lapses (completed/missed) with no plan purchased, this correctly reverts
-  // to no-coach (ClientPortal.md §12: "a deliberate design choice per code comments, not a bug").
-  const { data: demoBooking } = await supabase
-    .from('bookings')
-    .select('coach_id')
-    .eq('client_id', clientId)
-    .eq('session_type', 'assessment')
-    .eq('status', 'upcoming')
-    .order('scheduled_start', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (demoBooking?.coach_id) {
-    const coach = await getCoachProfileById(demoBooking.coach_id);
-    return coach ? { ...coach, source: 'demo' } : null;
-  }
-
-  return null;
+  // Recurring slot always wins over a demo booking when both somehow exist.
+  const coachId = slot?.coach_id ?? demoBooking?.coach_id;
+  if (!coachId) return null;
+  const coach = await getCoachProfileById(coachId);
+  return coach ? { ...coach, source: slot?.coach_id ? 'recurring' : 'demo' } : null;
 }

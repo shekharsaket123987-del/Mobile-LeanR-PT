@@ -94,8 +94,9 @@ export type RecurringSlot = {
   status: 'active' | 'paused' | 'cancelled';
 };
 
-export async function getMyActiveRecurringSlots(): Promise<RecurringSlot[]> {
-  const clientId = await getMyClientProfileId();
+/** `knownClientId` lets a caller that has already resolved its own client id (journey.ts) skip the redundant round trip. */
+export async function getMyActiveRecurringSlots(knownClientId?: string): Promise<RecurringSlot[]> {
+  const clientId = knownClientId ?? (await getMyClientProfileId());
   if (!clientId) return [];
 
   const { data, error } = await supabase
@@ -179,13 +180,9 @@ export type TrainerGenderPreference = 'male' | 'female' | 'no_preference';
 
 export type CoachMatchCandidate = { id: string; full_name: string };
 
-async function listCandidateCoaches(
-  genderPreference: TrainerGenderPreference,
-  excludeCoachId?: string
-): Promise<CoachMatchCandidate[]> {
+async function listCandidateCoaches(genderPreference: TrainerGenderPreference): Promise<CoachMatchCandidate[]> {
   const ranked = await getActiveCoachesByUtilization();
   return ranked
-    .filter((c) => c.id !== excludeCoachId)
     .filter((c) => genderPreference === 'no_preference' || c.gender === genderPreference)
     .map(({ id, full_name }) => ({ id, full_name }));
 }
@@ -203,22 +200,31 @@ export async function findCoachForSchedule(
   preference: TrainerPreference,
   genderPreference: TrainerGenderPreference
 ): Promise<{ coach: CoachMatchCandidate; hours: number[] } | null> {
-  const myCoach = await getMyCoach();
-
   if (preference === 'same') {
+    const myCoach = await getMyCoach();
     if (!myCoach) return null;
     const hours = await getCommonAvailableHours(myCoach.id, daysOfWeek, durationMinutes, window);
     return hours.length > 0 ? { coach: { id: myCoach.id, full_name: myCoach.full_name ?? 'Coach' }, hours } : null;
   }
 
-  const candidates =
-    preference === 'no_preference' && myCoach
-      ? [{ id: myCoach.id, full_name: myCoach.full_name ?? 'Coach' }, ...(await listCandidateCoaches(genderPreference, myCoach.id))]
-      : await listCandidateCoaches(genderPreference, preference === 'new' ? myCoach?.id : undefined);
+  // `myCoach` and the ranked candidate pool are independent lookups — only combined once both
+  // are back, instead of awaiting myCoach before even starting the candidate-pool query.
+  const [myCoach, ranked] = await Promise.all([getMyCoach(), listCandidateCoaches(genderPreference)]);
 
-  for (const candidate of candidates) {
-    const hours = await getCommonAvailableHours(candidate.id, daysOfWeek, durationMinutes, window);
-    if (hours.length > 0) return { coach: candidate, hours };
+  const excludeCoachId = preference === 'new' ? myCoach?.id : undefined;
+  const candidates: CoachMatchCandidate[] =
+    preference === 'no_preference' && myCoach
+      ? [{ id: myCoach.id, full_name: myCoach.full_name ?? 'Coach' }, ...ranked.filter((c) => c.id !== myCoach.id)]
+      : ranked.filter((c) => c.id !== excludeCoachId);
+
+  // Availability for every candidate is independent — check them all at once and pick the
+  // first (highest-priority) one with a match, instead of one round trip per candidate in
+  // series until a hit.
+  const hoursByCandidate = await Promise.all(
+    candidates.map((c) => getCommonAvailableHours(c.id, daysOfWeek, durationMinutes, window))
+  );
+  for (let i = 0; i < candidates.length; i++) {
+    if (hoursByCandidate[i].length > 0) return { coach: candidates[i], hours: hoursByCandidate[i] };
   }
   return null;
 }

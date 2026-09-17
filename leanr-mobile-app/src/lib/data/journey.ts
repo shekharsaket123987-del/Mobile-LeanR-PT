@@ -82,15 +82,24 @@ export async function getClientJourneyState(): Promise<ClientJourneyState> {
   const clientId = await getMyClientProfileId();
   if (!clientId) return { stage: 'marketing', demoSession: null };
 
-  const latest = await getLatestSubscription();
+  // Every helper below takes the already-resolved clientId to skip its own redundant
+  // getMyClientProfileId() round trip — this function was previously re-resolving identity
+  // (auth.getUser() + client_profiles lookup) up to 4 times per call.
+  const latest = await getLatestSubscription(clientId);
 
   if (latest?.status === 'awaiting_activation') return { stage: 'awaiting_activation', demoSession: null };
 
   if (latest?.status === 'active') {
-    const onboarding = await getMyOnboarding();
+    // Onboarding-existence and renewal-ness are independent checks — fetched together instead
+    // of one after the other; the renewal result is simply unused in the (common) case where
+    // onboarding is still missing.
+    const [onboarding, isRenewal] = await Promise.all([
+      getMyOnboarding(clientId),
+      isRenewalSubscription(clientId, latest.id),
+    ]);
     if (!onboarding) return { stage: 'onboarding', demoSession: null };
 
-    if (await isRenewalSubscription(clientId, latest.id)) {
+    if (isRenewal) {
       if (latest.activated_at && !(await hasProgressLoggedSince(clientId, latest.activated_at))) {
         return { stage: 'renewal_checkin', demoSession: null };
       }
@@ -100,7 +109,7 @@ export async function getClientJourneyState(): Promise<ClientJourneyState> {
       return { stage: 'active', demoSession: null };
     }
 
-    const slots = await getMyActiveRecurringSlots();
+    const slots = await getMyActiveRecurringSlots(clientId);
     if (slots.length === 0) return { stage: 'slot_selection', demoSession: null };
     return { stage: 'active', demoSession: null };
   }

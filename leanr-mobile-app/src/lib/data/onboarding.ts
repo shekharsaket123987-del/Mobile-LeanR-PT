@@ -17,8 +17,9 @@ import { logTimelineEvent } from '@/lib/data/timeline';
 import { supabase } from '@/lib/supabase/client';
 import type { ClientOnboarding, FitnessGoal } from './types';
 
-export async function getMyOnboarding(): Promise<ClientOnboarding | null> {
-  const clientId = await getMyClientProfileId();
+/** `knownClientId` lets a caller that has already resolved its own client id (journey.ts) skip the redundant round trip. */
+export async function getMyOnboarding(knownClientId?: string): Promise<ClientOnboarding | null> {
+  const clientId = knownClientId ?? (await getMyClientProfileId());
   if (!clientId) return null;
 
   const { data, error } = await supabase

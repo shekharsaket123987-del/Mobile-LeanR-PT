@@ -390,7 +390,12 @@ export default function MyScheduleScreen() {
 
           <LightCard>
             <LightSectionHeader title="Select preferred time" />
-            {hoursLoading && <LightLoadingState rows={1} />}
+            {hoursLoading && (
+              <>
+                <Text style={styles.matchingText}>Matching you with a coach — this can take a few seconds…</Text>
+                <LightLoadingState rows={1} />
+              </>
+            )}
             {!hoursLoading && hours && hours.length === 0 && (
               <>
                 <LightEmptyState message="No coach can be assigned — none are free across every one of those days." />
@@ -473,6 +478,7 @@ const styles = StyleSheet.create({
   moreOptionsLink: { marginTop: 10 },
   warningText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.amber, marginTop: 8 },
   matchedCoachText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary, marginBottom: 4 },
+  matchingText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginBottom: 8 },
   successCard: { gap: 8 },
   successCoachRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   successCoachInfo: { gap: 2 },

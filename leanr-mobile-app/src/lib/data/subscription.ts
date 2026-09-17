@@ -42,9 +42,13 @@ export async function getPendingActivationSubscription(): Promise<Subscription |
   return data as Subscription | null;
 }
 
-/** Most recent subscription regardless of status — used for journey gating and the Subscription screen, where a paused/awaiting row still matters. */
-export async function getLatestSubscription(): Promise<Subscription | null> {
-  const clientId = await getMyClientProfileId();
+/**
+ * Most recent subscription regardless of status — used for journey gating and the Subscription
+ * screen, where a paused/awaiting row still matters. `knownClientId` lets a caller that has
+ * already resolved its own client id (journey.ts) skip the redundant round trip.
+ */
+export async function getLatestSubscription(knownClientId?: string): Promise<Subscription | null> {
+  const clientId = knownClientId ?? (await getMyClientProfileId());
   if (!clientId) return null;
 
   const { data, error } = await supabase

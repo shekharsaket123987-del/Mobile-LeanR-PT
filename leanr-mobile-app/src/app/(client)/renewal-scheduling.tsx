@@ -73,7 +73,10 @@ export default function RenewalSchedulingScreen() {
       <LightPrimaryButton size="lg" onPress={onKeep} loading={submitting}>
         Keep My Schedule
       </LightPrimaryButton>
-      <LightSecondaryButton size="lg" onPress={() => router.replace('/my-schedule')}>
+      <LightSecondaryButton
+        size="lg"
+        onPress={() => subscription && router.replace({ pathname: '/my-schedule', params: { renewalSubscriptionId: subscription.id } })}
+      >
         No, Change It
       </LightSecondaryButton>
     </LightScreenScaffold>

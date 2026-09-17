@@ -10,7 +10,7 @@
  * from (see src/lib/data/coach-change.ts header for the RLS/edge-function
  * detail); only the palette changed.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LightAvatar } from '@/components/light/light-avatar';
@@ -33,7 +33,7 @@ import {
   type CoachChangeStatus,
 } from '@/lib/data/coach-change';
 import { getDemoAssignedCoach } from '@/lib/data/demo-booking';
-import { findCoachForSchedule, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
+import { findAvailableCoachExact, RECURRING_SESSION_DURATION_MINUTES, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
 
@@ -231,8 +231,9 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
 
 function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: string; onCompleted: () => void }) {
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [match, setMatch] = useState<{ coach: CoachMatchCandidate; hours: number[] } | null>(null);
-  const [selectedHour, setSelectedHour] = useState<number | null>(null);
+  const [preferredHour, setPreferredHour] = useState<number | null>(null);
+  const [windowHours, setWindowHours] = useState<number[]>([]);
+  const [match, setMatch] = useState<{ coach: CoachMatchCandidate; hour: number } | null>(null);
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,31 +241,35 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
 
   const toggleDay = (dow: number) => {
     setMatch(null);
-    setSelectedHour(null);
     setSelectedDays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)));
   };
 
+  // doc §8.2/§11.4 `findCoachChangeOptions` mirrors "New Trainer": exact pattern/time only,
+  // whole roster minus current coach, no fallback ladder — so the client picks ONE preferred
+  // hour up front and gets back pass/fail, not a set of hours to choose from after the fact.
   const onFindCoach = async () => {
-    if (selectedDays.length < 2) {
-      setError('Pick at least 2 days.');
+    if (selectedDays.length < 2 || selectedDays.length > 5) {
+      setError('Pick between 2 and 5 days.');
+      return;
+    }
+    if (preferredHour === null) {
+      setError('Pick a preferred time.');
       return;
     }
     setError(null);
     setSearching(true);
     try {
+      const myCoach = await getMyCoach();
       const settings = await getBookingSettings();
-      const result = await findCoachForSchedule(
-        selectedDays,
-        settings.defaultSessionDurationMinutes,
-        { startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour },
-        'new',
-        'no_preference'
-      );
+      const result = await findAvailableCoachExact('custom', preferredHour, { startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour }, {
+        customDays: selectedDays,
+        excludeCoachId: myCoach?.id,
+      });
       if (!result) {
-        setError('No available coach found for those days — try different days.');
+        setError('No coach is available for that exact day/time combination — try different days or a different time.');
         return;
       }
-      setMatch(result);
+      setMatch({ coach: result.coach, hour: result.hour });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -273,17 +278,16 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
   };
 
   const onConfirm = async () => {
-    if (!match || selectedHour === null) return;
+    if (!match) return;
     setConfirming(true);
     setError(null);
     try {
-      const settings = await getBookingSettings();
       await completeCoachChange({
         requestId,
         newCoachId: match.coach.id,
         days: selectedDays,
-        hour: selectedHour,
-        durationMinutes: settings.defaultSessionDurationMinutes,
+        hour: match.hour,
+        durationMinutes: RECURRING_SESSION_DURATION_MINUTES,
       });
       setDone(true);
       onCompleted();
@@ -294,15 +298,46 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
     }
   };
 
+  useEffect(() => {
+    getBookingSettings().then((settings) => {
+      setWindowHours(
+        Array.from({ length: settings.bookingWindowEndHour - settings.bookingWindowStartHour }, (_, i) => settings.bookingWindowStartHour + i)
+      );
+    });
+  }, []);
+
   if (done) return null;
 
   return (
     <LightCard style={styles.completionCard}>
       <LightSectionHeader eyebrow="Approved" title="Pick your new schedule" />
-      <Text style={styles.metaLabel}>DAYS</Text>
+      <Text style={styles.metaLabel}>DAYS (2-5)</Text>
       <LightChipGrid>
         {WEEKDAYS.map((d) => (
-          <LightChip key={d.dow} label={d.short} selected={selectedDays.includes(d.dow)} onPress={() => toggleDay(d.dow)} />
+          <LightChip
+            key={d.dow}
+            label={d.short}
+            selected={selectedDays.includes(d.dow)}
+            onPress={() => {
+              setMatch(null);
+              toggleDay(d.dow);
+            }}
+          />
+        ))}
+      </LightChipGrid>
+
+      <Text style={styles.metaLabel}>PREFERRED TIME</Text>
+      <LightChipGrid>
+        {windowHours.map((h) => (
+          <LightChip
+            key={h}
+            label={formatHourLabel(h)}
+            selected={h === preferredHour}
+            onPress={() => {
+              setMatch(null);
+              setPreferredHour(h);
+            }}
+          />
         ))}
       </LightChipGrid>
 
@@ -314,18 +349,12 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
 
       {match && (
         <>
-          <Text style={styles.changeNote}>Matched with {match.coach.full_name}</Text>
-          <Text style={styles.metaLabel}>TIME</Text>
-          <LightChipGrid>
-            {match.hours.map((h) => (
-              <LightChip key={h} label={formatHourLabel(h)} selected={h === selectedHour} onPress={() => setSelectedHour(h)} />
-            ))}
-          </LightChipGrid>
-          {selectedHour !== null && (
-            <LightPrimaryButton onPress={onConfirm} loading={confirming} style={styles.findCoachButton}>
-              Confirm {match.coach.full_name}
-            </LightPrimaryButton>
-          )}
+          <Text style={styles.changeNote}>
+            Matched with {match.coach.full_name} — {formatHourLabel(match.hour)}
+          </Text>
+          <LightPrimaryButton onPress={onConfirm} loading={confirming} style={styles.findCoachButton}>
+            Confirm {match.coach.full_name}
+          </LightPrimaryButton>
         </>
       )}
 

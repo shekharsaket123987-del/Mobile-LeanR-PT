@@ -25,9 +25,10 @@ type Props = PropsWithChildren<{
   visible: boolean;
   onClose: () => void;
   title?: string;
+  subtitle?: string;
 }>;
 
-export function BottomSheet({ visible, onClose, title, children }: Props) {
+export function BottomSheet({ visible, onClose, title, subtitle, children }: Props) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(height);
@@ -86,7 +87,10 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
               <View style={styles.grabber} />
               {title && (
                 <View style={styles.header}>
-                  <Text style={styles.title}>{title}</Text>
+                  <View style={styles.titleCol}>
+                    <Text style={styles.title}>{title}</Text>
+                    {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                  </View>
                   <IconButton accessibilityLabel="Close" onPress={close} size={32}>
                     <Text style={styles.closeGlyph}>✕</Text>
                   </IconButton>
@@ -114,7 +118,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.25)',
     marginBottom: 12,
   },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 },
+  titleCol: { gap: 2, flexShrink: 1 },
   title: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: '#FFFFFF' },
+  subtitle: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.55)' },
   closeGlyph: { color: '#FFFFFF', fontSize: 14 },
 });

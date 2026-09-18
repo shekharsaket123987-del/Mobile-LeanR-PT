@@ -8,18 +8,17 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightBrand } from '@/constants/light-theme';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { PrimaryButton } from '@/components/ui/button';
+import { TextLink } from '@/components/tappable';
 
 export function MeasurementGateModal({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
   return (
-    <LightBottomSheet visible={visible} onClose={onDismiss} title="Update your measurements">
+    <BottomSheet visible={visible} onClose={onDismiss} title="Update your measurements">
       <Text style={styles.body}>
         It&apos;s been a week (or more) since your last check-in. Log this week&apos;s measurements to keep booking and joining sessions.
       </Text>
-      <LightPrimaryButton
+      <PrimaryButton
         size="lg"
         onPress={() => {
           onDismiss();
@@ -27,21 +26,21 @@ export function MeasurementGateModal({ visible, onDismiss }: { visible: boolean;
         }}
         style={styles.button}>
         Update now
-      </LightPrimaryButton>
-      <LightTextLink onPress={onDismiss} style={styles.skipLink}>
+      </PrimaryButton>
+      <TextLink onPress={onDismiss} style={styles.skipLink}>
         Skip for now
-      </LightTextLink>
-    </LightBottomSheet>
+      </TextLink>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { fontFamily: 'Manrope_500Medium', fontSize: 14.5, color: LightBrand.textSecondary, lineHeight: 21 },
+  body: { fontFamily: 'Manrope_500Medium', fontSize: 14.5, color: 'rgba(255,255,255,0.6)', lineHeight: 21 },
   button: { marginTop: 12 },
   skipLink: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 13,
-    color: LightBrand.textMuted,
+    color: 'rgba(255,255,255,0.45)',
     textAlign: 'center',
     marginTop: 12,
   },

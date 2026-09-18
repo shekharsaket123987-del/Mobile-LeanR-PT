@@ -12,11 +12,11 @@ import { useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightDestructiveButton, LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { DestructiveButton, PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getPendingLeaveRequests, resolveLeaveRequest, type AdminLeaveRequest } from '@/lib/data/admin-leave';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -41,12 +41,12 @@ export default function AdminLeaveScreen() {
   const { data: requests, loading, error, reload } = useAsync(getPendingLeaveRequests, []);
 
   return (
-    <LightScreenScaffold title="Leave Requests">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (requests?.length ?? 0) === 0 && <LightEmptyState message="No pending leave requests." icon="checkmark-circle-outline" />}
+    <ScreenScaffold title="Leave Requests">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (requests?.length ?? 0) === 0 && <EmptyState message="No pending leave requests." icon="checkmark-circle-outline" />}
       {!loading && !error && requests?.map((r) => <LeaveRow key={r.id} request={r} onResolved={reload} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -106,7 +106,7 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
   };
 
   return (
-    <LightCard style={styles.card}>
+    <GlassCard style={styles.card}>
       <Text style={styles.name}>
         {request.coachName}
         {isLongLeave ? ` · ${leaveDurationDays(request.starts_on, request.ends_on)}+ days` : ''}
@@ -123,23 +123,23 @@ function LeaveRow({ request, onResolved }: { request: AdminLeaveRequest; onResol
           {error}
         </Text>
       )}
-      <LightPrimaryButton onPress={() => onResolve('approved')} loading={busy === 'approve'} disabled={busy !== null} style={styles.approveButton}>
+      <PrimaryButton onPress={() => onResolve('approved')} loading={busy === 'approve'} disabled={busy !== null} style={styles.approveButton}>
         Approve
-      </LightPrimaryButton>
-      <LightDestructiveButton onPress={() => onResolve('rejected')} loading={busy === 'reject'} disabled={busy !== null} style={styles.rejectButton}>
+      </PrimaryButton>
+      <DestructiveButton onPress={() => onResolve('rejected')} loading={busy === 'reject'} disabled={busy !== null} style={styles.rejectButton}>
         Reject
-      </LightDestructiveButton>
-    </LightCard>
+      </DestructiveButton>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 2 },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy },
-  dates: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.textSecondary, marginTop: 2 },
-  submitted: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: LightBrand.textSecondary, opacity: 0.7, marginTop: 4 },
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary, marginTop: 4 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed, marginTop: 4 },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: '#FFFFFF' },
+  dates: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  submitted: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(255,255,255,0.6)', opacity: 0.7, marginTop: 4 },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#FFFFFF', marginTop: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.alertRed, marginTop: 4 },
   approveButton: { marginTop: 10 },
   rejectButton: { marginTop: 8 },
 });

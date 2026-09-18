@@ -3,7 +3,7 @@
  * §13 rules 1-4. Hold->confirm ad-hoc booking wizard — see
  * src/lib/data/booking-wizard.ts for the RPC/schema detail this was built
  * against. Relit for the post-purchase light theme (mockup frame 11) —
- * real month calendar via `LightCalendarGrid` instead of a date-chip row.
+ * real month calendar via `CalendarGrid` instead of a date-chip row.
  *
  * Reached from Sessions ("+ Book a Session") and Home ("Book a session"
  * when no upcoming booking exists) — not a tab itself, hidden from the
@@ -24,16 +24,16 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text } from 'react-native';
 
 import { RateSessionSheet } from '@/components/rate-session-sheet';
-import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightStatCard } from '@/components/light/light-stat-card';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { CalendarGrid } from '@/components/ui/calendar-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import {
   addIstDays,
   confirmHold,
@@ -54,6 +54,7 @@ import { getClientJourneyState } from '@/lib/data/journey';
 import { getMySubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 type Phase = 'pick' | 'holding' | 'review' | 'confirming' | 'success';
 
@@ -191,17 +192,17 @@ export default function BookSessionScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Book a Session">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Book a Session">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Book a Session">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Book a Session">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
@@ -219,28 +220,28 @@ export default function BookSessionScreen() {
   if (!subscription) {
     if (journeyStage === 'demo_booked' && demoAssignedCoach) {
       return (
-        <LightScreenScaffold title="Book a Session">
-          <LightCard style={styles.demoStageCard}>
+        <ScreenScaffold title="Book a Session">
+          <GlassCard style={styles.demoStageCard}>
             <Text style={styles.demoStageTitle}>Your Demo Session Is Already Booked</Text>
             <Text style={styles.metaText}>
               {demoAssignedCoach.coachName} · {new Date(demoAssignedCoach.scheduledStart).toLocaleString()}
             </Text>
             <Text style={styles.metaText}>Ongoing session booking unlocks once your demo is done.</Text>
-          </LightCard>
-        </LightScreenScaffold>
+          </GlassCard>
+        </ScreenScaffold>
       );
     }
 
     if (journeyStage === 'demo_completed') {
       return (
-        <LightScreenScaffold title="Book a Session">
-          <LightCard style={styles.demoStageCard}>
+        <ScreenScaffold title="Book a Session">
+          <GlassCard style={styles.demoStageCard}>
             <Text style={styles.demoStageTitle}>Ready when you are</Text>
             <Text style={styles.metaText}>Choose a plan to start booking ongoing sessions with your coach.</Text>
-          </LightCard>
-          <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
+          </GlassCard>
+          <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
             Choose Your Plan
-          </LightPrimaryButton>
+          </PrimaryButton>
           <RateSessionSheet
             visible={!!unratedDemo && data?.canRate !== false}
             title={unratedDemo?.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
@@ -248,53 +249,53 @@ export default function BookSessionScreen() {
             onClose={() => setFeedbackDismissed(true)}
             onSubmit={onSubmitDemoFeedback}
           />
-        </LightScreenScaffold>
+        </ScreenScaffold>
       );
     }
 
     return (
-      <LightScreenScaffold title="Book a Session">
-        <LightCard style={styles.demoStageCard}>
+      <ScreenScaffold title="Book a Session">
+        <GlassCard style={styles.demoStageCard}>
           <Text style={styles.demoStageTitle}>No Subscription Found</Text>
           <Text style={styles.metaText}>Book a free demo session, or choose a plan to get started.</Text>
-        </LightCard>
-        <LightPrimaryButton size="lg" onPress={() => router.push('/demo-booking')}>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.push('/demo-booking')}>
           Book Free Demo
-        </LightPrimaryButton>
-        <LightSecondaryButton size="lg" onPress={() => router.push('/plans')}>
+        </PrimaryButton>
+        <SecondaryButton size="lg" onPress={() => router.push('/plans')}>
           Choose Your Plan
-        </LightSecondaryButton>
-      </LightScreenScaffold>
+        </SecondaryButton>
+      </ScreenScaffold>
     );
   }
 
   if (!coach && coaches.length === 0) {
     return (
-      <LightScreenScaffold title="Book a Session">
-        <LightEmptyState message="No coaches are available to book right now." />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Book a Session">
+        <EmptyState message="No coaches are available to book right now." />
+      </ScreenScaffold>
     );
   }
 
   if (phase === 'success') {
     return (
-      <LightScreenScaffold title="Booked!">
-        <LightStatCard emphasize value={formatIstDateLabel(selectedDate)} label="SESSION CONFIRMED" />
-        <LightCard>
+      <ScreenScaffold title="Booked!">
+        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="SESSION CONFIRMED" />
+        <GlassCard>
           {selectedSlot && <Text style={styles.metaText}>{formatIstTimeLabel(selectedSlot)}</Text>}
           {activeCoachName && <Text style={styles.metaText}>with {activeCoachName}</Text>}
-        </LightCard>
-        <LightPrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
           View my sessions
-        </LightPrimaryButton>
-      </LightScreenScaffold>
+        </PrimaryButton>
+      </ScreenScaffold>
     );
   }
 
   if (phase === 'review' || phase === 'confirming') {
     return (
-      <LightScreenScaffold title="Confirm your session">
-        <LightCard variant="teal">
+      <ScreenScaffold title="Confirm your session">
+        <GlassCard variant="yellow">
           <Text style={styles.eyebrow}>{formatIstDateLabel(selectedDate)}</Text>
           <Text style={styles.bigTime}>{selectedSlot ? formatIstTimeLabel(selectedSlot) : ''}</Text>
           {activeCoachName && <Text style={styles.metaText}>with {activeCoachName}</Text>}
@@ -303,60 +304,60 @@ export default function BookSessionScreen() {
               ? `Hold expires in ${Math.floor(holdSecondsLeft / 60)}:${String(holdSecondsLeft % 60).padStart(2, '0')}`
               : 'Hold expired — go back and pick a slot again'}
           </Text>
-        </LightCard>
+        </GlassCard>
         {actionError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {actionError}
           </Text>
         )}
-        <LightPrimaryButton size="lg" onPress={onConfirm} loading={phase === 'confirming'} disabled={holdSecondsLeft <= 0}>
+        <PrimaryButton size="lg" onPress={onConfirm} loading={phase === 'confirming'} disabled={holdSecondsLeft <= 0}>
           Confirm booking
-        </LightPrimaryButton>
-        <LightTextLink onPress={onRestart}>Pick a different slot</LightTextLink>
-      </LightScreenScaffold>
+        </PrimaryButton>
+        <TextLink onPress={onRestart}>Pick a different slot</TextLink>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Book a Session" subtitle={activeCoachName ? `with ${activeCoachName}` : undefined}>
+    <ScreenScaffold title="Book a Session" subtitle={activeCoachName ? `with ${activeCoachName}` : undefined}>
       {!coach && coaches.length > 0 && (
-        <LightCard>
-          <LightSectionHeader title="Choose a coach" />
-          <LightChipGrid>
+        <GlassCard>
+          <SectionHeader title="Choose a coach" />
+          <ChipGrid>
             {coaches.map((c) => (
-              <LightChip key={c.id} label={c.full_name} selected={c.id === selectedCoachId} onPress={() => setSelectedCoachId(c.id)} />
+              <Chip key={c.id} label={c.full_name} selected={c.id === selectedCoachId} onPress={() => setSelectedCoachId(c.id)} />
             ))}
-          </LightChipGrid>
-        </LightCard>
+          </ChipGrid>
+        </GlassCard>
       )}
 
-      <LightCard>
-        <LightSectionHeader title="Pick a date" />
+      <GlassCard>
+        <SectionHeader title="Pick a date" />
         <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
-        <LightCalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
-      </LightCard>
+        <CalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
+      </GlassCard>
 
-      <LightCard>
-        <LightSectionHeader title="Available times" />
-        {slotsLoading && <LightLoadingState rows={1} />}
+      <GlassCard>
+        <SectionHeader title="Available times" />
+        {slotsLoading && <LoadingState rows={1} />}
         {!slotsLoading && slots && slots.length === 0 && (
-          <LightEmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
+          <EmptyState message="No open slots this day — try another date." icon="calendar-clear-outline" />
         )}
         {!slotsLoading && slots && slots.length > 0 && (
-          <LightChipGrid>
+          <ChipGrid>
             {slots.map((s) => (
-              <LightChip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
+              <Chip key={s} label={formatIstTimeLabel(s)} selected={s === selectedSlot} onPress={() => onPickSlot(s)} />
             ))}
-          </LightChipGrid>
+          </ChipGrid>
         )}
-      </LightCard>
+      </GlassCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {actionError}
         </Text>
       )}
-      {phase === 'holding' && <LightLoadingState rows={1} />}
+      {phase === 'holding' && <LoadingState rows={1} />}
 
       <RateSessionSheet
         visible={!!unratedDemo && data?.canRate !== false}
@@ -364,17 +365,17 @@ export default function BookSessionScreen() {
         onClose={() => setFeedbackDismissed(true)}
         onSubmit={onSubmitDemoFeedback}
       />
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary },
-  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
-  bigTime: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, color: LightBrand.navy },
-  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
-  holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.amber, marginTop: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.6)' },
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginBottom: 4 },
+  bigTime: { fontFamily: 'Manrope_800ExtraBold', fontSize: 34, color: '#FFFFFF' },
+  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  holdTimer: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.yellow, marginTop: 8 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   demoStageCard: { gap: 6, alignItems: 'center', paddingVertical: 20 },
-  demoStageTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy, textAlign: 'center' },
+  demoStageTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: '#FFFFFF', textAlign: 'center' },
 });

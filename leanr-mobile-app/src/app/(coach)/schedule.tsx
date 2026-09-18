@@ -9,12 +9,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightStatusBadge } from '@/components/light/light-badge';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { StatusBadge } from '@/components/ui/badge';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { sessionTypeLabel } from '@/lib/data/bookings';
 import { getCoachBookings } from '@/lib/data/coach-portal';
 import { useAsync } from '@/lib/data/use-async';
@@ -30,8 +29,8 @@ export default function CoachSchedule() {
   const { data: bookings, loading, error, reload } = useAsync(() => getCoachBookings(tab), [tab]);
 
   return (
-    <LightScreenScaffold title="My Schedule">
-      <LightSegmentedControl
+    <ScreenScaffold title="My Schedule">
+      <SegmentedControl
         options={[
           { key: 'today', label: 'Today' },
           { key: 'upcoming', label: 'Upcoming' },
@@ -41,9 +40,9 @@ export default function CoachSchedule() {
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (bookings?.length ?? 0) === 0 && <LightEmptyState message={`No ${tab} sessions.`} icon="calendar-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (bookings?.length ?? 0) === 0 && <EmptyState message={`No ${tab} sessions.`} icon="calendar-outline" />}
       {!loading &&
         !error &&
         bookings?.map((booking) => (
@@ -52,21 +51,21 @@ export default function CoachSchedule() {
             onPress={() => router.push({ pathname: '/session/[id]', params: { id: booking.id } })}
             accessibilityRole="button"
             accessibilityLabel={`Session at ${formatSessionTime(booking.scheduled_start)}`}>
-            <LightCard style={styles.row}>
+            <GlassCard style={styles.row}>
               <View>
                 <Text style={styles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
                 <Text style={styles.sessionType}>{sessionTypeLabel(booking.session_type)}</Text>
               </View>
-              <LightStatusBadge status={booking.status} />
-            </LightCard>
+              <StatusBadge status={booking.status} />
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
-  sessionType: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted, marginTop: 2 },
+  time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  sessionType: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
 });

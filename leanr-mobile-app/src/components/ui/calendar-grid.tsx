@@ -1,17 +1,17 @@
 /**
- * LightCalendarGrid — month-view date picker matching the mockup's
- * calendar (Book a Demo, Activate Plan, Book a Session, Reschedule all
- * show a real month grid, not a chip row). Operates on the app's existing
- * IST-safe `IstDate` (src/lib/data/booking-wizard.ts) rather than device
- * `Date`, so it drops into the same call sites without a timezone
- * regression. Sunday-first columns (matches Postgres `extract(dow ...)`,
- * which `istDayOfWeek` mirrors).
+ * CalendarGrid — month-view date picker matching the dark glass system
+ * (Book a Demo, Activate Plan, Book a Session, Reschedule all show a real
+ * month grid, not a chip row). Operates on the app's existing IST-safe
+ * `IstDate` (src/lib/data/booking-wizard.ts) rather than device `Date`, so
+ * it drops into the same call sites without a timezone regression.
+ * Sunday-first columns (matches Postgres `extract(dow ...)`, which
+ * `istDayOfWeek` mirrors). Dark counterpart of light-calendar-grid.tsx.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBrand, LightRadius } from '@/constants/light-theme';
+import { Brand, Radius } from '@/constants/theme';
 import { istDateKey, istDayOfWeek, type IstDate } from '@/lib/data/booking-wizard';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -21,8 +21,6 @@ const MONTH_LABELS = [
 ];
 
 function daysInMonth(year: number, month: number): number {
-  // Date.UTC(year, month, 0) is the last day of `month` (1-indexed) — a
-  // standard JS-Date trick, still IST-agnostic since only day-count matters.
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
@@ -38,7 +36,7 @@ type Props = {
   initialMonth?: IstDate;
 };
 
-export function LightCalendarGrid({ selected, onSelect, minDate, maxDate, initialMonth }: Props) {
+export function CalendarGrid({ selected, onSelect, minDate, maxDate, initialMonth }: Props) {
   const anchor = selected ?? initialMonth ?? minDate;
   const [viewYear, setViewYear] = useState<number>(anchor?.year ?? new Date().getUTCFullYear());
   const [viewMonth, setViewMonth] = useState<number>(anchor?.month ?? new Date().getUTCMonth() + 1);
@@ -83,7 +81,7 @@ export function LightCalendarGrid({ selected, onSelect, minDate, maxDate, initia
           accessibilityRole="button"
           accessibilityLabel="Previous month"
           style={[styles.navButton, !canGoPrev && styles.navButtonDisabled]}>
-          <Ionicons name="chevron-back" size={18} color={LightBrand.navy} />
+          <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.monthLabel}>
           {MONTH_LABELS[viewMonth - 1]} {viewYear}
@@ -95,7 +93,7 @@ export function LightCalendarGrid({ selected, onSelect, minDate, maxDate, initia
           accessibilityRole="button"
           accessibilityLabel="Next month"
           style={[styles.navButton, !canGoNext && styles.navButtonDisabled]}>
-          <Ionicons name="chevron-forward" size={18} color={LightBrand.navy} />
+          <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
         </Pressable>
       </View>
 
@@ -140,26 +138,26 @@ const styles = StyleSheet.create({
   navButton: {
     width: 32,
     height: 32,
-    borderRadius: LightRadius.pill,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: LightBrand.bg,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   navButtonDisabled: { opacity: 0.3 },
-  monthLabel: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  monthLabel: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
   weekdayRow: { flexDirection: 'row' },
   weekdayLabel: {
     width: CELL_SIZE,
     textAlign: 'center',
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 11.5,
-    color: LightBrand.textMuted,
+    color: 'rgba(255,255,255,0.45)',
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: CELL_SIZE, height: CELL_SIZE, alignItems: 'center', justifyContent: 'center' },
   dayButton: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  dayButtonSelected: { backgroundColor: LightBrand.teal },
-  dayText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textPrimary },
-  dayTextSelected: { color: '#FFFFFF' },
-  dayTextDisabled: { color: LightBrand.textMuted, opacity: 0.5 },
+  dayButtonSelected: { backgroundColor: Brand.yellow },
+  dayText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: '#FFFFFF' },
+  dayTextSelected: { color: Brand.black },
+  dayTextDisabled: { color: 'rgba(255,255,255,0.3)' },
 });

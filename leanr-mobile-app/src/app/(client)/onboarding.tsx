@@ -18,18 +18,19 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { LoadingState } from '@/components/ui/states';
 import { getMyOnboarding, submitOnboarding } from '@/lib/data/onboarding';
 import type { FitnessGoal } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 const FITNESS_GOALS: { value: FitnessGoal; label: string }[] = [
   { value: 'fat_loss', label: 'Fat Loss' },
@@ -136,76 +137,76 @@ export default function OnboardingScreen() {
 
   if (checkingExisting) {
     return (
-      <LightScreenScaffold title="Let's Get Started!">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Let's Get Started!">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (existingOnboarding) return null; // redirecting via the effect above
 
   return (
-    <LightScreenScaffold title="Let's Get Started!" subtitle={`Step ${step} of ${TOTAL_STEPS}`}>
+    <ScreenScaffold title="Let's Get Started!" subtitle={`Step ${step} of ${TOTAL_STEPS}`}>
       {step === 1 && (
-        <LightCard>
-          <LightSectionHeader title="Your fitness goal" />
-          <LightChipGrid>
+        <GlassCard>
+          <SectionHeader title="Your fitness goal" />
+          <ChipGrid>
             {FITNESS_GOALS.map((g) => (
-              <LightChip key={g.value} label={g.label} selected={goal === g.value} onPress={() => setGoal(g.value)} />
+              <Chip key={g.value} label={g.label} selected={goal === g.value} onPress={() => setGoal(g.value)} />
             ))}
-          </LightChipGrid>
-        </LightCard>
+          </ChipGrid>
+        </GlassCard>
       )}
 
       {step === 2 && (
-        <LightCard>
-          <LightSectionHeader title="Baseline measurements" />
-          <LightTextField placeholder="Weight (kg) *" keyboardType="numeric" value={weight} onChangeText={setWeight} />
-          <LightTextField placeholder="Age" keyboardType="numeric" value={age} onChangeText={setAge} />
-          <LightTextField placeholder="Height (cm)" keyboardType="numeric" value={height} onChangeText={setHeight} />
+        <GlassCard>
+          <SectionHeader title="Baseline measurements" />
+          <TextField placeholder="Weight (kg) *" keyboardType="numeric" value={weight} onChangeText={setWeight} />
+          <TextField placeholder="Age" keyboardType="numeric" value={age} onChangeText={setAge} />
+          <TextField placeholder="Height (cm)" keyboardType="numeric" value={height} onChangeText={setHeight} />
           <Text style={styles.label}>GENDER</Text>
-          <LightChipGrid>
+          <ChipGrid>
             {GENDERS.map((g) => (
-              <LightChip key={g} label={g} selected={gender === g.toLowerCase()} onPress={() => setGender(g.toLowerCase())} />
+              <Chip key={g} label={g} selected={gender === g.toLowerCase()} onPress={() => setGender(g.toLowerCase())} />
             ))}
-          </LightChipGrid>
+          </ChipGrid>
           <Text style={[styles.label, styles.optionalLabel]}>OPTIONAL</Text>
-          <LightTextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
-          <LightTextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
+          <TextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
+          <TextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
           {/* AUTH-006 fix: web spec has these as inches, not cm (BR-8 / ClientPortal.md §7.2). */}
-          <LightTextField placeholder="Waist (in)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
-          <LightTextField placeholder="Chest (in)" keyboardType="numeric" value={chest} onChangeText={setChest} />
-          <LightTextField placeholder="Hip (in)" keyboardType="numeric" value={hip} onChangeText={setHip} />
-          <LightTextField placeholder="Arms (in)" keyboardType="numeric" value={arms} onChangeText={setArms} />
-          <LightTextField placeholder="Thigh (in)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
-        </LightCard>
+          <TextField placeholder="Waist (in)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+          <TextField placeholder="Chest (in)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+          <TextField placeholder="Hip (in)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+          <TextField placeholder="Arms (in)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+          <TextField placeholder="Thigh (in)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
+        </GlassCard>
       )}
 
       {step === 3 && (
-        <LightCard>
-          <LightSectionHeader eyebrow="Optional" title="Medical info" />
-          <LightTextField
+        <GlassCard>
+          <SectionHeader eyebrow="Optional" title="Medical info" />
+          <TextField
             placeholder="Medical conditions"
             value={medicalConditions}
             onChangeText={setMedicalConditions}
             multiline
             style={styles.multilineInput}
           />
-          <LightTextField placeholder="Injuries" value={injuries} onChangeText={setInjuries} multiline style={styles.multilineInput} />
-          <LightTextField
+          <TextField placeholder="Injuries" value={injuries} onChangeText={setInjuries} multiline style={styles.multilineInput} />
+          <TextField
             placeholder="Medications"
             value={medications}
             onChangeText={setMedications}
             multiline
             style={styles.multilineInput}
           />
-          <LightTextField
+          <TextField
             placeholder="Exercise restrictions"
             value={exerciseRestrictions}
             onChangeText={setExerciseRestrictions}
             multiline
             style={styles.multilineInput}
           />
-        </LightCard>
+        </GlassCard>
       )}
 
       {formError && (
@@ -215,26 +216,26 @@ export default function OnboardingScreen() {
       )}
 
       {step < TOTAL_STEPS ? (
-        <LightPrimaryButton size="lg" onPress={onNext}>
+        <PrimaryButton size="lg" onPress={onNext}>
           Next
-        </LightPrimaryButton>
+        </PrimaryButton>
       ) : (
-        <LightPrimaryButton size="lg" onPress={onSubmit} loading={submitting} disabled={!canSubmit}>
+        <PrimaryButton size="lg" onPress={onSubmit} loading={submitting} disabled={!canSubmit}>
           Complete Assessment
-        </LightPrimaryButton>
+        </PrimaryButton>
       )}
       {step > 1 && (
-        <LightSecondaryButton size="lg" onPress={onBack}>
+        <SecondaryButton size="lg" onPress={onBack}>
           Back
-        </LightSecondaryButton>
+        </SecondaryButton>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)' },
   optionalLabel: { marginTop: 4 },
   multilineInput: { minHeight: 70, textAlignVertical: 'top', paddingTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

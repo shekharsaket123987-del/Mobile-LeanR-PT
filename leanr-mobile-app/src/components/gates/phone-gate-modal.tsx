@@ -7,11 +7,11 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightBrand } from '@/constants/light-theme';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { TextLink } from '@/components/tappable';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { isValidMobile, sendPhoneOtp, verifyPhoneOtp } from '@/lib/data/phone-otp';
 import { updateMyProfile } from '@/lib/data/profile';
@@ -72,7 +72,7 @@ export function PhoneGateModal({ visible, onDismiss }: { visible: boolean; onDis
   };
 
   return (
-    <LightBottomSheet
+    <BottomSheet
       visible={visible}
       onClose={() => {
         reset();
@@ -80,7 +80,7 @@ export function PhoneGateModal({ visible, onDismiss }: { visible: boolean; onDis
       }}
       title="Add your phone number">
       {stage === 'phone' ? (
-        <LightTextField
+        <TextField
           icon="call-outline"
           placeholder="Mobile number"
           keyboardType="phone-pad"
@@ -89,7 +89,7 @@ export function PhoneGateModal({ visible, onDismiss }: { visible: boolean; onDis
           onChangeText={setMobile}
         />
       ) : (
-        <LightTextField
+        <TextField
           icon="keypad-outline"
           placeholder="6-digit code"
           keyboardType="number-pad"
@@ -105,29 +105,29 @@ export function PhoneGateModal({ visible, onDismiss }: { visible: boolean; onDis
         </Text>
       )}
 
-      <LightPrimaryButton size="lg" onPress={stage === 'phone' ? onSendCode : onVerify} loading={submitting} style={styles.button}>
+      <PrimaryButton size="lg" onPress={stage === 'phone' ? onSendCode : onVerify} loading={submitting} style={styles.button}>
         {stage === 'phone' ? 'Send code' : 'Verify'}
-      </LightPrimaryButton>
+      </PrimaryButton>
 
-      <LightTextLink
+      <TextLink
         onPress={() => {
           reset();
           onDismiss();
         }}
         style={styles.skipLink}>
         Skip for now (demo — unverified)
-      </LightTextLink>
-    </LightBottomSheet>
+      </TextLink>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 4 },
+  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 4 },
   button: { marginTop: 12 },
   skipLink: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 13,
-    color: LightBrand.textMuted,
+    color: 'rgba(255,255,255,0.45)',
     textAlign: 'center',
     marginTop: 12,
   },

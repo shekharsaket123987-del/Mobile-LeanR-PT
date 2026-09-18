@@ -6,11 +6,11 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { listSales } from '@/lib/data/admin-sales';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -35,17 +35,17 @@ export default function AdminSalesScreen() {
   const total = filtered.reduce((sum, s) => sum + s.amount, 0);
 
   return (
-    <LightScreenScaffold title="Sales" subtitle={`Total: ${formatCurrency(total)}`}>
-      <LightTextField icon="search-outline" placeholder="Search by client, ID, or plan" value={query} onChangeText={setQuery} />
+    <ScreenScaffold title="Sales" subtitle={`Total: ${formatCurrency(total)}`}>
+      <TextField icon="search-outline" placeholder="Search by client, ID, or plan" value={query} onChangeText={setQuery} />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message="No transactions match." icon="cash-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message="No transactions match." icon="cash-outline" />}
       {!loading &&
         !error &&
         filtered.map((s) => (
           <Pressable key={s.subscriptionId} onPress={() => router.push({ pathname: '/admin-clients/[id]', params: { id: s.clientId } })} accessibilityRole="button" accessibilityLabel={s.clientName}>
-            <LightCard style={styles.row}>
+            <GlassCard style={styles.row}>
               <View style={styles.info}>
                 <Text style={styles.name}>{s.clientName}</Text>
                 <Text style={styles.meta}>
@@ -54,18 +54,18 @@ export default function AdminSalesScreen() {
                 <Text style={styles.date}>{formatDate(s.saleDate)}</Text>
               </View>
               <Text style={styles.amount}>{formatCurrency(s.amount)}</Text>
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   info: { flex: 1, gap: 2 },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
-  date: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted },
-  amount: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: LightBrand.teal },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
+  date: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
+  amount: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: Brand.yellow },
 });

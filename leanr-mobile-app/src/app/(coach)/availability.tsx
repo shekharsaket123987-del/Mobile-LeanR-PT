@@ -10,12 +10,11 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { dayName, getMyWeeklyAvailability } from '@/lib/data/coach-availability';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -34,15 +33,15 @@ export default function CoachAvailabilityScreen() {
   }
 
   return (
-    <LightScreenScaffold title="Availability">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+    <ScreenScaffold title="Availability">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
 
       {!loading && !error && (
         <>
-          <LightCard>
-            <LightSectionHeader title="Your weekly hours" />
-            {(weekly?.length ?? 0) === 0 && <LightEmptyState message="No working hours set by admin yet." icon="time-outline" />}
+          <GlassCard>
+            <SectionHeader title="Your weekly hours" />
+            {(weekly?.length ?? 0) === 0 && <EmptyState message="No working hours set by admin yet." icon="time-outline" />}
             {[1, 2, 3, 4, 5, 6, 0].map((dow) => {
               const rows = byDay.get(dow);
               if (!rows || rows.length === 0) return null;
@@ -53,18 +52,18 @@ export default function CoachAvailabilityScreen() {
               );
             })}
             <Text style={styles.hint}>Only admin can change your working hours.</Text>
-          </LightCard>
+          </GlassCard>
 
-          <LightPrimaryButton size="lg" onPress={() => router.push('/leave-requests')}>
+          <PrimaryButton size="lg" onPress={() => router.push('/leave-requests')}>
             Manage Leave Requests
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary, marginTop: 4 },
-  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 10 },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#FFFFFF', marginTop: 4 },
+  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 10 },
 });

@@ -7,24 +7,24 @@
  * this step. Not a tab itself, hidden via `href: null` in the layout.
  *
  * Relit for the post-purchase light theme (mockup frame 4) — real month
- * calendar via `LightCalendarGrid` instead of the earlier date-chip row.
+ * calendar via `CalendarGrid` instead of the earlier date-chip row.
  */
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { CalendarGrid } from '@/components/ui/calendar-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { addIstDays, formatIstDateLabel, istDateKey, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { getClientJourneyStage } from '@/lib/data/journey';
 import { activateSubscription, getPendingActivationSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 export default function ActivatePlanScreen() {
   const { data: subscription, loading, error, reload } = useAsync(getPendingActivationSubscription, []);
@@ -59,38 +59,38 @@ export default function ActivatePlanScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Activate Your Plan">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Activate Your Plan">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Activate Your Plan">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Activate Your Plan">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   if (!subscription) {
     return (
-      <LightScreenScaffold title="Activate Your Plan">
-        <LightEmptyState message="Nothing to activate right now." icon="checkmark-circle-outline" />
-        <LightPrimaryButton size="lg" onPress={() => router.replace('/(client)')}>
+      <ScreenScaffold title="Activate Your Plan">
+        <EmptyState message="Nothing to activate right now." icon="checkmark-circle-outline" />
+        <PrimaryButton size="lg" onPress={() => router.replace('/(client)')}>
           Back to Dashboard
-        </LightPrimaryButton>
-      </LightScreenScaffold>
+        </PrimaryButton>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Activate Your Plan" subtitle="Choose when you'd like to start your plan.">
-      <LightCard>
-        <LightSectionHeader title="Selected date" />
+    <ScreenScaffold title="Activate Your Plan" subtitle="Choose when you'd like to start your plan.">
+      <GlassCard>
+        <SectionHeader title="Selected date" />
         <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
-        <LightCalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={tomorrow} initialMonth={tomorrow} />
-      </LightCard>
+        <CalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={tomorrow} initialMonth={tomorrow} />
+      </GlassCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -98,18 +98,18 @@ export default function ActivatePlanScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton size="lg" onPress={onConfirm} loading={submitting}>
+      <PrimaryButton size="lg" onPress={onConfirm} loading={submitting}>
         Activate Plan
-      </LightPrimaryButton>
+      </PrimaryButton>
       {/* SUB-010 fix: activation is a one-time lock (BR-5) — the previous copy here claimed
           the opposite. */}
       <Text style={styles.hint}>This start date is locked in once you activate — choose carefully.</Text>
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
-  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, textAlign: 'center' },
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginBottom: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
 });

@@ -34,7 +34,14 @@ import { Brand, Glass, Motion, Radius, Shadow } from '@/constants/theme';
 
 type TabBarProps = NonNullable<ComponentProps<typeof Tabs>['tabBar']> extends (props: infer P) => unknown ? P : never;
 
-export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) {
+type Props = TabBarProps & {
+  /** Route name (e.g. `"more"`, `"coach-more"`, `"admin-more"`) whose tab press should open a sheet instead of navigating. */
+  moreRouteName?: string;
+  /** Called instead of navigating when `moreRouteName`'s tab is pressed. */
+  onMorePress?: () => void;
+};
+
+export function FloatingTabBar({ state, descriptors, navigation, moreRouteName, onMorePress }: Props) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
   const routes = state.routes.filter((route) => {
@@ -84,6 +91,10 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
           const badge = options.tabBarBadge;
 
           const onPress = () => {
+            if (route.name === moreRouteName && onMorePress) {
+              onMorePress();
+              return;
+            }
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };

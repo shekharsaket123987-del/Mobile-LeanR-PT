@@ -11,12 +11,11 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { getMyConversations, type ChatCategory } from '@/lib/data/coach-chat';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -44,16 +43,16 @@ export default function CoachChatsScreen() {
   const filtered = (conversations ?? []).filter((c) => c.category === tab);
 
   return (
-    <LightScreenScaffold title="Chats">
-      <LightSegmentedControl
+    <ScreenScaffold title="Chats">
+      <SegmentedControl
         options={TABS.map((t) => ({ ...t, label: counts[t.key] > 0 ? `${t.label} (${counts[t.key]})` : t.label }))}
         value={tab}
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message={`No ${tab} conversations.`} icon="chatbubbles-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message={`No ${tab} conversations.`} icon="chatbubbles-outline" />}
       {!loading &&
         !error &&
         filtered.map((c) => (
@@ -62,12 +61,12 @@ export default function CoachChatsScreen() {
             onPress={() => router.push({ pathname: '/chat/[id]', params: { id: c.id } })}
             accessibilityRole="button"
             accessibilityLabel={`Open chat with ${c.clientName}`}>
-            <LightCard variant={c.unreadCount > 0 ? 'teal' : 'default'}>
+            <GlassCard variant={c.unreadCount > 0 ? 'yellow' : 'default'}>
               <View style={styles.row}>
                 <Text style={styles.name} numberOfLines={1}>
                   {c.clientName}
                 </Text>
-                {c.unreadCount > 0 && <LightBadge label={String(c.unreadCount)} tone="teal" />}
+                {c.unreadCount > 0 && <Badge label={String(c.unreadCount)} tone="yellow" />}
               </View>
               {c.lastMessage && (
                 <Text style={styles.preview} numberOfLines={1}>
@@ -76,19 +75,19 @@ export default function CoachChatsScreen() {
               )}
               <View style={styles.footerRow}>
                 {c.lastMessageAt && <Text style={styles.time}>{formatTime(c.lastMessageAt)}</Text>}
-                <Ionicons name="chevron-forward" size={16} color={LightBrand.textMuted} />
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.45)" />
               </View>
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy, flexShrink: 1 },
-  preview: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, marginTop: 2 },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  preview: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  time: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: LightBrand.textMuted },
+  time: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
 });

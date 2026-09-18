@@ -16,10 +16,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightAuthShell } from '@/components/light/light-auth-shell';
-import { LightGhostButton, LightPrimaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function ResetPasswordScreen() {
@@ -31,17 +31,17 @@ export default function ResetPasswordScreen() {
 
   if (!recoveryInProgress) {
     return (
-      <LightAuthShell
+      <AuthShell
         compact
         title="Link expired"
         subtitle="This password reset link is invalid or has already been used. Request a new one to continue.">
-        <LightPrimaryButton onPress={() => router.replace('/forgot-password')} size="lg">
+        <PrimaryButton onPress={() => router.replace('/forgot-password')} size="lg">
           Request a new link
-        </LightPrimaryButton>
-        <LightGhostButton size="sm" onPress={() => router.replace('/login')} style={styles.centerBtn}>
+        </PrimaryButton>
+        <GhostButton size="sm" onPress={() => router.replace('/login')} style={styles.centerBtn}>
           Back to login
-        </LightGhostButton>
-      </LightAuthShell>
+        </GhostButton>
+      </AuthShell>
     );
   }
 
@@ -68,8 +68,8 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <LightAuthShell compact title="Set a new password" subtitle="Choose a new password for your account.">
-      <LightTextField
+    <AuthShell compact title="Set a new password" subtitle="Choose a new password for your account.">
+      <TextField
         icon="lock-closed-outline"
         placeholder="New password"
         isPassword
@@ -77,7 +77,7 @@ export default function ResetPasswordScreen() {
         value={password}
         onChangeText={setPassword}
       />
-      <LightTextField
+      <TextField
         icon="lock-closed-outline"
         placeholder="Confirm new password"
         isPassword
@@ -92,14 +92,14 @@ export default function ResetPasswordScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+      <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
         Save new password
-      </LightPrimaryButton>
-    </LightAuthShell>
+      </PrimaryButton>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
   centerBtn: { alignSelf: 'center', marginTop: 4 },
 });

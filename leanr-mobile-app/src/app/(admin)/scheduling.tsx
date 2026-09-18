@@ -7,12 +7,11 @@
  */
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightStatusBadge } from '@/components/light/light-badge';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { StatusBadge } from '@/components/ui/badge';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { getAdminScheduling, type AdminSchedulingRow, type SchedulingBucket } from '@/lib/data/admin-scheduling';
 import { sessionTypeLabel } from '@/lib/data/bookings';
 import { useAsync } from '@/lib/data/use-async';
@@ -34,9 +33,9 @@ export default function AdminSchedulingScreen() {
   const { data, loading, error, reload } = useAsync(getAdminScheduling, []);
 
   return (
-    <LightScreenScaffold title="Scheduling">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+    <ScreenScaffold title="Scheduling">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading &&
         !error &&
         data &&
@@ -44,27 +43,27 @@ export default function AdminSchedulingScreen() {
           const rows = data[section.key];
           return (
             <View key={section.key}>
-              <LightSectionHeader title={section.title} eyebrow={`${rows.length} SESSIONS`} />
-              {rows.length === 0 && <LightEmptyState message="Nothing here." icon={section.icon as never} />}
+              <SectionHeader title={section.title} eyebrow={`${rows.length} SESSIONS`} />
+              {rows.length === 0 && <EmptyState message="Nothing here." icon={section.icon as never} />}
               {rows.map((b: AdminSchedulingRow) => (
-                <LightCard key={b.id} style={styles.row}>
+                <GlassCard key={b.id} style={styles.row}>
                   <View style={styles.headerRow}>
                     <Text style={styles.title}>{formatDateTime(b.scheduled_start)}</Text>
                     <View style={styles.badgeRow}>
                       {b.session_type === 'assessment' && <Text style={styles.typeTag}>{sessionTypeLabel(b.session_type)}</Text>}
-                      <LightStatusBadge status={b.status} />
+                      <StatusBadge status={b.status} />
                     </View>
                   </View>
                   <Text style={styles.meta}>
                     {b.client_name} · {b.coach_name}
                   </Text>
                   {b.note && <Text style={styles.note}>{b.note}</Text>}
-                </LightCard>
+                </GlassCard>
               ))}
             </View>
           );
         })}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -72,8 +71,8 @@ const styles = StyleSheet.create({
   row: { gap: 2 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  title: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textSecondary },
-  note: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 2 },
-  typeTag: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: LightBrand.textMuted },
+  title: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  note: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  typeTag: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.45)' },
 });

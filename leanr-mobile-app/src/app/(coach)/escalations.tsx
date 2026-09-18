@@ -9,19 +9,18 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { getLinkedEscalations, type CoachEscalation } from '@/lib/data/coach-escalations';
 import { useAsync } from '@/lib/data/use-async';
 
 const STATUS_LABEL: Record<CoachEscalation['status'], string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
-const STATUS_TONE: Record<CoachEscalation['status'], 'teal' | 'green' | 'red'> = {
+const STATUS_TONE: Record<CoachEscalation['status'], 'yellow' | 'green' | 'red'> = {
   open: 'red',
-  in_progress: 'teal',
+  in_progress: 'yellow',
   resolved: 'green',
 };
 
@@ -38,8 +37,8 @@ export default function CoachEscalationsScreen() {
   const filtered = (escalations ?? []).filter((e) => (tab === 'resolved' ? e.status === 'resolved' : e.status !== 'resolved'));
 
   return (
-    <LightScreenScaffold title="Escalations" subtitle="Only Admin can respond to or resolve these.">
-      <LightSegmentedControl
+    <ScreenScaffold title="Escalations" subtitle="Only Admin can respond to or resolve these.">
+      <SegmentedControl
         options={[
           { key: 'open', label: 'Open' },
           { key: 'resolved', label: 'Resolved' },
@@ -48,29 +47,29 @@ export default function CoachEscalationsScreen() {
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message={`No ${tab} escalations.`} icon="checkmark-circle-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message={`No ${tab} escalations.`} icon="checkmark-circle-outline" />}
       {!loading &&
         !error &&
         filtered.map((e) => (
-          <LightCard key={e.id}>
+          <GlassCard key={e.id}>
             <View style={styles.header}>
               <Text style={styles.date}>{formatDate(e.created_at)}</Text>
-              <LightBadge label={STATUS_LABEL[e.status]} tone={STATUS_TONE[e.status]} />
+              <Badge label={STATUS_LABEL[e.status]} tone={STATUS_TONE[e.status]} />
             </View>
             <Text style={styles.reason}>{e.reason}</Text>
             {e.client_name && <Text style={styles.date}>{e.client_name}</Text>}
             {e.description && <Text style={styles.bodyText}>{e.description}</Text>}
-          </LightCard>
+          </GlassCard>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textMuted },
-  reason: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: LightBrand.navy },
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, marginTop: 2 },
+  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
+  reason: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: '#FFFFFF' },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
 });

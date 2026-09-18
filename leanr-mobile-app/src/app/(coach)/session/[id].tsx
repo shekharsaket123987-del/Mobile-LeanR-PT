@@ -27,15 +27,15 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightStatCard } from '@/components/light/light-stat-card';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { sessionTypeLabel } from '@/lib/data/bookings';
 import {
   attendanceEligible,
@@ -55,9 +55,9 @@ function formatSessionTime(iso: string) {
 }
 
 const ATTENDANCE_OPTIONS: { key: 'present' | 'late' | 'absent'; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
-  { key: 'present', label: 'Present', icon: 'checkmark-circle-outline', color: LightBrand.successEmerald },
-  { key: 'late', label: 'Late', icon: 'time-outline', color: LightBrand.amber },
-  { key: 'absent', label: 'Absent', icon: 'close-circle-outline', color: LightBrand.alertRed },
+  { key: 'present', label: 'Present', icon: 'checkmark-circle-outline', color: Brand.successEmerald },
+  { key: 'late', label: 'Late', icon: 'time-outline', color: Brand.yellow },
+  { key: 'absent', label: 'Absent', icon: 'close-circle-outline', color: Brand.alertRed },
 ];
 
 export default function SessionWorkflow() {
@@ -119,16 +119,16 @@ export default function SessionWorkflow() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Session">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Session">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error || !data) {
     return (
-      <LightScreenScaffold title="Session">
-        <LightErrorState message={error ?? 'Session not found.'} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Session">
+        <ErrorState message={error ?? 'Session not found.'} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
@@ -147,45 +147,45 @@ export default function SessionWorkflow() {
           : 'pre';
 
   return (
-    <LightScreenScaffold title={formatSessionTime(booking.scheduled_start)}>
+    <ScreenScaffold title={formatSessionTime(booking.scheduled_start)}>
       <Text style={styles.sessionType}>{sessionTypeLabel(booking.session_type)}</Text>
 
-      {stage === 'completed' && <LightStatCard emphasize value="Completed" label="SESSION" />}
+      {stage === 'completed' && <StatCard emphasize value="Completed" label="SESSION" />}
 
       {stage === 'absent-closed' && (
-        <LightCard>
+        <GlassCard>
           <Text style={styles.bigStatus}>Client absent</Text>
           <Text style={styles.metaLabel}>This session is closed. No notes required.</Text>
-        </LightCard>
+        </GlassCard>
       )}
 
       {stage === 'notes' && (
         <>
-          <LightCard>
+          <GlassCard>
             <View style={styles.headerRow}>
-              <LightBadge label={attendanceStatus === 'present' ? 'Present' : 'Late'} tone="teal" />
+              <Badge label={attendanceStatus === 'present' ? 'Present' : 'Late'} tone="yellow" />
             </View>
-          </LightCard>
-          <LightCard>
-            <LightSectionHeader title="Session summary" />
-            <LightTextField
+          </GlassCard>
+          <GlassCard>
+            <SectionHeader title="Session summary" />
+            <TextField
               placeholder="What did you cover this session?"
               multiline
               style={styles.notesInput}
               value={summary}
               onChangeText={setSummary}
             />
-          </LightCard>
-          <LightPrimaryButton size="lg" onPress={onSubmitNotes} loading={submitting}>
+          </GlassCard>
+          <PrimaryButton size="lg" onPress={onSubmitNotes} loading={submitting}>
             Mark completed
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
 
       {stage === 'pre' && (
         <>
-          <LightCard variant={booking.coach_joined_at ? 'default' : 'teal'}>
-            <LightSectionHeader title="Join session" />
+          <GlassCard variant={booking.coach_joined_at ? 'default' : 'yellow'}>
+            <SectionHeader title="Join session" />
             <Pressable
               onPress={onJoin}
               disabled={joining}
@@ -195,16 +195,16 @@ export default function SessionWorkflow() {
               <Ionicons
                 name={booking.coach_joined_at ? 'checkmark-circle' : 'videocam-outline'}
                 size={18}
-                color={booking.coach_joined_at ? LightBrand.successEmerald : LightBrand.teal}
+                color={booking.coach_joined_at ? Brand.successEmerald : Brand.yellow}
               />
-              <Text style={[styles.joinLabel, { color: booking.coach_joined_at ? LightBrand.successEmerald : LightBrand.teal }]}>
+              <Text style={[styles.joinLabel, { color: booking.coach_joined_at ? Brand.successEmerald : Brand.yellow }]}>
                 {booking.coach_joined_at ? 'Joined — reopen Zoom' : 'Join Zoom Meeting'}
               </Text>
             </Pressable>
-          </LightCard>
+          </GlassCard>
 
-          <LightCard>
-            <LightSectionHeader
+          <GlassCard>
+            <SectionHeader
               title="Mark attendance"
               actionLabel="End Session"
               onAction={reload}
@@ -224,36 +224,36 @@ export default function SessionWorkflow() {
                   accessibilityLabel={opt.label}
                   accessibilityState={{ disabled: !eligible || marking }}
                   style={[styles.attendanceBtn, { borderColor: opt.color + '55' }, (!eligible || marking) && styles.attendanceBtnDisabled]}>
-                  <Ionicons name={opt.icon} size={20} color={eligible ? opt.color : LightBrand.textMuted} />
-                  <Text style={[styles.attendanceLabel, { color: eligible ? opt.color : LightBrand.textMuted }]}>{opt.label}</Text>
+                  <Ionicons name={opt.icon} size={20} color={eligible ? opt.color : 'rgba(255,255,255,0.45)'} />
+                  <Text style={[styles.attendanceLabel, { color: eligible ? opt.color : 'rgba(255,255,255,0.45)' }]}>{opt.label}</Text>
                 </Pressable>
               ))}
             </View>
-          </LightCard>
+          </GlassCard>
         </>
       )}
 
       {previousNotes.length > 0 && (
         <>
-          <LightSectionHeader title="Previous Notes" />
+          <SectionHeader title="Previous Notes" />
           {previousNotes.map((n, i) => (
-            <LightCard key={i} style={styles.prevNoteCard}>
+            <GlassCard key={i} style={styles.prevNoteCard}>
               <Text style={styles.prevNoteDate}>{new Date(n.scheduledStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
               <Text style={styles.prevNoteBody}>{n.notes}</Text>
-            </LightCard>
+            </GlassCard>
           ))}
         </>
       )}
-      {previousNotes.length === 0 && stage === 'pre' && <LightEmptyState message="No previous session notes yet." icon="document-text-outline" />}
-    </LightScreenScaffold>
+      {previousNotes.length === 0 && stage === 'pre' && <EmptyState message="No previous session notes yet." icon="document-text-outline" />}
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  sessionType: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.6, color: LightBrand.teal, textTransform: 'uppercase' },
+  sessionType: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.6, color: Brand.yellow, textTransform: 'uppercase' },
   headerRow: { flexDirection: 'row' },
-  bigStatus: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, color: LightBrand.navy },
-  metaLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted, marginTop: 4 },
+  bigStatus: { fontFamily: 'Manrope_800ExtraBold', fontSize: 22, color: '#FFFFFF' },
+  metaLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
   notesInput: { minHeight: 100, textAlignVertical: 'top', paddingTop: 14 },
   joinRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
   joinLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15 },
@@ -271,6 +271,6 @@ const styles = StyleSheet.create({
   attendanceBtnDisabled: { opacity: 0.5 },
   attendanceLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12.5 },
   prevNoteCard: { gap: 2 },
-  prevNoteDate: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: LightBrand.textMuted },
-  prevNoteBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textPrimary },
+  prevNoteDate: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
+  prevNoteBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: '#FFFFFF' },
 });

@@ -12,11 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightCard } from '@/components/light/light-card';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { GlassCard } from '@/components/ui/glass-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getMeasurementStatusForClient } from '@/lib/data/measurement-status';
 import { listClientTimeline, type TimelineEventRow, type TimelineEventType, type TimelineSide } from '@/lib/data/timeline';
 import { useAsync } from '@/lib/data/use-async';
@@ -144,7 +144,7 @@ function groupByTimestamp(events: TimelineEventRow[]): TimestampGroup[] {
 function IconBadge({ type, side }: { type: TimelineEventType; side: TimelineSide }) {
   const iconName = EVENT_ICONS[type] ?? 'time-outline';
   return (
-    <View style={[styles.iconBadge, { backgroundColor: side === 'internal' ? LightBrand.teal : LightBrand.amber }]}>
+    <View style={[styles.iconBadge, { backgroundColor: side === 'internal' ? Brand.yellow : Brand.successEmerald }]}>
       <Ionicons name={iconName} size={16} color="#FFFFFF" />
     </View>
   );
@@ -152,25 +152,25 @@ function IconBadge({ type, side }: { type: TimelineEventType; side: TimelineSide
 
 function EventCard({ event, onExpand }: { event: TimelineEventRow; onExpand: (event: TimelineEventRow) => void }) {
   const hasDetail = !!event.metadata && Object.keys(event.metadata).length > 0;
-  const accentColor = event.side === 'internal' ? LightBrand.teal : LightBrand.amber;
+  const accentColor = event.side === 'internal' ? Brand.yellow : Brand.successEmerald;
 
   return (
-    <LightCard style={[styles.eventCard, { borderColor: accentColor + '40' }]}>
+    <GlassCard style={[styles.eventCard, { borderColor: accentColor + '40' }]}>
       <Pressable onPress={hasDetail ? () => onExpand(event) : undefined} disabled={!hasDetail} accessibilityRole={hasDetail ? 'button' : undefined} style={styles.eventCardHeader}>
         <Text style={styles.eventTitle}>{event.title}</Text>
-        {hasDetail && <Ionicons name="chevron-forward" size={16} color={LightBrand.textMuted} />}
+        {hasDetail && <Ionicons name="chevron-forward" size={16} color={'rgba(255,255,255,0.45)'} />}
       </Pressable>
       {event.description && <Text style={styles.eventDescription}>{cleanDescription(event.description)}</Text>}
       <View style={styles.eventDivider} />
       <Text style={[styles.addedBy, { color: accentColor }]}>Added by: {addedByLabel(event)}</Text>
-    </LightCard>
+    </GlassCard>
   );
 }
 
 function DetailSheet({ event, onClose }: { event: TimelineEventRow | null; onClose: () => void }) {
   const entries = Object.entries(event?.metadata ?? {});
   return (
-    <LightBottomSheet visible={!!event} onClose={onClose} title={event?.title} subtitle={event ? `${formatHeaderDate(event.created_at)} · ${formatHeaderTime(event.created_at)}` : undefined}>
+    <BottomSheet visible={!!event} onClose={onClose} title={event?.title} subtitle={event ? `${formatHeaderDate(event.created_at)} · ${formatHeaderTime(event.created_at)}` : undefined}>
       {event?.description && <Text style={styles.detailDescription}>{cleanDescription(event.description)}</Text>}
       {entries.map(([key, value]) => (
         <View key={key} style={styles.detailRow}>
@@ -178,7 +178,7 @@ function DetailSheet({ event, onClose }: { event: TimelineEventRow | null; onClo
           <Text style={styles.detailValue}>{String(value)}</Text>
         </View>
       ))}
-    </LightBottomSheet>
+    </BottomSheet>
   );
 }
 
@@ -217,24 +217,24 @@ export function ClientTimeline({ clientId }: { clientId: string }) {
   const hasMore = visibleCount < filtered.length;
   const groups = useMemo(() => groupByTimestamp(visible), [visible]);
 
-  if (loading) return <LightLoadingState />;
-  if (error) return <LightErrorState message={error} onRetry={reload} />;
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={reload} />;
 
   return (
     <View style={styles.root}>
       {data?.measurement.stale && (
-        <LightCard style={styles.staleBanner}>
-          <Ionicons name="alert-circle" size={16} color={LightBrand.alertRed} />
+        <GlassCard style={styles.staleBanner}>
+          <Ionicons name="alert-circle" size={16} color={Brand.alertRed} />
           <Text style={styles.staleText}>
             Measurements overdue
             {data.measurement.lastLoggedAt ? ` — last updated ${formatHeaderDate(data.measurement.lastLoggedAt)}` : ' — never logged'}.
           </Text>
-        </LightCard>
+        </GlassCard>
       )}
 
       <View style={styles.controlsRow}>
         <View style={styles.modeToggle}>
-          <LightSegmentedControl
+          <SegmentedControl
             options={[
               { key: 'split', label: 'Split view' },
               { key: 'merged', label: 'Merged view' },
@@ -247,11 +247,11 @@ export function ClientTimeline({ clientId }: { clientId: string }) {
           <Text style={styles.filterButtonText} numberOfLines={1}>
             {filterType === 'all' ? 'All events' : EVENT_LABELS[filterType]}
           </Text>
-          <Ionicons name="chevron-down" size={14} color={LightBrand.textSecondary} />
+          <Ionicons name="chevron-down" size={14} color={'rgba(255,255,255,0.6)'} />
         </Pressable>
       </View>
 
-      {filtered.length === 0 && <LightEmptyState message="No activity logged yet." icon="time-outline" />}
+      {filtered.length === 0 && <EmptyState message="No activity logged yet." icon="time-outline" />}
 
       {mode === 'split' ? (
         <View style={styles.splitContainer}>
@@ -305,18 +305,18 @@ export function ClientTimeline({ clientId }: { clientId: string }) {
         </Pressable>
       )}
 
-      <LightBottomSheet visible={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title="Filter by event type">
+      <BottomSheet visible={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title="Filter by event type">
         <Pressable onPress={() => onSelectFilter('all')} style={styles.filterOption} accessibilityRole="button">
           <Text style={styles.filterOptionText}>All events</Text>
-          {filterType === 'all' && <Ionicons name="checkmark" size={16} color={LightBrand.teal} />}
+          {filterType === 'all' && <Ionicons name="checkmark" size={16} color={Brand.yellow} />}
         </Pressable>
         {availableTypes.map((type) => (
           <Pressable key={type} onPress={() => onSelectFilter(type)} style={styles.filterOption} accessibilityRole="button">
             <Text style={styles.filterOptionText}>{EVENT_LABELS[type] ?? type}</Text>
-            {filterType === type && <Ionicons name="checkmark" size={16} color={LightBrand.teal} />}
+            {filterType === type && <Ionicons name="checkmark" size={16} color={Brand.yellow} />}
           </Pressable>
         ))}
-      </LightBottomSheet>
+      </BottomSheet>
 
       <DetailSheet event={expanded} onClose={() => setExpanded(null)} />
     </View>
@@ -325,8 +325,8 @@ export function ClientTimeline({ clientId }: { clientId: string }) {
 
 const styles = StyleSheet.create({
   root: { gap: 14 },
-  staleBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderColor: LightBrand.alertRed + '4D', backgroundColor: LightBrand.alertRed + '0D' },
-  staleText: { flex: 1, fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.alertRed },
+  staleBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderColor: Brand.alertRed + '4D', backgroundColor: Brand.alertRed + '0D' },
+  staleText: { flex: 1, fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.alertRed },
   controlsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   modeToggle: { flex: 1 },
   filterButton: {
@@ -338,16 +338,16 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: LightBrand.border,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  filterButtonText: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary, flexShrink: 1 },
+  filterButtonText: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)', flexShrink: 1 },
   splitContainer: { position: 'relative' },
-  splitDivider: { position: 'absolute', top: 28, bottom: 0, left: '50%', width: StyleSheet.hairlineWidth, backgroundColor: LightBrand.border },
+  splitDivider: { position: 'absolute', top: 28, bottom: 0, left: '50%', width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.1)' },
   splitHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  splitHeaderLabel: { fontFamily: 'Manrope_700Bold', fontSize: 10.5, letterSpacing: 0.6, color: LightBrand.textMuted, textTransform: 'uppercase' },
+  splitHeaderLabel: { fontFamily: 'Manrope_700Bold', fontSize: 10.5, letterSpacing: 0.6, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' },
   group: { marginBottom: 18 },
   groupHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  groupHeaderText: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: LightBrand.textSecondary },
+  groupHeaderText: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: 'rgba(255,255,255,0.6)' },
   splitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
   splitColumn: { flex: 1 },
   splitIconCol: { width: 32, alignItems: 'center', paddingTop: 2 },
@@ -356,16 +356,16 @@ const styles = StyleSheet.create({
   iconBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   eventCard: { gap: 4, padding: 12 },
   eventCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  eventTitle: { flex: 1, fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.textPrimary },
-  eventDescription: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary, lineHeight: 18 },
-  eventDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: LightBrand.border, marginTop: 2 },
+  eventTitle: { flex: 1, fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF' },
+  eventDescription: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.6)', lineHeight: 18 },
+  eventDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.1)', marginTop: 2 },
   addedBy: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
   loadMore: { alignSelf: 'center', paddingVertical: 8 },
-  loadMoreText: { fontFamily: 'Manrope_700Bold', fontSize: 12.5, color: LightBrand.textMuted },
-  filterOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: LightBrand.border },
-  filterOptionText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: LightBrand.textPrimary },
-  detailDescription: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary, lineHeight: 20, marginBottom: 12 },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: LightBrand.border },
-  detailKey: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textMuted, flexShrink: 1 },
-  detailValue: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textPrimary, flexShrink: 1, textAlign: 'right' },
+  loadMoreText: { fontFamily: 'Manrope_700Bold', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
+  filterOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  filterOptionText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: '#FFFFFF' },
+  detailDescription: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)', lineHeight: 20, marginBottom: 12 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  detailKey: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', flexShrink: 1 },
+  detailValue: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: '#FFFFFF', flexShrink: 1, textAlign: 'right' },
 });

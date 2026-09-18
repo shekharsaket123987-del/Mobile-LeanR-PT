@@ -3,27 +3,27 @@
  * (richest screen)". Manual Controls card: Adjust Sessions, Grant
  * Pause-Days, Transfer Coach, Assign Shadow Coach, Pause/Resume
  * Subscription, Log Measurement, Log Escalation, Log Refund Request.
- * Forms use the app's established "inline-toggled LightCard section"
- * convention (no light-themed bottom sheet exists anywhere in this app
- * — see build plan) — only one control panel open at a time.
+ * Forms use the app's established "inline-toggled GlassCard section"
+ * convention — only one control panel open at a time.
  */
 import { useLocalSearchParams, router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ClientTimeline } from '@/components/client-timeline';
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightPrimaryButton, LightSecondaryButton, LightDestructiveButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightMeasurementChart, type ChartPoint } from '@/components/light/light-measurement-chart';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { PrimaryButton, SecondaryButton, DestructiveButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { MeasurementChart, type ChartPoint } from '@/components/ui/measurement-chart';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { assignShadowCoach, previewShadowAssignmentPlan, type ShadowAssignmentPlan } from '@/lib/data/admin-shadow';
 import {
   adjustClientSessions,
@@ -45,10 +45,10 @@ import type { DerivedClientStatus } from '@/lib/data/coach-clients';
 import { getErrorMessage } from '@/lib/data/errors';
 import { useAsync } from '@/lib/data/use-async';
 
-const STATUS_TONE: Record<DerivedClientStatus, 'teal' | 'green' | 'red' | 'gray'> = {
+const STATUS_TONE: Record<DerivedClientStatus, 'yellow' | 'green' | 'red' | 'gray'> = {
   active: 'green',
-  paused: 'teal',
-  created: 'teal',
+  paused: 'yellow',
+  created: 'yellow',
   expired: 'gray',
   demo: 'gray',
   not_paid: 'gray',
@@ -117,29 +117,29 @@ export default function AdminClientDetailScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Client Details">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Client Details">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error || !client) {
     return (
-      <LightScreenScaffold title="Client Details">
-        <LightErrorState message={error ?? 'Client not found.'} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Client Details">
+        <ErrorState message={error ?? 'Client not found.'} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Client Details">
-      <LightCard style={styles.headerCard}>
+    <ScreenScaffold title="Client Details">
+      <GlassCard style={styles.headerCard}>
         <View style={styles.headerRow}>
-          <LightAvatar photoUrl={client.photo_url} name={client.full_name} size={56} ring />
+          <Avatar photoUrl={client.photo_url} name={client.full_name} size={56} ring />
           <View style={styles.headerInfo}>
             <Text style={styles.name}>{client.full_name}</Text>
             <Text style={styles.code}>#{client.client_code}</Text>
           </View>
-          <LightBadge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
+          <Badge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
         </View>
         <View style={styles.demoRow}>
           <Text style={styles.demoItem}>{client.demographics?.heightCm ? `${client.demographics.heightCm} cm` : '—'}</Text>
@@ -154,9 +154,9 @@ export default function AdminClientDetailScreen() {
           <Text style={styles.demoLabel}>Medical Notes</Text>
           <Text style={styles.demoValue}>{client.medicalNotes ?? '—'}</Text>
         </View>
-      </LightCard>
+      </GlassCard>
 
-      <LightSegmentedControl
+      <SegmentedControl
         options={[
           { key: 'overview', label: 'Overview' },
           { key: 'timeline', label: 'Timeline' },
@@ -170,8 +170,8 @@ export default function AdminClientDetailScreen() {
 
       {tab === 'overview' && (
         <>
-          <LightCard style={styles.card}>
-            <LightSectionHeader title="Overview" />
+          <GlassCard style={styles.card}>
+            <SectionHeader title="Overview" />
             <Row label="Phone" value={client.phone ?? '—'} />
             <Row label="Plan" value={client.planName ?? '—'} />
             <Row label="Coach" value={client.coachName ?? '—'} />
@@ -179,12 +179,12 @@ export default function AdminClientDetailScreen() {
             <Row label="Slot" value={client.slotSummary ?? '—'} />
             {client.sessionsTotal != null && <Row label="Sessions Used" value={`${client.sessionsUsed ?? 0} / ${client.sessionsTotal}`} />}
             {client.pauseDaysAllowed != null && <Row label="Pause Days Allowed" value={String(client.pauseDaysAllowed)} />}
-          </LightCard>
+          </GlassCard>
 
           {client.progressHistory.length > 0 && (
-            <LightCard style={styles.card}>
-              <LightSectionHeader title="Progress Over Time" />
-              <LightMeasurementChart
+            <GlassCard style={styles.card}>
+              <SectionHeader title="Progress Over Time" />
+              <MeasurementChart
                 points={[...client.progressHistory]
                   .reverse()
                   .filter((l) => l.weight != null)
@@ -199,14 +199,14 @@ export default function AdminClientDetailScreen() {
                   <Row label="Logged" value={formatDate(client.progressHistory[0].loggedAt)} />
                 </View>
               )}
-            </LightCard>
+            </GlassCard>
           )}
 
-          <LightSectionHeader title="Manual Controls" />
-          <LightCard style={styles.card}>
-            <LightSecondaryButton onPress={() => togglePanel('adjustSessions')} disabled={!client.subscriptionId} style={styles.controlButton}>
+          <SectionHeader title="Manual Controls" />
+          <GlassCard style={styles.card}>
+            <SecondaryButton onPress={() => togglePanel('adjustSessions')} disabled={!client.subscriptionId} style={styles.controlButton}>
               Adjust Package / Sessions
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'adjustSessions' && client.subscriptionId && (
               <AdjustSessionsPanel
                 currentTotal={client.sessionsTotal ?? 0}
@@ -228,16 +228,16 @@ export default function AdminClientDetailScreen() {
               />
             )}
 
-            <LightSecondaryButton onPress={() => togglePanel('grantPauseDays')} disabled={!client.subscriptionId} style={styles.controlButton}>
+            <SecondaryButton onPress={() => togglePanel('grantPauseDays')} disabled={!client.subscriptionId} style={styles.controlButton}>
               Grant Pause-Days
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'grantPauseDays' && client.subscriptionId && (
               <GrantPauseDaysPanel current={client.pauseDaysAllowed ?? 0} busy={busy} error={actionError} onSubmit={(next) => run(() => grantPauseDays(client.subscriptionId!, next))} />
             )}
 
-            <LightSecondaryButton onPress={() => togglePanel('transferCoach')} disabled={!client.coachId} style={styles.controlButton}>
+            <SecondaryButton onPress={() => togglePanel('transferCoach')} disabled={!client.coachId} style={styles.controlButton}>
               Transfer to Another Coach
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'transferCoach' && (
               <TransferCoachPanel
                 coachOptions={(coachOptions ?? []).filter((c) => c.id !== client.coachId)}
@@ -247,9 +247,9 @@ export default function AdminClientDetailScreen() {
               />
             )}
 
-            <LightSecondaryButton onPress={() => togglePanel('assignShadow')} disabled={!client.coachId} style={styles.controlButton}>
+            <SecondaryButton onPress={() => togglePanel('assignShadow')} disabled={!client.coachId} style={styles.controlButton}>
               Assign Shadow Coach
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'assignShadow' && client.coachId && (
               <AssignShadowPanel
                 clientId={id}
@@ -263,11 +263,11 @@ export default function AdminClientDetailScreen() {
               />
             )}
 
-            <LightSecondaryButton onPress={() => run(() => pauseClientSubscription(client.subscriptionId!))} disabled={!client.subscriptionId || busy} style={styles.controlButton}>
+            <SecondaryButton onPress={() => run(() => pauseClientSubscription(client.subscriptionId!))} disabled={!client.subscriptionId || busy} style={styles.controlButton}>
               Pause Subscription
-            </LightSecondaryButton>
+            </SecondaryButton>
 
-            <LightDestructiveButton
+            <DestructiveButton
               onPress={() =>
                 Alert.alert('Expire this plan?', 'Ends the subscription immediately. This cannot be undone from here — the client would need a new plan/renewal to come back.', [
                   { text: 'Cancel', style: 'cancel' },
@@ -278,25 +278,25 @@ export default function AdminClientDetailScreen() {
               style={styles.controlButton}
             >
               Expire Plan
-            </LightDestructiveButton>
+            </DestructiveButton>
 
-            <LightSecondaryButton onPress={() => togglePanel('logMeasurement')} style={styles.controlButton}>
+            <SecondaryButton onPress={() => togglePanel('logMeasurement')} style={styles.controlButton}>
               Log Measurement
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'logMeasurement' && <LogMeasurementPanel busy={busy} error={actionError} onSubmit={(m) => run(() => logMeasurement(id, m))} />}
 
-            <LightSecondaryButton onPress={() => togglePanel('logEscalation')} style={styles.controlButton}>
+            <SecondaryButton onPress={() => togglePanel('logEscalation')} style={styles.controlButton}>
               Log Escalation
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'logEscalation' && (
               <LogEscalationPanel busy={busy} error={actionError} onSubmit={(reason, details) => run(() => logEscalation(id, client.coachId, reason, details))} />
             )}
 
-            <LightDestructiveButton onPress={() => togglePanel('logRefund')} style={styles.controlButton}>
+            <DestructiveButton onPress={() => togglePanel('logRefund')} style={styles.controlButton}>
               Log Refund Request
-            </LightDestructiveButton>
+            </DestructiveButton>
             {panel === 'logRefund' && <LogRefundPanel busy={busy} error={actionError} onSubmit={(amount, reason) => run(() => logRefundRequest(id, amount, reason))} />}
-          </LightCard>
+          </GlassCard>
         </>
       )}
 
@@ -304,20 +304,20 @@ export default function AdminClientDetailScreen() {
 
       {tab === 'escalations' && (
         <>
-          {(escalations?.length ?? 0) === 0 && <LightEmptyState message="No concerns raised." icon="checkmark-circle-outline" />}
+          {(escalations?.length ?? 0) === 0 && <EmptyState message="No concerns raised." icon="checkmark-circle-outline" />}
           {escalations?.map((e) => (
             <Pressable
               key={e.id}
               onPress={() => router.push({ pathname: '/escalation/[id]', params: { id: e.id } })}
               accessibilityRole="button"
               accessibilityLabel={`Open escalation: ${e.reason}`}>
-              <LightCard style={styles.timelineCard}>
+              <GlassCard style={styles.timelineCard}>
                 <View style={styles.escalationRow}>
                   <Text style={styles.timelineTitle}>{e.reason}</Text>
-                  <LightBadge label={e.status.replace('_', ' ')} tone={e.status === 'resolved' ? 'green' : 'red'} />
+                  <Badge label={e.status.replace('_', ' ')} tone={e.status === 'resolved' ? 'green' : 'red'} />
                 </View>
                 <Text style={styles.timelineDate}>{formatDate(e.created_at)}</Text>
-              </LightCard>
+              </GlassCard>
             </Pressable>
           ))}
         </>
@@ -325,10 +325,10 @@ export default function AdminClientDetailScreen() {
 
       {tab === 'chats' && (
         <>
-          <LightCard variant="teal" style={styles.timelineCard}>
+          <GlassCard variant="yellow" style={styles.timelineCard}>
             <Text style={styles.timelineDesc}>View-only — admin can see this conversation but never send messages.</Text>
-          </LightCard>
-          {(chatMessages?.length ?? 0) === 0 && <LightEmptyState message="No chat messages yet." icon="chatbubble-outline" />}
+          </GlassCard>
+          {(chatMessages?.length ?? 0) === 0 && <EmptyState message="No chat messages yet." icon="chatbubble-outline" />}
           {chatMessages?.map((m) => (
             <View key={m.id} style={[styles.chatBubble, m.sender_role === 'coach' ? styles.chatBubbleCoach : styles.chatBubbleClient]}>
               <Text style={styles.chatSender}>{m.sender_role === 'coach' ? 'Coach' : 'Client'}</Text>
@@ -341,12 +341,12 @@ export default function AdminClientDetailScreen() {
 
       {tab === 'sessions' && (
         <>
-          {client.sessionHistory.length === 0 && <LightEmptyState message="No sessions yet." icon="calendar-outline" />}
+          {client.sessionHistory.length === 0 && <EmptyState message="No sessions yet." icon="calendar-outline" />}
           {client.sessionHistory.map((b) => (
-            <LightCard key={b.id} style={styles.timelineCard}>
+            <GlassCard key={b.id} style={styles.timelineCard}>
               <View style={styles.sessionRow}>
                 <View style={styles.sessionBadges}>
-                  <LightBadge
+                  <Badge
                     label={
                       b.session_type === 'assessment'
                         ? `${sessionTypeLabel(b.session_type)} · ${b.amount_paid ? `₹${b.amount_paid.toLocaleString('en-IN')}` : 'Free'}`
@@ -354,16 +354,16 @@ export default function AdminClientDetailScreen() {
                     }
                     tone="gray"
                   />
-                  <LightBadge label={b.status} tone={b.status === 'completed' ? 'green' : b.status === 'cancelled' || b.status === 'missed' ? 'red' : 'teal'} />
+                  <Badge label={b.status} tone={b.status === 'completed' ? 'green' : b.status === 'cancelled' || b.status === 'missed' ? 'red' : 'yellow'} />
                 </View>
                 <Text style={styles.timelineDate}>{formatDateTime(b.scheduled_start)}</Text>
               </View>
               {b.rating_note && <Text style={styles.timelineDesc}>{b.rating_note}</Text>}
-            </LightCard>
+            </GlassCard>
           ))}
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -391,15 +391,15 @@ function AdjustSessionsPanel({ currentTotal, busy, error, onSubmit }: { currentT
   const [value, setValue] = useState(String(currentTotal));
   return (
     <View style={styles.panel}>
-      <LightTextField keyboardType="number-pad" value={value} onChangeText={setValue} placeholder="New sessions total" accessibilityLabel="New sessions total" />
+      <TextField keyboardType="number-pad" value={value} onChangeText={setValue} placeholder="New sessions total" accessibilityLabel="New sessions total" />
       <Text style={styles.hintText}>
         Raising the total books more upcoming sessions on the client's existing schedule; lowering it cancels the
         furthest-out upcoming sessions first and frees the coach's slot.
       </Text>
       <PanelError error={error} />
-      <LightPrimaryButton loading={busy} onPress={() => onSubmit(Number(value) || 0)}>
+      <PrimaryButton loading={busy} onPress={() => onSubmit(Number(value) || 0)}>
         Save
-      </LightPrimaryButton>
+      </PrimaryButton>
     </View>
   );
 }
@@ -408,11 +408,11 @@ function GrantPauseDaysPanel({ current, busy, error, onSubmit }: { current: numb
   const [value, setValue] = useState(String(current));
   return (
     <View style={styles.panel}>
-      <LightTextField keyboardType="number-pad" value={value} onChangeText={setValue} placeholder="New pause-days allowed" accessibilityLabel="New pause-days allowed" />
+      <TextField keyboardType="number-pad" value={value} onChangeText={setValue} placeholder="New pause-days allowed" accessibilityLabel="New pause-days allowed" />
       <PanelError error={error} />
-      <LightPrimaryButton loading={busy} onPress={() => onSubmit(Number(value) || 0)}>
+      <PrimaryButton loading={busy} onPress={() => onSubmit(Number(value) || 0)}>
         Save
-      </LightPrimaryButton>
+      </PrimaryButton>
     </View>
   );
 }
@@ -432,19 +432,19 @@ function TransferCoachPanel({
   const offerForce = Boolean(error);
   return (
     <View style={styles.panel}>
-      <LightChipGrid>
+      <ChipGrid>
         {coachOptions.map((c) => (
-          <LightChip key={c.id} label={c.full_name} selected={selected === c.id} onPress={() => setSelected(c.id)} />
+          <Chip key={c.id} label={c.full_name} selected={selected === c.id} onPress={() => setSelected(c.id)} />
         ))}
-      </LightChipGrid>
+      </ChipGrid>
       <PanelError error={error} />
-      <LightPrimaryButton loading={busy} disabled={!selected} onPress={() => selected && onSubmit(selected, false)}>
+      <PrimaryButton loading={busy} disabled={!selected} onPress={() => selected && onSubmit(selected, false)}>
         Transfer
-      </LightPrimaryButton>
+      </PrimaryButton>
       {offerForce && selected && (
-        <LightSecondaryButton loading={busy} onPress={() => onSubmit(selected, true)}>
+        <SecondaryButton loading={busy} onPress={() => onSubmit(selected, true)}>
           Transfer Anyway
-        </LightSecondaryButton>
+        </SecondaryButton>
       )}
     </View>
   );
@@ -524,7 +524,7 @@ function AssignShadowPanel({
       <Text style={styles.demoValue}>
         Finds the best-matching free coach for each of this client&apos;s sessions in the range — different sessions can land on different coaches.
       </Text>
-      <LightTextField
+      <TextField
         placeholder="From (YYYY-MM-DD)"
         value={startsOn}
         onChangeText={(v) => {
@@ -533,7 +533,7 @@ function AssignShadowPanel({
         }}
         accessibilityLabel="From date"
       />
-      <LightTextField
+      <TextField
         placeholder="To (YYYY-MM-DD)"
         value={endsOn}
         onChangeText={(v) => {
@@ -542,12 +542,12 @@ function AssignShadowPanel({
         }}
         accessibilityLabel="To date"
       />
-      <LightTextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
+      <TextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
       <PanelError error={error} />
       {plan === null ? (
-        <LightPrimaryButton loading={loadingPlan} onPress={findCoverage}>
+        <PrimaryButton loading={loadingPlan} onPress={findCoverage}>
           Find Coverage
-        </LightPrimaryButton>
+        </PrimaryButton>
       ) : (
         <>
           {plan.assignments.length === 0 && plan.uncoveredDates.length === 0 && (
@@ -560,13 +560,13 @@ function AssignShadowPanel({
             </Text>
           ))}
           {plan.uncoveredDates.length > 0 && <Text style={styles.errorText}>No coach free on: {plan.uncoveredDates.join(', ')}</Text>}
-          <LightSecondaryButton loading={loadingPlan} onPress={findCoverage}>
+          <SecondaryButton loading={loadingPlan} onPress={findCoverage}>
             Re-check availability
-          </LightSecondaryButton>
+          </SecondaryButton>
           {plan.assignments.length > 0 && (
-            <LightPrimaryButton loading={assigning} onPress={confirm}>
+            <PrimaryButton loading={assigning} onPress={confirm}>
               Confirm Assignment{plan.assignments.length > 1 ? 's' : ''}
-            </LightPrimaryButton>
+            </PrimaryButton>
           )}
         </>
       )}
@@ -590,7 +590,7 @@ function LogMeasurementPanel({ busy, error, onSubmit }: { busy: boolean; error: 
   return (
     <View style={styles.panel}>
       {MEASUREMENT_FIELDS.map((f) => (
-        <LightTextField
+        <TextField
           key={f.key}
           keyboardType="decimal-pad"
           placeholder={f.label}
@@ -600,7 +600,7 @@ function LogMeasurementPanel({ busy, error, onSubmit }: { busy: boolean; error: 
         />
       ))}
       <PanelError error={error} />
-      <LightPrimaryButton
+      <PrimaryButton
         loading={busy}
         onPress={() => {
           const input: MeasurementInput = {};
@@ -611,7 +611,7 @@ function LogMeasurementPanel({ busy, error, onSubmit }: { busy: boolean; error: 
           onSubmit(input);
         }}>
         Save Measurement
-      </LightPrimaryButton>
+      </PrimaryButton>
     </View>
   );
 }
@@ -621,12 +621,12 @@ function LogEscalationPanel({ busy, error, onSubmit }: { busy: boolean; error: s
   const [details, setDetails] = useState('');
   return (
     <View style={styles.panel}>
-      <LightTextField placeholder="Reason" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
-      <LightTextField placeholder="Details (optional)" value={details} onChangeText={setDetails} multiline style={styles.multiline} accessibilityLabel="Details" />
+      <TextField placeholder="Reason" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
+      <TextField placeholder="Details (optional)" value={details} onChangeText={setDetails} multiline style={styles.multiline} accessibilityLabel="Details" />
       <PanelError error={error} />
-      <LightPrimaryButton loading={busy} disabled={!reason.trim()} onPress={() => onSubmit(reason.trim(), details.trim() || null)}>
+      <PrimaryButton loading={busy} disabled={!reason.trim()} onPress={() => onSubmit(reason.trim(), details.trim() || null)}>
         Log Escalation
-      </LightPrimaryButton>
+      </PrimaryButton>
     </View>
   );
 }
@@ -636,17 +636,17 @@ function LogRefundPanel({ busy, error, onSubmit }: { busy: boolean; error: strin
   const [reason, setReason] = useState('');
   return (
     <View style={styles.panel}>
-      <LightCard variant="teal" style={styles.timelineCard}>
+      <GlassCard variant="yellow" style={styles.timelineCard}>
         <Text style={styles.timelineDesc}>
           This platform has no payment gateway yet — this logs a refund request to the audit trail for finance to action manually; it does not move money.
         </Text>
-      </LightCard>
-      <LightTextField keyboardType="decimal-pad" placeholder="Amount (₹)" value={amount} onChangeText={setAmount} accessibilityLabel="Refund amount" />
-      <LightTextField placeholder="Reason" value={reason} onChangeText={setReason} accessibilityLabel="Refund reason" />
+      </GlassCard>
+      <TextField keyboardType="decimal-pad" placeholder="Amount (₹)" value={amount} onChangeText={setAmount} accessibilityLabel="Refund amount" />
+      <TextField placeholder="Reason" value={reason} onChangeText={setReason} accessibilityLabel="Refund reason" />
       <PanelError error={error} />
-      <LightDestructiveButton loading={busy} disabled={!amount || !reason.trim()} onPress={() => onSubmit(Number(amount) || 0, reason.trim())}>
+      <DestructiveButton loading={busy} disabled={!amount || !reason.trim()} onPress={() => onSubmit(Number(amount) || 0, reason.trim())}>
         Log Refund Request
-      </LightDestructiveButton>
+      </DestructiveButton>
     </View>
   );
 }
@@ -655,33 +655,33 @@ const styles = StyleSheet.create({
   headerCard: { gap: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headerInfo: { flex: 1, gap: 2 },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },
-  code: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
+  code: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
   card: { gap: 4 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
-  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy, maxWidth: '60%' },
+  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
+  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF', maxWidth: '60%' },
   controlButton: { marginTop: 8 },
   panel: { gap: 8, marginTop: 8, marginBottom: 4 },
   multiline: { minHeight: 60, textAlignVertical: 'top' },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.alertRed },
-  hintText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.alertRed },
+  hintText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
   timelineCard: { gap: 2 },
-  timelineTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
-  timelineDesc: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
-  timelineDate: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 2 },
+  timelineTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
+  timelineDesc: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  timelineDate: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   escalationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   chatBubble: { padding: 12, borderRadius: 14, maxWidth: '85%', gap: 2 },
-  chatBubbleClient: { backgroundColor: LightBrand.card, borderWidth: 1, borderColor: LightBrand.border, alignSelf: 'flex-start' },
-  chatBubbleCoach: { backgroundColor: LightBrand.tealSoft, alignSelf: 'flex-end' },
-  chatSender: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: LightBrand.textMuted },
-  chatBody: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary },
+  chatBubbleClient: { backgroundColor: Brand.bgElevated, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignSelf: 'flex-start' },
+  chatBubbleCoach: { backgroundColor: 'rgba(245,217,10,0.1)', alignSelf: 'flex-end' },
+  chatSender: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.45)' },
+  chatBody: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#FFFFFF' },
   sessionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sessionBadges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   demoRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
-  demoItem: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
+  demoItem: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   demoBlock: { marginTop: 8 },
-  demoLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, textTransform: 'uppercase', color: LightBrand.textMuted, marginBottom: 2 },
-  demoValue: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  demoLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 2 },
+  demoValue: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   latestMeasurementGrid: { marginTop: 4 },
 });

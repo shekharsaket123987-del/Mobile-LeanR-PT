@@ -19,14 +19,13 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CancelSessionSheet } from '@/components/cancel-session-sheet';
 import { RateSessionSheet } from '@/components/rate-session-sheet';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightBadge, LightStatusBadge } from '@/components/light/light-badge';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Badge, StatusBadge } from '@/components/ui/badge';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { TextLink } from '@/components/tappable';
 import {
   cancelBooking,
   canRateThisWeek,
@@ -48,6 +47,7 @@ import {
 import { getLatestSubscription } from '@/lib/data/subscription';
 import type { Booking, BookingStatus } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
+import { Brand } from '@/constants/theme';
 
 type TabKey = BookingStatus | 'rescheduled';
 
@@ -106,12 +106,12 @@ function SchedulingActionRow({
   return (
     <View>
       <View style={lightStyles.actionRow}>
-        <LightTextLink onPress={() => router.push(`/reschedule/${booking.id}`)} disabled={!canReschedule} style={!canReschedule && lightStyles.actionDisabled}>
+        <TextLink onPress={() => router.push(`/reschedule/${booking.id}`)} disabled={!canReschedule} style={!canReschedule && lightStyles.actionDisabled}>
           Reschedule
-        </LightTextLink>
-        <LightTextLink onPress={() => setCancelSheetOpen(true)} disabled={!canCancel} style={[lightStyles.cancelLink, !canCancel && lightStyles.actionDisabled]}>
+        </TextLink>
+        <TextLink onPress={() => setCancelSheetOpen(true)} disabled={!canCancel} style={[lightStyles.cancelLink, !canCancel && lightStyles.actionDisabled]}>
           Cancel
-        </LightTextLink>
+        </TextLink>
       </View>
       <Text style={lightStyles.cutoffHint}>
         {canCancel ? `Cancellable until ${formatSessionTime(cancellableUntil.toISOString())}` : 'Cancellation window closed'}
@@ -140,7 +140,7 @@ function SchedulingActionRow({
 
 function SchedulingPolicyBanner({ rules }: { rules: SchedulingRules }) {
   return (
-    <LightCard variant="teal" style={lightStyles.policyBanner}>
+    <GlassCard variant="yellow" style={lightStyles.policyBanner}>
       <Text style={lightStyles.policyText}>
         Sessions must be cancelled at least {rules.cancellationCutoffHours} hour{rules.cancellationCutoffHours === 1 ? '' : 's'} before start, or
         rescheduled at least {rules.rescheduleCutoffHours} hour{rules.rescheduleCutoffHours === 1 ? '' : 's'} before start.
@@ -148,7 +148,7 @@ function SchedulingPolicyBanner({ rules }: { rules: SchedulingRules }) {
       <Text style={lightStyles.policyText}>
         {rules.reschedulesRemaining} of 2 reschedules left this week.
       </Text>
-    </LightCard>
+    </GlassCard>
   );
 }
 
@@ -174,8 +174,8 @@ function PrePurchaseSessionsScreen() {
   );
 
   return (
-    <LightScreenScaffold title="My Schedule">
-      <LightSegmentedControl
+    <ScreenScaffold title="My Schedule">
+      <SegmentedControl
         options={[
           { key: 'upcoming', label: 'Upcoming' },
           { key: 'past', label: 'Past' },
@@ -184,26 +184,26 @@ function PrePurchaseSessionsScreen() {
         onChange={setActiveTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && activeTab === 'upcoming' && rules && <SchedulingPolicyBanner rules={rules} />}
-      {!loading && !error && (sessions?.length ?? 0) === 0 && <LightEmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />}
+      {!loading && !error && (sessions?.length ?? 0) === 0 && <EmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />}
       {!loading &&
         !error &&
         sessions?.map((booking) => (
-          <LightCard key={booking.id}>
+          <GlassCard key={booking.id}>
             <View style={lightStyles.topRow}>
               <Text style={lightStyles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
-              <LightStatusBadge status={booking.status} />
+              <StatusBadge status={booking.status} />
             </View>
             {booking.coach_name && <Text style={lightStyles.meta}>{booking.coach_name}</Text>}
             <View style={lightStyles.modeRow}>
               <Text style={lightStyles.mode}>Online (Zoom)</Text>
             </View>
             {booking.status === 'upcoming' && rules && <SchedulingActionRow booking={booking} rules={rules} onCancelled={reload} />}
-          </LightCard>
+          </GlassCard>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -228,15 +228,15 @@ function EnrolledSessionCard({
   const alreadyRated = booking.quality_rating != null || booking.trainer_rating != null;
 
   return (
-    <LightCard>
+    <GlassCard>
       <View style={lightStyles.topRow}>
         <Text style={lightStyles.time}>{formatSessionTime(booking.scheduled_start)}</Text>
-        <LightStatusBadge status={booking.status} />
+        <StatusBadge status={booking.status} />
       </View>
       <View style={lightStyles.metaRow}>
         {booking.coach_name && <Text style={lightStyles.meta}>with {booking.coach_name}</Text>}
-        {booking.was_rescheduled && <LightBadge label="Rescheduled" tone="outline" />}
-        {shadowMatch && <LightBadge label="Shadow Coach" tone="teal" />}
+        {booking.was_rescheduled && <Badge label="Rescheduled" tone="outline" />}
+        {shadowMatch && <Badge label="Shadow Coach" tone="yellow" />}
       </View>
       {/* Spec §10 (Client): never show just the shadow coach's name with no indication it's
           temporary — this subtext is what makes the badge self-explanatory on its own. */}
@@ -252,7 +252,7 @@ function EnrolledSessionCard({
       {booking.status === 'completed' && !alreadyRated && (
         <View style={lightStyles.actionRow}>
           {canRate ? (
-            <LightTextLink onPress={() => setRateSheetOpen(true)}>Rate session</LightTextLink>
+            <TextLink onPress={() => setRateSheetOpen(true)}>Rate session</TextLink>
           ) : (
             <Text style={lightStyles.cutoffHint}>You can rate one session every 7 days.</Text>
           )}
@@ -267,7 +267,7 @@ function EnrolledSessionCard({
           onRated();
         }}
       />
-    </LightCard>
+    </GlassCard>
   );
 }
 
@@ -307,30 +307,30 @@ function EnrolledSessionsScreen() {
   );
 
   return (
-    <LightScreenScaffold title="My Schedule">
+    <ScreenScaffold title="My Schedule">
       {shadowCoverage && !shadowCoverage.acknowledged && (
-        <LightCard variant="teal">
+        <GlassCard variant="yellow">
           <Text style={lightStyles.shadowText}>
             {shadowCoverage.shadowCoachName} is covering your sessions with {shadowCoverage.primaryCoachName} from{' '}
             {new Date(shadowCoverage.startsOn).toLocaleDateString()} to {new Date(shadowCoverage.endsOn).toLocaleDateString()}.
           </Text>
-          <LightTextLink onPress={onAcknowledgeShadow}>Got it</LightTextLink>
-        </LightCard>
+          <TextLink onPress={onAcknowledgeShadow}>Got it</TextLink>
+        </GlassCard>
       )}
 
       {/* GAP-10: ad-hoc "Book a session" removed for subscribed clients — sessions come from
           the recurring schedule once subscribed, matching web spec §13. */}
-      <LightPrimaryButton size="lg" onPress={() => router.push('/my-schedule')}>
+      <PrimaryButton size="lg" onPress={() => router.push('/my-schedule')}>
         Manage my schedule
-      </LightPrimaryButton>
+      </PrimaryButton>
 
-      <LightSegmentedControl options={TABS} value={activeTab} onChange={setActiveTab} />
+      <SegmentedControl options={TABS} value={activeTab} onChange={setActiveTab} />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && activeTab === 'upcoming' && data?.rules && <SchedulingPolicyBanner rules={data.rules} />}
       {!loading && !error && (data?.sessions.length ?? 0) === 0 && (
-        <LightEmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />
+        <EmptyState message={`No ${activeTab} sessions.`} icon="calendar-clear-outline" />
       )}
       {!loading &&
         !error &&
@@ -350,7 +350,7 @@ function EnrolledSessionsScreen() {
             />
           ));
         })()}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -362,20 +362,20 @@ export default function SessionsScreen() {
 
 const lightStyles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
+  time: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.textSecondary },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   modeRow: { flexDirection: 'row', alignItems: 'center' },
-  mode: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
+  mode: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
   actionRow: { flexDirection: 'row', gap: 20, marginTop: 6 },
-  cancelLink: { color: LightBrand.alertRed },
+  cancelLink: { color: Brand.alertRed },
   notesBox: { marginTop: 8, gap: 3 },
-  notesLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 0.6, color: LightBrand.textMuted },
-  notesText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary, lineHeight: 19 },
-  shadowText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.tealDark, lineHeight: 19, marginBottom: 6 },
-  shadowSubtext: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted, marginTop: 2 },
-  actionDisabled: { color: LightBrand.textMuted },
-  cutoffHint: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 4 },
+  notesLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 0.6, color: 'rgba(255,255,255,0.45)' },
+  notesText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)', lineHeight: 19 },
+  shadowText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.yellow, lineHeight: 19, marginBottom: 6 },
+  shadowSubtext: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  actionDisabled: { color: 'rgba(255,255,255,0.45)' },
+  cutoffHint: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
   policyBanner: { gap: 4 },
-  policyText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark, lineHeight: 17 },
+  policyText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: Brand.yellow, lineHeight: 17 },
 });

@@ -10,17 +10,18 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightDestructiveButton, LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { DestructiveButton, PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import {
   blockCoachSlot,
   disableCoach,
@@ -37,7 +38,7 @@ import { getErrorMessage } from '@/lib/data/errors';
 import { useAsync } from '@/lib/data/use-async';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const STATUS_TONE: Record<string, 'teal' | 'green' | 'red' | 'gray'> = { active: 'green', inactive: 'gray', 'on-leave': 'teal' };
+const STATUS_TONE: Record<string, 'yellow' | 'green' | 'red' | 'gray'> = { active: 'green', inactive: 'gray', 'on-leave': 'yellow' };
 
 type Tab = 'overview' | 'hours' | 'clients';
 type Panel = null | 'edit' | 'block' | 'reassign';
@@ -73,16 +74,16 @@ export default function AdminCoachDetailScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Coach Details">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Coach Details">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error || !coach) {
     return (
-      <LightScreenScaffold title="Coach Details">
-        <LightErrorState message={error ?? 'Coach not found.'} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Coach Details">
+        <ErrorState message={error ?? 'Coach not found.'} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
@@ -95,19 +96,19 @@ export default function AdminCoachDetailScreen() {
     });
 
   return (
-    <LightScreenScaffold title="Coach Details">
-      <LightCard style={styles.headerCard}>
+    <ScreenScaffold title="Coach Details">
+      <GlassCard style={styles.headerCard}>
         <View style={styles.headerRow}>
-          <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={56} ring />
+          <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={56} ring />
           <View style={styles.headerInfo}>
             <Text style={styles.name}>{coach.full_name}</Text>
             <Text style={styles.code}>#{coach.employeeCode}</Text>
           </View>
-          <LightBadge label={coach.status} tone={STATUS_TONE[coach.status] ?? 'gray'} />
+          <Badge label={coach.status} tone={STATUS_TONE[coach.status] ?? 'gray'} />
         </View>
-      </LightCard>
+      </GlassCard>
 
-      <LightSegmentedControl
+      <SegmentedControl
         options={[
           { key: 'overview', label: 'Overview' },
           { key: 'hours', label: 'Working Hours' },
@@ -119,8 +120,8 @@ export default function AdminCoachDetailScreen() {
 
       {tab === 'overview' && (
         <>
-          <LightCard style={styles.card}>
-            <LightSectionHeader
+          <GlassCard style={styles.card}>
+            <SectionHeader
               title="Profile"
               actionLabel={panel === 'edit' ? undefined : 'Edit'}
               onAction={panel === 'edit' ? undefined : () => setPanel('edit')}
@@ -135,10 +136,10 @@ export default function AdminCoachDetailScreen() {
               </>
             )}
             {panel === 'edit' && <EditCoachPanel coach={coach} busy={busy} error={actionError} onCancel={() => setPanel(null)} onSubmit={(updates) => run(() => updateCoach(coach.id, coach.profileId, updates))} />}
-          </LightCard>
+          </GlassCard>
 
-          <LightCard style={styles.card}>
-            <LightSectionHeader title="Performance" />
+          <GlassCard style={styles.card}>
+            <SectionHeader title="Performance" />
             <View style={styles.statsRow}>
               <Stat value={String(coach.completedSessions)} label="Completed" />
               <Stat value={String(coach.upcomingSessions)} label="Upcoming" />
@@ -171,20 +172,20 @@ export default function AdminCoachDetailScreen() {
                 </View>
               </>
             )}
-          </LightCard>
+          </GlassCard>
 
-          <LightCard style={styles.card}>
-            <LightSectionHeader title="Skills" />
-            <LightChipGrid>
+          <GlassCard style={styles.card}>
+            <SectionHeader title="Skills" />
+            <ChipGrid>
               {skills.map((s) => (
-                <LightChip key={s} label={`${s} ✕`} selected onPress={() => setSkillsDraft(skills.filter((x) => x !== s))} />
+                <Chip key={s} label={`${s} ✕`} selected onPress={() => setSkillsDraft(skills.filter((x) => x !== s))} />
               ))}
-            </LightChipGrid>
+            </ChipGrid>
             <View style={styles.addSkillRow}>
               <View style={styles.addSkillField}>
-                <LightTextField placeholder="Add a skill" value={newSkill} onChangeText={setNewSkill} accessibilityLabel="Add a skill" />
+                <TextField placeholder="Add a skill" value={newSkill} onChangeText={setNewSkill} accessibilityLabel="Add a skill" />
               </View>
-              <LightSecondaryButton
+              <SecondaryButton
                 size="sm"
                 disabled={!newSkill.trim()}
                 onPress={() => {
@@ -192,25 +193,25 @@ export default function AdminCoachDetailScreen() {
                   setNewSkill('');
                 }}>
                 Add
-              </LightSecondaryButton>
+              </SecondaryButton>
             </View>
             {skillsDraft && (
-              <LightPrimaryButton loading={busy} onPress={() => run(async () => { await updateCoachSkills(coach.id, skillsDraft); setSkillsDraft(null); })}>
+              <PrimaryButton loading={busy} onPress={() => run(async () => { await updateCoachSkills(coach.id, skillsDraft); setSkillsDraft(null); })}>
                 Save Skills
-              </LightPrimaryButton>
+              </PrimaryButton>
             )}
-          </LightCard>
+          </GlassCard>
 
-          <LightSectionHeader title="Admin Controls" />
-          <LightCard style={styles.card}>
-            <LightSecondaryButton onPress={() => setPanel(panel === 'block' ? null : 'block')} style={styles.controlButton}>
+          <SectionHeader title="Admin Controls" />
+          <GlassCard style={styles.card}>
+            <SecondaryButton onPress={() => setPanel(panel === 'block' ? null : 'block')} style={styles.controlButton}>
               Override / Block Slot
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'block' && <BlockSlotPanel busy={busy} error={actionError} onSubmit={(date, reason) => run(() => blockCoachSlot(coach.id, date, reason))} />}
 
-            <LightSecondaryButton onPress={() => setPanel(panel === 'reassign' ? null : 'reassign')} style={styles.controlButton}>
+            <SecondaryButton onPress={() => setPanel(panel === 'reassign' ? null : 'reassign')} style={styles.controlButton}>
               Reassign Clients
-            </LightSecondaryButton>
+            </SecondaryButton>
             {panel === 'reassign' && (
               <ReassignPanel
                 options={(allCoaches ?? []).filter((c) => c.id !== coach.id)}
@@ -225,29 +226,29 @@ export default function AdminCoachDetailScreen() {
               />
             )}
             {reassignResult && (
-              <LightCard variant="teal" style={styles.timelineCard}>
+              <GlassCard variant="yellow" style={styles.timelineCard}>
                 <Text style={styles.timelineDesc}>Reassigned {reassignResult.reassignedCount} client(s).</Text>
                 {reassignResult.failed.map((f) => (
                   <Text key={f.clientName} style={styles.errorText}>
                     {f.clientName}: {f.error}
                   </Text>
                 ))}
-              </LightCard>
+              </GlassCard>
             )}
 
-            <LightDestructiveButton
+            <DestructiveButton
               onPress={() => run(() => disableCoach(coach.id))}
               disabled={coach.status === 'inactive' || busy}
               style={styles.controlButton}>
               Disable Coach
-            </LightDestructiveButton>
-          </LightCard>
+            </DestructiveButton>
+          </GlassCard>
         </>
       )}
 
       {tab === 'hours' && (
-        <LightCard style={styles.card}>
-          <LightSectionHeader title="Weekly Working Hours" />
+        <GlassCard style={styles.card}>
+          <SectionHeader title="Weekly Working Hours" />
           {hours.map((h, i) => (
             <View key={h.day_of_week} style={styles.hoursRow}>
               <Pressable
@@ -258,12 +259,12 @@ export default function AdminCoachDetailScreen() {
                 }}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: h.is_active }}>
-                <LightBadge label={DAY_NAMES[h.day_of_week]} tone={h.is_active ? 'green' : 'gray'} />
+                <Badge label={DAY_NAMES[h.day_of_week]} tone={h.is_active ? 'green' : 'gray'} />
               </Pressable>
               {h.is_active && (
                 <>
                   <View style={styles.timeField}>
-                    <LightTextField
+                    <TextField
                       placeholder="Start (HH:MM)"
                       value={h.start_time.slice(0, 5)}
                       onChangeText={(t) => {
@@ -275,7 +276,7 @@ export default function AdminCoachDetailScreen() {
                     />
                   </View>
                   <View style={styles.timeField}>
-                    <LightTextField
+                    <TextField
                       placeholder="End (HH:MM)"
                       value={h.end_time.slice(0, 5)}
                       onChangeText={(t) => {
@@ -291,29 +292,29 @@ export default function AdminCoachDetailScreen() {
             </View>
           ))}
           {actionError && <Text style={styles.errorText}>{actionError}</Text>}
-          <LightPrimaryButton loading={busy} onPress={() => run(async () => { await setCoachAvailability(coach.id, hours); setHoursDraft(null); })}>
+          <PrimaryButton loading={busy} onPress={() => run(async () => { await setCoachAvailability(coach.id, hours); setHoursDraft(null); })}>
             Save Working Hours
-          </LightPrimaryButton>
-        </LightCard>
+          </PrimaryButton>
+        </GlassCard>
       )}
 
       {tab === 'clients' && (
         <>
-          {coach.assignedClients.length === 0 && <LightEmptyState message="No assigned clients." icon="people-outline" />}
+          {coach.assignedClients.length === 0 && <EmptyState message="No assigned clients." icon="people-outline" />}
           {coach.assignedClients.map((c) => (
             <Pressable key={c.id} onPress={() => router.push({ pathname: '/admin-clients/[id]', params: { id: c.id } })} accessibilityRole="button" accessibilityLabel={c.full_name}>
-              <LightCard style={styles.timelineCard}>
+              <GlassCard style={styles.timelineCard}>
                 <Text style={styles.timelineTitle}>{c.full_name}</Text>
                 <Text style={styles.timelineDesc}>
                   {c.packageName ?? 'No package'}
                   {c.sessionsRemaining != null ? ` · ${c.sessionsRemaining} sessions left` : ''}
                 </Text>
-              </LightCard>
+              </GlassCard>
             </Pressable>
           ))}
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -355,16 +356,16 @@ function EditCoachPanel({
   const [bio, setBio] = useState(coach.bio ?? '');
   return (
     <View style={styles.panel}>
-      <LightTextField placeholder="Full Name" value={fullName} onChangeText={setFullName} accessibilityLabel="Full name" />
-      <LightTextField placeholder="Specialization" value={specialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
-      <LightTextField keyboardType="number-pad" placeholder="Years of Experience" value={years} onChangeText={setYears} accessibilityLabel="Years of experience" />
-      <LightTextField placeholder="Bio" value={bio} onChangeText={setBio} multiline style={styles.multiline} accessibilityLabel="Bio" />
+      <TextField placeholder="Full Name" value={fullName} onChangeText={setFullName} accessibilityLabel="Full name" />
+      <TextField placeholder="Specialization" value={specialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
+      <TextField keyboardType="number-pad" placeholder="Years of Experience" value={years} onChangeText={setYears} accessibilityLabel="Years of experience" />
+      <TextField placeholder="Bio" value={bio} onChangeText={setBio} multiline style={styles.multiline} accessibilityLabel="Bio" />
       {error && <Text style={styles.errorText}>{error}</Text>}
       <View style={styles.editActions}>
-        <LightSecondaryButton onPress={onCancel}>Cancel</LightSecondaryButton>
-        <LightPrimaryButton loading={busy} onPress={() => onSubmit({ full_name: fullName.trim(), specialization: specialization.trim(), years_experience: Number(years) || 0, bio: bio.trim() })}>
+        <SecondaryButton onPress={onCancel}>Cancel</SecondaryButton>
+        <PrimaryButton loading={busy} onPress={() => onSubmit({ full_name: fullName.trim(), specialization: specialization.trim(), years_experience: Number(years) || 0, bio: bio.trim() })}>
           Save
-        </LightPrimaryButton>
+        </PrimaryButton>
       </View>
     </View>
   );
@@ -375,12 +376,12 @@ function BlockSlotPanel({ busy, error, onSubmit }: { busy: boolean; error: strin
   const [reason, setReason] = useState('');
   return (
     <View style={styles.panel}>
-      <LightTextField placeholder="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} accessibilityLabel="Date to block" />
-      <LightTextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
+      <TextField placeholder="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} accessibilityLabel="Date to block" />
+      <TextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} accessibilityLabel="Reason" />
       {error && <Text style={styles.errorText}>{error}</Text>}
-      <LightPrimaryButton loading={busy} onPress={() => onSubmit(date, reason.trim() || null)}>
+      <PrimaryButton loading={busy} onPress={() => onSubmit(date, reason.trim() || null)}>
         Block Slot
-      </LightPrimaryButton>
+      </PrimaryButton>
     </View>
   );
 }
@@ -399,15 +400,15 @@ function ReassignPanel({
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <View style={styles.panel}>
-      <LightChipGrid>
+      <ChipGrid>
         {options.map((c) => (
-          <LightChip key={c.id} label={c.full_name} selected={selected === c.id} onPress={() => setSelected(c.id)} />
+          <Chip key={c.id} label={c.full_name} selected={selected === c.id} onPress={() => setSelected(c.id)} />
         ))}
-      </LightChipGrid>
+      </ChipGrid>
       {error && <Text style={styles.errorText}>{error}</Text>}
-      <LightPrimaryButton loading={busy} disabled={!selected} onPress={() => selected && onSubmit(selected)}>
+      <PrimaryButton loading={busy} disabled={!selected} onPress={() => selected && onSubmit(selected)}>
         Reassign All Clients
-      </LightPrimaryButton>
+      </PrimaryButton>
     </View>
   );
 }
@@ -416,27 +417,27 @@ const styles = StyleSheet.create({
   headerCard: { gap: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headerInfo: { flex: 1, gap: 2 },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },
-  code: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
+  code: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
   card: { gap: 4 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
-  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy, maxWidth: '60%' },
-  bio: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary, marginTop: 4 },
+  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
+  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF', maxWidth: '60%' },
+  bio: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   stat: { alignItems: 'center', gap: 2 },
-  statValue: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, color: LightBrand.navy },
-  statLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: LightBrand.textMuted },
+  statValue: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, color: '#FFFFFF' },
+  statLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.45)' },
   addSkillRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   addSkillField: { flex: 1 },
   controlButton: { marginTop: 8 },
   panel: { gap: 8, marginTop: 8, marginBottom: 4 },
   multiline: { minHeight: 60, textAlignVertical: 'top' },
   editActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.alertRed },
   hoursRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
   timeField: { flex: 1 },
   timelineCard: { gap: 2 },
-  timelineTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
-  timelineDesc: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  timelineTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
+  timelineDesc: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
 });

@@ -23,13 +23,14 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightPrimaryButton, LightGhostButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { PrimaryButton, GhostButton, SecondaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { checkSlotAvailability, listAdminCoachOptions, type AdminSlotCheckResult } from '@/lib/data/admin-clients';
 import { createMigratedClient } from '@/lib/data/admin-provisioning';
 import { listAllPackages } from '@/lib/data/admin-settings';
@@ -167,90 +168,90 @@ export default function AdminAddClientScreen() {
 
   if (result) {
     return (
-      <LightScreenScaffold title="Client Created">
-        <LightCard variant="teal" style={styles.card}>
+      <ScreenScaffold title="Client Created">
+        <GlassCard variant="yellow" style={styles.card}>
           <Text style={styles.successTitle}>Account created</Text>
           <Text style={styles.successBody}>Share these one-time credentials with the client:</Text>
           <Text style={styles.credential}>Email: {email}</Text>
           <Text style={styles.credential}>Temporary Password: {password}</Text>
-        </LightCard>
-        <LightPrimaryButton onPress={() => router.replace({ pathname: '/admin-clients/[id]', params: { id: result.clientId } })}>View Client</LightPrimaryButton>
-        <LightGhostButton onPress={() => router.replace('/admin-clients/new')}>Add Another Client</LightGhostButton>
-      </LightScreenScaffold>
+        </GlassCard>
+        <PrimaryButton onPress={() => router.replace({ pathname: '/admin-clients/[id]', params: { id: result.clientId } })}>View Client</PrimaryButton>
+        <GhostButton onPress={() => router.replace('/admin-clients/new')}>Add Another Client</GhostButton>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Add Client" subtitle="Migrate an existing client's account directly">
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Identity" />
-        <LightTextField placeholder="Full Name" value={fullName} onChangeText={setFullName} accessibilityLabel="Full name" />
-        <LightTextField placeholder="Phone (optional)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone" />
-        <LightTextField placeholder="Login Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" accessibilityLabel="Login email" />
+    <ScreenScaffold title="Add Client" subtitle="Migrate an existing client's account directly">
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Identity" />
+        <TextField placeholder="Full Name" value={fullName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <TextField placeholder="Phone (optional)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone" />
+        <TextField placeholder="Login Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" accessibilityLabel="Login email" />
         <View style={styles.passwordRow}>
           <View style={styles.passwordField}>
-            <LightTextField placeholder="Temporary Password" value={password} onChangeText={setPassword} accessibilityLabel="Temporary password" />
+            <TextField placeholder="Temporary Password" value={password} onChangeText={setPassword} accessibilityLabel="Temporary password" />
           </View>
-          <LightGhostButton size="sm" onPress={() => setPassword(randomPassword())}>
+          <GhostButton size="sm" onPress={() => setPassword(randomPassword())}>
             Shuffle
-          </LightGhostButton>
+          </GhostButton>
         </View>
-      </LightCard>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Plan" />
-        <LightChipGrid>
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Plan" />
+        <ChipGrid>
           {plans?.map((p) => (
-            <LightChip key={p.id} label={p.name} selected={packageId === p.id} onPress={() => onPackageSelect(p.id, p.sessions_count)} />
+            <Chip key={p.id} label={p.name} selected={packageId === p.id} onPress={() => onPackageSelect(p.id, p.sessions_count)} />
           ))}
-        </LightChipGrid>
-        <LightTextField
+        </ChipGrid>
+        <TextField
           keyboardType="number-pad"
           placeholder="Sessions Remaining"
           value={sessionsRemaining}
           onChangeText={setSessionsRemaining}
           accessibilityLabel="Sessions remaining"
         />
-        <LightTextField
+        <TextField
           keyboardType="number-pad"
           placeholder="Original Plan Size (optional)"
           value={originalPlanSize}
           onChangeText={setOriginalPlanSize}
           accessibilityLabel="Original plan size"
         />
-        <LightTextField
+        <TextField
           keyboardType="number-pad"
           placeholder="Pause Days Allowed"
           value={pauseDaysAllowed}
           onChangeText={setPauseDaysAllowed}
           accessibilityLabel="Pause days allowed"
         />
-      </LightCard>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Coach & Weekly Schedule" eyebrow="OPTIONAL" />
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Coach & Weekly Schedule" eyebrow="OPTIONAL" />
         <Text style={styles.hint}>Leave no days selected to create the client without a schedule yet. Pick days and a time, then confirm the coach is free before creating.</Text>
-        <LightChipGrid>
+        <ChipGrid>
           {coaches?.map((c) => (
-            <LightChip key={c.id} label={c.full_name} selected={coachId === c.id} onPress={() => onCoachSelect(c.id)} />
+            <Chip key={c.id} label={c.full_name} selected={coachId === c.id} onPress={() => onCoachSelect(c.id)} />
           ))}
-        </LightChipGrid>
-        <LightChipGrid>
+        </ChipGrid>
+        <ChipGrid>
           {HOUR_GRID.map((h) => (
-            <LightChip key={h} label={formatHour(h)} selected={hour === String(h)} onPress={() => onHourChange(String(h))} />
+            <Chip key={h} label={formatHour(h)} selected={hour === String(h)} onPress={() => onHourChange(String(h))} />
           ))}
-        </LightChipGrid>
-        <LightChipGrid>
+        </ChipGrid>
+        <ChipGrid>
           {DAYS.map((d) => (
-            <LightChip key={d.key} label={d.label} selected={days.includes(d.key)} onPress={() => toggleDay(d.key)} />
+            <Chip key={d.key} label={d.label} selected={days.includes(d.key)} onPress={() => toggleDay(d.key)} />
           ))}
-        </LightChipGrid>
+        </ChipGrid>
 
         {wantsSchedule && (
           <View style={styles.availabilityBlock}>
-            <LightSecondaryButton size="sm" loading={checking} disabled={!coachId} onPress={checkAvailability}>
+            <SecondaryButton size="sm" loading={checking} disabled={!coachId} onPress={checkAvailability}>
               Check Availability
-            </LightSecondaryButton>
+            </SecondaryButton>
 
             {checkedSignature === currentSignature && checkResult && (
               <View style={[styles.resultBox, checkResult.available ? styles.resultOk : styles.resultBad]}>
@@ -262,21 +263,21 @@ export default function AdminAddClientScreen() {
                     {checkResult.alternativeTimesForSameCoach.length > 0 && (
                       <View>
                         <Text style={styles.altLabel}>Other times with this coach</Text>
-                        <LightChipGrid>
+                        <ChipGrid>
                           {checkResult.alternativeTimesForSameCoach.map((t) => (
-                            <LightChip key={t} label={formatHour(Number(t.slice(0, 2)))} selected={false} onPress={() => onHourChange(String(Number(t.slice(0, 2))))} />
+                            <Chip key={t} label={formatHour(Number(t.slice(0, 2)))} selected={false} onPress={() => onHourChange(String(Number(t.slice(0, 2))))} />
                           ))}
-                        </LightChipGrid>
+                        </ChipGrid>
                       </View>
                     )}
                     {checkResult.alternativeCoaches.length > 0 && (
                       <View>
                         <Text style={styles.altLabel}>Other coaches free at this same day/time</Text>
-                        <LightChipGrid>
+                        <ChipGrid>
                           {checkResult.alternativeCoaches.map((c) => (
-                            <LightChip key={c.coachId} label={c.name} selected={false} onPress={() => onCoachSelect(c.coachId)} />
+                            <Chip key={c.coachId} label={c.name} selected={false} onPress={() => onCoachSelect(c.coachId)} />
                           ))}
-                        </LightChipGrid>
+                        </ChipGrid>
                       </View>
                     )}
                     {checkResult.alternativeTimesForSameCoach.length === 0 && checkResult.alternativeCoaches.length === 0 && (
@@ -288,17 +289,17 @@ export default function AdminAddClientScreen() {
             )}
           </View>
         )}
-      </LightCard>
+      </GlassCard>
 
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {error}
         </Text>
       )}
-      <LightPrimaryButton size="lg" loading={submitting} disabled={!canSubmit} onPress={onSubmit}>
+      <PrimaryButton size="lg" loading={submitting} disabled={!canSubmit} onPress={onSubmit}>
         Create Client
-      </LightPrimaryButton>
-    </LightScreenScaffold>
+      </PrimaryButton>
+    </ScreenScaffold>
   );
 }
 
@@ -306,16 +307,16 @@ const styles = StyleSheet.create({
   card: { gap: 8 },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   passwordField: { flex: 1 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed },
-  successTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.tealDark },
-  successBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
-  credential: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
-  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.alertRed },
+  successTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: Brand.yellow },
+  successBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  credential: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
+  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   availabilityBlock: { gap: 8, marginTop: 4 },
   resultBox: { borderRadius: 12, borderWidth: 1, padding: 12 },
-  resultOk: { borderColor: LightBrand.successEmerald, backgroundColor: 'rgba(16,185,129,0.06)' },
-  resultBad: { borderColor: LightBrand.alertRed, backgroundColor: 'rgba(239,68,68,0.05)' },
-  resultOkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.tealDark },
-  resultBadText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.alertRed },
-  altLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, textTransform: 'uppercase', color: LightBrand.textMuted, marginBottom: 6 },
+  resultOk: { borderColor: Brand.successEmerald, backgroundColor: 'rgba(16,185,129,0.06)' },
+  resultBad: { borderColor: Brand.alertRed, backgroundColor: 'rgba(239,68,68,0.05)' },
+  resultOkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.yellow },
+  resultBadText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.alertRed },
+  altLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11, textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 6 },
 });

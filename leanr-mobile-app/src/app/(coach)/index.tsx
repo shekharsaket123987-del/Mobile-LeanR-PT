@@ -13,14 +13,14 @@ import { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CoachTaskRow } from '@/components/coach-task-row';
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge, LightStatusBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightStatCard } from '@/components/light/light-stat-card';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge, StatusBadge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { sessionTypeLabel } from '@/lib/data/bookings';
 import {
@@ -84,55 +84,55 @@ export default function CoachDashboard() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Dashboard">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Dashboard">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error || !data) {
     return (
-      <LightScreenScaffold title="Dashboard">
-        <LightErrorState message={error ?? 'Something went wrong.'} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Dashboard">
+        <ErrorState message={error ?? 'Something went wrong.'} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   const activeEscalations = data.escalations.filter((e) => e.status !== 'resolved').length;
 
   return (
-    <LightScreenScaffold title="Dashboard">
+    <ScreenScaffold title="Dashboard">
       <View style={styles.statGrid}>
         <View style={styles.statCell}>
-          <LightStatCard value={String(data.today.length)} label="TODAY" />
+          <StatCard value={String(data.today.length)} label="TODAY" />
         </View>
         <View style={styles.statCell}>
-          <LightStatCard value={String(data.thisWeekCount)} label="THIS WEEK" />
+          <StatCard value={String(data.thisWeekCount)} label="THIS WEEK" />
         </View>
         <View style={styles.statCell}>
-          <LightStatCard value={String(data.performance.completedSessions)} label="COMPLETED" />
+          <StatCard value={String(data.performance.completedSessions)} label="COMPLETED" />
         </View>
         <View style={styles.statCell}>
-          <LightStatCard value={String(data.performance.missedSessions)} label="MISSED" />
+          <StatCard value={String(data.performance.missedSessions)} label="MISSED" />
         </View>
         <View style={styles.statCell}>
-          <LightStatCard value={data.utilization != null ? `${Math.round(data.utilization)}%` : '—'} label="UTILIZATION" />
+          <StatCard value={data.utilization != null ? `${Math.round(data.utilization)}%` : '—'} label="UTILIZATION" />
         </View>
         <View style={styles.statCell}>
-          <LightStatCard
+          <StatCard
             value={data.performance.averageTrainerRating != null ? data.performance.averageTrainerRating.toFixed(1) : '—'}
             label="AVG RATING"
           />
         </View>
         <View style={styles.statCell}>
-          <LightStatCard value={String(activeEscalations)} label="ACTIVE ESCALATIONS" emphasize={activeEscalations > 0} />
+          <StatCard value={String(activeEscalations)} label="ACTIVE ESCALATIONS" emphasize={activeEscalations > 0} />
         </View>
       </View>
 
       {data.latestReview && (
-        <LightCard style={styles.reviewCard}>
+        <GlassCard style={styles.reviewCard}>
           <View style={styles.reviewHeaderRow}>
             <Text style={styles.reviewTitle}>Latest Review</Text>
-            <LightBadge label={sessionTypeLabel(data.latestReview.sessionType)} tone="outline" />
+            <Badge label={sessionTypeLabel(data.latestReview.sessionType)} tone="outline" />
           </View>
           <Text style={styles.reviewStars}>
             ★ {data.latestReview.trainerRating ?? '—'} trainer · ★ {data.latestReview.qualityRating ?? '—'} quality
@@ -141,73 +141,73 @@ export default function CoachDashboard() {
           <Text style={styles.reviewMeta}>
             {data.latestReview.clientName} · {formatSessionTime(data.latestReview.ratedAt)}
           </Text>
-        </LightCard>
+        </GlassCard>
       )}
 
-      <LightSectionHeader title="Today's Tasks" />
-      {data.today.length === 0 && <LightEmptyState message="No sessions today." icon="checkmark-circle-outline" />}
+      <SectionHeader title="Today's Tasks" />
+      {data.today.length === 0 && <EmptyState message="No sessions today." icon="checkmark-circle-outline" />}
       {data.today.map((booking) => (
         <CoachTaskRow key={booking.id} booking={booking} attendanceStatus={data.attendanceMap[booking.id] ?? null} onChanged={reload} />
       ))}
 
       <Pressable onPress={() => router.push('/pending-tasks')} accessibilityRole="button">
-        <LightCard style={styles.linkCard}>
-          <LightSectionHeader title="Pending Tasks" />
+        <GlassCard style={styles.linkCard}>
+          <SectionHeader title="Pending Tasks" />
           <Text style={styles.linkBody}>
             {data.pendingTasks.length === 0
               ? 'Nothing owed — you’re all caught up.'
               : `${data.pendingTasks.length} session${data.pendingTasks.length === 1 ? '' : 's'} still owed attendance or notes.`}
           </Text>
-        </LightCard>
+        </GlassCard>
       </Pressable>
 
-      <LightSectionHeader title="Upcoming (Next 3 Days)" />
-      {data.upcoming3Days.length === 0 && <LightEmptyState message="Nothing on the calendar for the next 3 days." icon="calendar-outline" />}
+      <SectionHeader title="Upcoming (Next 3 Days)" />
+      {data.upcoming3Days.length === 0 && <EmptyState message="Nothing on the calendar for the next 3 days." icon="calendar-outline" />}
       {data.upcoming3Days.map((b) => (
-        <LightCard key={b.id} style={styles.simpleRow}>
+        <GlassCard key={b.id} style={styles.simpleRow}>
           <Text style={styles.simpleRowTime}>{formatSessionTime(b.scheduled_start)}</Text>
-          <LightStatusBadge status={b.status} />
-        </LightCard>
+          <StatusBadge status={b.status} />
+        </GlassCard>
       ))}
 
       {data.cancelled.length > 0 && (
         <>
-          <LightSectionHeader title="Cancelled Sessions" />
+          <SectionHeader title="Cancelled Sessions" />
           {data.cancelled.map((b) => (
-            <LightCard key={b.id} style={styles.simpleRow}>
+            <GlassCard key={b.id} style={styles.simpleRow}>
               <Text style={styles.simpleRowTime}>{formatSessionTime(b.scheduled_start)}</Text>
-              <LightBadge label={`Cancelled by ${b.cancelled_by === session?.user.id ? 'you' : 'client'}`} tone="red" />
-            </LightCard>
+              <Badge label={`Cancelled by ${b.cancelled_by === session?.user.id ? 'you' : 'client'}`} tone="red" />
+            </GlassCard>
           ))}
         </>
       )}
 
       {data.rescheduled.length > 0 && (
         <>
-          <LightSectionHeader title="Rescheduled Sessions" />
+          <SectionHeader title="Rescheduled Sessions" />
           {data.rescheduled.map((b) => (
-            <LightCard key={b.id} style={styles.simpleRow}>
+            <GlassCard key={b.id} style={styles.simpleRow}>
               <Text style={styles.simpleRowTime}>{formatSessionTime(b.scheduled_start)}</Text>
-              <LightBadge label="Rescheduled" tone="outline" />
-            </LightCard>
+              <Badge label="Rescheduled" tone="outline" />
+            </GlassCard>
           ))}
         </>
       )}
 
-      <LightSectionHeader title="Your Clients" actionLabel="View all" onAction={() => router.push('/clients')} />
-      {data.clients.length === 0 && <LightEmptyState message="No clients assigned yet." icon="people-outline" />}
+      <SectionHeader title="Your Clients" actionLabel="View all" onAction={() => router.push('/clients')} />
+      {data.clients.length === 0 && <EmptyState message="No clients assigned yet." icon="people-outline" />}
       {data.clients.slice(0, 3).map((c) => (
         <Pressable key={c.id} onPress={() => router.push({ pathname: '/clients/[id]', params: { id: c.id } })} accessibilityRole="button">
-          <LightCard style={styles.clientRow}>
-            <LightAvatar photoUrl={c.photo_url} name={c.full_name} size={40} />
+          <GlassCard style={styles.clientRow}>
+            <Avatar photoUrl={c.photo_url} name={c.full_name} size={40} />
             <View style={styles.clientInfo}>
               <Text style={styles.clientName}>{c.full_name}</Text>
-              <LightStatusBadge status={c.status} />
+              <StatusBadge status={c.status} />
             </View>
-          </LightCard>
+          </GlassCard>
         </Pressable>
       ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -215,16 +215,16 @@ const styles = StyleSheet.create({
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCell: { width: '47%' },
   linkCard: { gap: 4 },
-  linkBody: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  linkBody: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   simpleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  simpleRowTime: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
+  simpleRowTime: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
   clientRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   clientInfo: { gap: 4 },
-  clientName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  clientName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
   reviewCard: { gap: 4 },
   reviewHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  reviewTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.textSecondary },
-  reviewStars: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.amber },
-  reviewNote: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textPrimary, fontStyle: 'italic' },
-  reviewMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  reviewTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  reviewStars: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow },
+  reviewNote: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: '#FFFFFF', fontStyle: 'italic' },
+  reviewMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
 });

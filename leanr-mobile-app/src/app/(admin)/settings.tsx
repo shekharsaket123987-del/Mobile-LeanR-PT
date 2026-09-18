@@ -15,15 +15,16 @@
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightGhostButton, LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GhostButton, PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import {
   createPackage,
   deletePackage,
@@ -151,101 +152,101 @@ export default function AdminSettingsScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Settings">
-      <LightSectionHeader title="Package Types" actionLabel={editingPackage === null ? '+ Add Package' : undefined} onAction={editingPackage === null ? () => openEdit('new') : undefined} />
+    <ScreenScaffold title="Settings">
+      <SectionHeader title="Package Types" actionLabel={editingPackage === null ? '+ Add Package' : undefined} onAction={editingPackage === null ? () => openEdit('new') : undefined} />
 
-      {packagesLoading && <LightLoadingState />}
-      {packagesError && <LightErrorState message={packagesError} onRetry={reloadPackages} />}
-      {!packagesLoading && !packagesError && packages?.length === 0 && <LightEmptyState message="No packages yet." icon="pricetags-outline" />}
+      {packagesLoading && <LoadingState />}
+      {packagesError && <ErrorState message={packagesError} onRetry={reloadPackages} />}
+      {!packagesLoading && !packagesError && packages?.length === 0 && <EmptyState message="No packages yet." icon="pricetags-outline" />}
       {!packagesLoading &&
         !packagesError &&
         editingPackage === null &&
         packages?.map((p) => (
-          <LightCard key={p.id} style={styles.packageRow}>
+          <GlassCard key={p.id} style={styles.packageRow}>
             <View style={styles.packageInfo}>
               <View style={styles.packageHeader}>
                 <Text style={styles.packageName}>{p.name}</Text>
-                {!p.is_active && <LightBadge label="Inactive" tone="gray" />}
+                {!p.is_active && <Badge label="Inactive" tone="gray" />}
               </View>
               <Text style={styles.packageMeta}>
                 {p.sessions_count} sessions · ₹{p.price} · {p.category}
               </Text>
             </View>
             <View style={styles.packageActions}>
-              <LightGhostButton size="sm" onPress={() => openEdit(p)}>
+              <GhostButton size="sm" onPress={() => openEdit(p)}>
                 Edit
-              </LightGhostButton>
-              <LightGhostButton size="sm" onPress={() => confirmDeletePackage(p.id)} disabled={!p.is_active || busy}>
+              </GhostButton>
+              <GhostButton size="sm" onPress={() => confirmDeletePackage(p.id)} disabled={!p.is_active || busy}>
                 Delete
-              </LightGhostButton>
+              </GhostButton>
             </View>
-          </LightCard>
+          </GlassCard>
         ))}
 
       {editingPackage !== null && (
-        <LightCard style={styles.card}>
-          <LightSectionHeader title={editingPackage === 'new' ? 'Add Package' : 'Edit Package'} />
-          <LightTextField placeholder="Name" value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} accessibilityLabel="Package name" />
-          <LightChipGrid>
-            <LightChip label="Advance" selected={form.category === 'advance'} onPress={() => setForm((f) => ({ ...f, category: 'advance' }))} />
-            <LightChip label="Addon" selected={form.category === 'addon'} onPress={() => setForm((f) => ({ ...f, category: 'addon' }))} />
-          </LightChipGrid>
-          <LightTextField
+        <GlassCard style={styles.card}>
+          <SectionHeader title={editingPackage === 'new' ? 'Add Package' : 'Edit Package'} />
+          <TextField placeholder="Name" value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))} accessibilityLabel="Package name" />
+          <ChipGrid>
+            <Chip label="Advance" selected={form.category === 'advance'} onPress={() => setForm((f) => ({ ...f, category: 'advance' }))} />
+            <Chip label="Addon" selected={form.category === 'addon'} onPress={() => setForm((f) => ({ ...f, category: 'addon' }))} />
+          </ChipGrid>
+          <TextField
             keyboardType="number-pad"
             placeholder="Sessions"
             value={String(form.sessions_count)}
             onChangeText={(v) => setForm((f) => ({ ...f, sessions_count: Number(v) || 0 }))}
             accessibilityLabel="Sessions count"
           />
-          <LightTextField
+          <TextField
             keyboardType="decimal-pad"
             placeholder="Price"
             value={String(form.price)}
             onChangeText={(v) => setForm((f) => ({ ...f, price: Number(v) || 0 }))}
             accessibilityLabel="Price"
           />
-          <LightTextField
+          <TextField
             keyboardType="decimal-pad"
             placeholder="Original Price (optional)"
             value={form.original_price != null ? String(form.original_price) : ''}
             onChangeText={(v) => setForm((f) => ({ ...f, original_price: v ? Number(v) : null }))}
             accessibilityLabel="Original price"
           />
-          <LightTextField
+          <TextField
             keyboardType="number-pad"
             placeholder="Default Pause Days"
             value={String(form.default_pause_days)}
             onChangeText={(v) => setForm((f) => ({ ...f, default_pause_days: Number(v) || 0 }))}
             accessibilityLabel="Default pause days"
           />
-          <LightTextField
+          <TextField
             placeholder="Features (comma-separated)"
             value={featuresText}
             onChangeText={setFeaturesText}
             multiline
             accessibilityLabel="Features"
           />
-          <LightChipGrid>
-            <LightChip label="Highlighted" selected={form.highlighted} onPress={() => setForm((f) => ({ ...f, highlighted: !f.highlighted }))} />
-          </LightChipGrid>
+          <ChipGrid>
+            <Chip label="Highlighted" selected={form.highlighted} onPress={() => setForm((f) => ({ ...f, highlighted: !f.highlighted }))} />
+          </ChipGrid>
           {error && <Text style={styles.errorText}>{error}</Text>}
           <View style={styles.editActions}>
-            <LightSecondaryButton onPress={() => setEditingPackage(null)}>Cancel</LightSecondaryButton>
-            <LightPrimaryButton loading={busy} disabled={!form.name.trim()} onPress={onSavePackage}>
+            <SecondaryButton onPress={() => setEditingPackage(null)}>Cancel</SecondaryButton>
+            <PrimaryButton loading={busy} disabled={!form.name.trim()} onPress={onSavePackage}>
               {editingPackage === 'new' ? 'Create Package' : 'Save Changes'}
-            </LightPrimaryButton>
+            </PrimaryButton>
           </View>
-        </LightCard>
+        </GlassCard>
       )}
 
-      <LightSectionHeader title="Session Rules" />
-      <LightCard style={styles.card}>
-        {rulesLoading && <LightLoadingState rows={1} />}
-        {rulesError && <LightErrorState message={rulesError} onRetry={reloadRules} />}
+      <SectionHeader title="Session Rules" />
+      <GlassCard style={styles.card}>
+        {rulesLoading && <LoadingState rows={1} />}
+        {rulesError && <ErrorState message={rulesError} onRetry={reloadRules} />}
         {!rulesLoading &&
           !rulesError &&
           (Object.keys(RULE_BOUNDS) as SessionRuleKey[]).map((key) => (
-            <LightTextField
+            <TextField
               key={key}
               keyboardType="number-pad"
               placeholder={`${RULE_BOUNDS[key].label} (${RULE_BOUNDS[key].min}-${RULE_BOUNDS[key].max})`}
@@ -255,11 +256,11 @@ export default function AdminSettingsScreen() {
             />
           ))}
         {rulesSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <LightPrimaryButton onPress={onSaveRules} loading={savingRules} style={styles.saveRulesButton}>
+        <PrimaryButton onPress={onSaveRules} loading={savingRules} style={styles.saveRulesButton}>
           Save Settings
-        </LightPrimaryButton>
-      </LightCard>
-    </LightScreenScaffold>
+        </PrimaryButton>
+      </GlassCard>
+    </ScreenScaffold>
   );
 }
 
@@ -268,11 +269,11 @@ const styles = StyleSheet.create({
   packageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   packageInfo: { flex: 1, gap: 2 },
   packageHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  packageName: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
-  packageMeta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
+  packageName: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  packageMeta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   packageActions: { flexDirection: 'row', gap: 4 },
   editActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.alertRed },
-  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.alertRed },
+  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald },
   saveRulesButton: { marginTop: 4 },
 });

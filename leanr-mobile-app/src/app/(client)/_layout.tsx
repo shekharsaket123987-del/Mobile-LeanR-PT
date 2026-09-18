@@ -6,7 +6,7 @@
  * boundary); once `hasEverPurchased`, the Active Client Portal's own 5-tab
  * bar renders — Home/Schedule/Plans/Chats/More, matching the "Complete
  * Journey After Plan Purchase" mockup. Both branches share the same
- * `LightTabBar`/light design system now — there is no dark tab bar left.
+ * `FloatingTabBar`/dark glass design system.
  *
  * Route files are shared between both branches (`index.tsx`, `plans.tsx`,
  * `sessions.tsx`, `coach.tsx`, `notifications.tsx`, `profile.tsx` each
@@ -22,8 +22,8 @@ import { useEffect, useState } from 'react';
 import { ColorValue } from 'react-native';
 
 import { GlobalGates } from '@/components/gates/global-gates';
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightTabBar } from '@/components/light/light-tab-bar';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
 import { getLatestSubscription } from '@/lib/data/subscription';
@@ -69,7 +69,7 @@ export default function ClientLayout() {
       <>
         <GlobalGates />
         <Tabs
-          tabBar={(props) => <LightTabBar {...props} moreRouteName="more" onMorePress={() => setMoreOpen(true)} />}
+          tabBar={(props) => <FloatingTabBar {...props} moreRouteName="more" onMorePress={() => setMoreOpen(true)} />}
           screenOptions={{ headerShown: false }}
         >
           <Tabs.Screen
@@ -119,9 +119,9 @@ export default function ClientLayout() {
           <Tabs.Screen name="renewal-scheduling" options={{ href: null, title: 'Your Schedule' }} />
           <Tabs.Screen name="subscription" options={{ href: null, title: 'Subscription' }} />
         </Tabs>
-        <LightBottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
+        <BottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
           <ClientMoreContent hasEverPurchased={false} onNavigate={goFromSheet} />
-        </LightBottomSheet>
+        </BottomSheet>
       </>
     );
   }
@@ -130,7 +130,7 @@ export default function ClientLayout() {
     <>
       <GlobalGates />
       <Tabs
-        tabBar={(props) => <LightTabBar {...props} moreRouteName="more" onMorePress={() => setMoreOpen(true)} />}
+        tabBar={(props) => <FloatingTabBar {...props} moreRouteName="more" onMorePress={() => setMoreOpen(true)} />}
         screenOptions={{ headerShown: false }}
       >
         <Tabs.Screen
@@ -190,9 +190,9 @@ export default function ClientLayout() {
         <Tabs.Screen name="plans" options={{ href: null, title: 'Plans' }} />
         <Tabs.Screen name="reviews" options={{ href: null, title: 'Reviews' }} />
       </Tabs>
-      <LightBottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
+      <BottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
         <ClientMoreContent hasEverPurchased={true} onNavigate={goFromSheet} />
-      </LightBottomSheet>
+      </BottomSheet>
     </>
   );
 }

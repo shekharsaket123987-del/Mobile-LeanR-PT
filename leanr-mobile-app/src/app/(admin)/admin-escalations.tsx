@@ -10,18 +10,18 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getAllEscalations } from '@/lib/data/admin-escalations';
 import { useAsync } from '@/lib/data/use-async';
 
-const STATUS_TONE: Record<string, 'teal' | 'green' | 'red' | 'gray'> = {
+const STATUS_TONE: Record<string, 'yellow' | 'green' | 'red' | 'gray'> = {
   open: 'red',
-  in_progress: 'teal',
+  in_progress: 'yellow',
   resolved: 'green',
 };
 
@@ -52,12 +52,12 @@ export default function AdminEscalationsScreen() {
   const { data: escalations, loading, error, reload } = useAsync(() => getAllEscalations(tab), [tab]);
 
   return (
-    <LightScreenScaffold title="Escalations">
-      <LightSegmentedControl options={TABS} value={tab} onChange={setTab} />
+    <ScreenScaffold title="Escalations">
+      <SegmentedControl options={TABS} value={tab} onChange={setTab} />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (escalations?.length ?? 0) === 0 && <LightEmptyState message={`No ${tab} escalations.`} icon="checkmark-circle-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (escalations?.length ?? 0) === 0 && <EmptyState message={`No ${tab} escalations.`} icon="checkmark-circle-outline" />}
       {!loading &&
         !error &&
         escalations?.map((e) => (
@@ -66,11 +66,11 @@ export default function AdminEscalationsScreen() {
             onPress={() => router.push({ pathname: '/escalation/[id]', params: { id: e.id } })}
             accessibilityRole="button"
             accessibilityLabel={`Open escalation: ${e.reason}`}>
-            <LightCard style={styles.card}>
+            <GlassCard style={styles.card}>
               <View style={styles.header}>
                 <Text style={styles.code}>{e.clientCode ? `#${e.clientCode}` : `#${e.id.slice(0, 8).toUpperCase()}`}</Text>
-                <LightBadge label={categoryLabel(e.category)} tone="gray" />
-                <LightBadge label={e.status.replace('_', ' ')} tone={STATUS_TONE[e.status] ?? 'gray'} />
+                <Badge label={categoryLabel(e.category)} tone="gray" />
+                <Badge label={e.status.replace('_', ' ')} tone={STATUS_TONE[e.status] ?? 'gray'} />
               </View>
               <Text style={styles.date}>
                 Raised {formatDate(e.created_at)}
@@ -88,23 +88,23 @@ export default function AdminEscalationsScreen() {
                     {e.packageName ? ` · ${e.packageName}` : ''}
                   </Text>
                 )}
-                <Ionicons name="chevron-forward" size={16} color={LightBrand.textMuted} />
+                <Ionicons name="chevron-forward" size={16} color={'rgba(255,255,255,0.45)'} />
               </View>
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 4 },
   header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  code: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: LightBrand.textMuted },
-  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textMuted },
-  reason: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy },
-  description: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
-  resolution: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.tealDark, marginTop: 2 },
+  code: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.45)' },
+  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
+  reason: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF' },
+  description: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  resolution: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: Brand.yellow, marginTop: 2 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
-  client: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.tealDark },
+  client: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.yellow },
 });

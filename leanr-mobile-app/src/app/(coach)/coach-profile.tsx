@@ -9,13 +9,13 @@ import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { changeMyPassword, getMyCoachDetails, getMyProfile, updateMyCoachDetails, updateMyProfile } from '@/lib/data/profile';
 import { getErrorMessage } from '@/lib/data/errors';
 import { useAsync } from '@/lib/data/use-async';
@@ -141,22 +141,22 @@ export default function CoachProfileScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Profile">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Profile">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Profile">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Profile">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Profile">
+    <ScreenScaffold title="Profile">
       <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
       {avatarError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -164,11 +164,11 @@ export default function CoachProfileScreen() {
         </Text>
       )}
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Your details" />
-        <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
-        <LightTextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
-        <LightTextField
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Your details" />
+        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
+        <TextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
+        <TextField
           placeholder="Emergency contact"
           value={displayEmergency}
           onChangeText={setEmergencyContact}
@@ -180,38 +180,38 @@ export default function CoachProfileScreen() {
           </Text>
         )}
         {profileSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <LightPrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
+        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={styles.saveButton}>
           Save
-        </LightPrimaryButton>
-      </LightCard>
+        </PrimaryButton>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Coaching profile" />
-        <LightTextField placeholder="Specialization" value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
-        <LightTextField placeholder="Bio" value={displayBio} onChangeText={setBio} multiline style={styles.multilineInput} accessibilityLabel="Bio" />
-        <LightTextField
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Coaching profile" />
+        <TextField placeholder="Specialization" value={displaySpecialization} onChangeText={setSpecialization} accessibilityLabel="Specialization" />
+        <TextField placeholder="Bio" value={displayBio} onChangeText={setBio} multiline style={styles.multilineInput} accessibilityLabel="Bio" />
+        <TextField
           placeholder="Certifications (comma-separated)"
           value={displayCertifications}
           onChangeText={setCertifications}
           accessibilityLabel="Certifications"
         />
-        <LightTextField placeholder="Languages (comma-separated)" value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
-        <LightTextField placeholder="Skills (comma-separated)" value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
+        <TextField placeholder="Languages (comma-separated)" value={displayLanguages} onChangeText={setLanguages} accessibilityLabel="Languages" />
+        <TextField placeholder="Skills (comma-separated)" value={displaySkills} onChangeText={setSkills} accessibilityLabel="Skills" />
         {detailsError && (
           <Text style={styles.errorText} accessibilityRole="alert">
             {detailsError}
           </Text>
         )}
         {detailsSaved && <Text style={styles.savedText}>Saved.</Text>}
-        <LightPrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
+        <PrimaryButton onPress={onSaveDetails} loading={savingDetails} style={styles.saveButton}>
           Save
-        </LightPrimaryButton>
-      </LightCard>
+        </PrimaryButton>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Change password" />
-        <LightTextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
-        <LightTextField
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Change password" />
+        <TextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
+        <TextField
           placeholder="Confirm new password"
           isPassword
           value={confirmPassword}
@@ -224,18 +224,18 @@ export default function CoachProfileScreen() {
           </Text>
         )}
         {passwordChanged && <Text style={styles.savedText}>Password changed.</Text>}
-        <LightPrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
+        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={styles.saveButton}>
           Change password
-        </LightPrimaryButton>
-      </LightCard>
-    </LightScreenScaffold>
+        </PrimaryButton>
+      </GlassCard>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 12 },
   multilineInput: { minHeight: 80, textAlignVertical: 'top', paddingTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 4 },
-  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald, marginTop: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
+  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 4 },
 });

@@ -17,16 +17,15 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { RateSessionSheet } from '@/components/rate-session-sheet';
-import { LightProgressRing } from '@/components/light/light-progress-ring';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightMenuRow } from '@/components/light/light-menu-row';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightStatusBadge } from '@/components/light/light-badge';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
-import { DisplayFont } from '@/constants/theme';
+import { ProgressRing } from '@/components/progress-ring';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { MenuRow } from '@/components/ui/menu-row';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatusBadge } from '@/components/ui/badge';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { rateSession } from '@/lib/data/bookings';
 import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
 import { getClientJourneyState } from '@/lib/data/journey';
@@ -116,40 +115,40 @@ export default function SubscriptionScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="My Plan">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="My Plan">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="My Plan">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="My Plan">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   if (subscription?.status === 'awaiting_activation') return null; // redirecting via the effect above
 
   return (
-    <LightScreenScaffold title="My Plan">
+    <ScreenScaffold title="My Plan">
       {/* client's rule: no "Choose Your Plan"/"View plans" CTA while a demo is still in
           flight (booked or unrated) — matches the same gate in index.tsx/plans.tsx. */}
       {!subscription && stage === 'demo_booked' && (
-        <LightCard variant="teal">
+        <GlassCard variant="yellow">
           <View style={styles.headerRow}>
             <Text style={styles.planName}>Demo Session Scheduled</Text>
-            <LightStatusBadge status="upcoming" />
+            <StatusBadge status="upcoming" />
           </View>
           {demo && <Text style={styles.planMeta}>Session: {formatDate(demo.scheduledStart)}</Text>}
           <Text style={styles.planMeta}>Plans unlock once your demo is done.</Text>
-        </LightCard>
+        </GlassCard>
       )}
 
       {!subscription && stage === 'demo_completed' && unratedDemo && (
         <>
-          <LightEmptyState message="Rate your demo session to unlock plans." icon="star-outline" />
+          <EmptyState message="Rate your demo session to unlock plans." icon="star-outline" />
           <RateSessionSheet
             visible
             title={unratedDemo.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
@@ -162,41 +161,41 @@ export default function SubscriptionScreen() {
 
       {!subscription && stage === 'demo_completed' && !unratedDemo && (
         <>
-          <LightCard variant="teal">
+          <GlassCard variant="yellow">
             <View style={styles.headerRow}>
               <Text style={styles.planName}>Demo Package</Text>
-              <LightStatusBadge status="expired" />
+              <StatusBadge status="expired" />
             </View>
             {demo && <Text style={styles.planMeta}>Session: {formatDate(demo.scheduledStart)}</Text>}
             <Text style={styles.planMeta}>Amount: Free</Text>
-          </LightCard>
-          <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
+          </GlassCard>
+          <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
             Choose Your Plan
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
 
       {!subscription && stage === 'marketing' && (
         <>
-          <LightEmptyState message="You haven't purchased a plan yet." icon="card-outline" />
-          <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
+          <EmptyState message="You haven't purchased a plan yet." icon="card-outline" />
+          <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
             View plans
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
 
       {subscription && (
         <>
-          <LightCard variant="teal">
+          <GlassCard variant="yellow">
             <View style={styles.headerRow}>
               <Text style={styles.planName}>{pkg?.name ?? 'Your plan'}</Text>
-              <LightStatusBadge status={subscription.status} />
+              <StatusBadge status={subscription.status} />
             </View>
             {pkg?.sessions_count ? <Text style={styles.planMeta}>{pkg.sessions_count} sessions per month</Text> : null}
             {/* GAP-13: the awaiting_activation redirect above means `subscription` here is
                 never that status — this ring always renders for whatever reaches this point. */}
             <View style={styles.ringWrap}>
-              <LightProgressRing
+              <ProgressRing
                 progress={subscription.sessions_total > 0 ? sessionsUsed / subscription.sessions_total : 0}
                 valueText={`${sessionsUsed}/${subscription.sessions_total}`}
                 label="sessions used"
@@ -204,31 +203,31 @@ export default function SubscriptionScreen() {
                 strokeWidth={12}
               />
             </View>
-          </LightCard>
+          </GlassCard>
 
-          <LightCard>
-            <LightSectionHeader title="Plan details" />
+          <GlassCard>
+            <SectionHeader title="Plan details" />
             <Row label="Sessions Used" value={String(sessionsUsed)} />
             <Row label="Sessions Remaining" value={String(Math.max(subscription.sessions_total - sessionsUsed, 0))} />
             {subscription.pause_days_allowed > 0 && <Row label="Pause Days Included" value={String(subscription.pause_days_allowed)} />}
-          </LightCard>
+          </GlassCard>
 
           {(subscription.status === 'active' || subscription.status === 'paused') && (
-            <LightCard style={styles.actionsCard}>
-              <LightMenuRow
+            <GlassCard style={styles.actionsCard}>
+              <MenuRow
                 label={subscription.status === 'active' ? 'Pause Plan (if eligible)' : 'Resume Plan'}
                 icon={subscription.status === 'active' ? 'pause-circle-outline' : 'play-circle-outline'}
                 onPress={busy ? undefined : onTogglePause}
                 last
               />
-            </LightCard>
+            </GlassCard>
           )}
         </>
       )}
 
-      <LightCard>
-        <LightSectionHeader title="Payment history" />
-        {payments.length === 0 && <LightEmptyState message="No payments yet." icon="receipt-outline" />}
+      <GlassCard>
+        <SectionHeader title="Payment history" />
+        {payments.length === 0 && <EmptyState message="No payments yet." icon="receipt-outline" />}
         {payments.map((p: PaymentWithPackage) => (
           <View key={p.id} style={styles.paymentRow}>
             <View style={styles.paymentTextCol}>
@@ -237,12 +236,12 @@ export default function SubscriptionScreen() {
             </View>
             <View style={styles.paymentAmountCol}>
               <Text style={styles.paymentAmount}>{formatPrice(p.amount)}</Text>
-              <LightStatusBadge status={p.status} />
+              <StatusBadge status={p.status} />
             </View>
           </View>
         ))}
-      </LightCard>
-    </LightScreenScaffold>
+      </GlassCard>
+    </ScreenScaffold>
   );
 }
 
@@ -257,12 +256,12 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  planName: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 20, color: LightBrand.navy, flexShrink: 1 },
-  planMeta: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.tealDark },
+  planName: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 20, color: '#FFFFFF', flexShrink: 1 },
+  planMeta: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.yellow },
   ringWrap: { alignItems: 'center', marginVertical: 8 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  detailLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
-  detailValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy },
+  detailLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
+  detailValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF' },
   actionsCard: { paddingVertical: 4 },
   paymentRow: {
     flexDirection: 'row',
@@ -270,11 +269,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: LightBrand.border,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   paymentTextCol: { gap: 2 },
-  paymentName: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
-  paymentDate: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
+  paymentName: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
+  paymentDate: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
   paymentAmountCol: { alignItems: 'flex-end', gap: 4 },
-  paymentAmount: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.teal },
+  paymentAmount: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: Brand.yellow },
 });

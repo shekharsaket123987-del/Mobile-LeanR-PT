@@ -8,10 +8,10 @@
 import { useState } from 'react';
 import { Share, StyleSheet, Text } from 'react-native';
 
-import { LightGhostButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightBrand } from '@/constants/light-theme';
+import { GhostButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { Brand } from '@/constants/theme';
 import {
   generateCancellationReportCsv,
   generateClientReportCsv,
@@ -47,29 +47,29 @@ export default function AdminReportsScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Reports">
+    <ScreenScaffold title="Reports">
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {error}
         </Text>
       )}
       {REPORTS.map((r) => (
-        <LightCard key={r.key} style={styles.card}>
+        <GlassCard key={r.key} style={styles.card}>
           <Text style={styles.title}>{r.title}</Text>
           <Text style={styles.description}>{r.description}</Text>
-          <LightGhostButton size="sm" loading={exportingKey === r.key} onPress={() => onExport(r.key, r.title, r.generate)} style={styles.exportButton}>
+          <GhostButton size="sm" loading={exportingKey === r.key} onPress={() => onExport(r.key, r.title, r.generate)} style={styles.exportButton}>
             Export CSV
-          </LightGhostButton>
-        </LightCard>
+          </GhostButton>
+        </GlassCard>
       ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 4 },
-  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy },
-  description: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF' },
+  description: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   exportButton: { marginTop: 6, alignSelf: 'flex-start' },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.alertRed },
 });

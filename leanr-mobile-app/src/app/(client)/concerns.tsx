@@ -18,16 +18,16 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import {
   CONCERN_CATEGORIES,
   getMyConcerns,
@@ -40,11 +40,12 @@ import {
 } from '@/lib/data/concerns';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 const STATUS_LABEL: Record<EscalationStatus, string> = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved' };
-const STATUS_TONE: Record<EscalationStatus, 'teal' | 'green' | 'red'> = {
+const STATUS_TONE: Record<EscalationStatus, 'yellow' | 'green' | 'red'> = {
   open: 'red',
-  in_progress: 'teal',
+  in_progress: 'yellow',
   resolved: 'green',
 };
 
@@ -99,24 +100,24 @@ export default function ConcernsScreen() {
   };
 
   return (
-    <LightScreenScaffold title="My Concerns">
-      <LightPrimaryButton size="lg" onPress={() => setShowForm((v) => !v)}>
+    <ScreenScaffold title="My Concerns">
+      <PrimaryButton size="lg" onPress={() => setShowForm((v) => !v)}>
         {showForm ? 'Cancel' : 'Raise a concern'}
-      </LightPrimaryButton>
+      </PrimaryButton>
 
       {showForm && (
-        <LightCard>
-          <LightSectionHeader title="What's going on?" />
-          <LightTextField placeholder="Short summary" value={reason} onChangeText={setReason} accessibilityLabel="Concern summary" />
+        <GlassCard>
+          <SectionHeader title="What's going on?" />
+          <TextField placeholder="Short summary" value={reason} onChangeText={setReason} accessibilityLabel="Concern summary" />
 
           <Text style={styles.label}>CATEGORY</Text>
-          <LightChipGrid>
+          <ChipGrid>
             {CONCERN_CATEGORIES.map((c) => (
-              <LightChip key={c.value} label={c.label} selected={c.value === category} onPress={() => setCategory(c.value)} />
+              <Chip key={c.value} label={c.label} selected={c.value === category} onPress={() => setCategory(c.value)} />
             ))}
-          </LightChipGrid>
+          </ChipGrid>
 
-          <LightTextField
+          <TextField
             placeholder="Anything else we should know? (optional)"
             value={description}
             onChangeText={setDescription}
@@ -131,13 +132,13 @@ export default function ConcernsScreen() {
             </Text>
           )}
 
-          <LightPrimaryButton onPress={onSubmit} loading={submitting}>
+          <PrimaryButton onPress={onSubmit} loading={submitting}>
             Submit
-          </LightPrimaryButton>
-        </LightCard>
+          </PrimaryButton>
+        </GlassCard>
       )}
 
-      <LightSegmentedControl
+      <SegmentedControl
         options={[
           { key: 'open', label: 'Open' },
           { key: 'resolved', label: 'Resolved' },
@@ -146,11 +147,11 @@ export default function ConcernsScreen() {
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message={`No ${tab} concerns.`} icon="alert-circle-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message={`No ${tab} concerns.`} icon="alert-circle-outline" />}
       {!loading && !error && filtered.map((concern) => <ConcernCard key={concern.id} concern={concern} notes={notes[concern.id] ?? []} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -158,12 +159,12 @@ function ConcernCard({ concern, notes }: { concern: Concern; notes: ConcernNote[
   const categoryLabel = CONCERN_CATEGORIES.find((c) => c.value === concern.category)?.label ?? concern.category;
 
   return (
-    <LightCard>
+    <GlassCard>
       <View style={styles.cardHeader}>
         <Text style={styles.dateLabel}>
           {categoryLabel} · {formatDate(concern.created_at)}
         </Text>
-        <LightBadge label={STATUS_LABEL[concern.status]} tone={STATUS_TONE[concern.status]} />
+        <Badge label={STATUS_LABEL[concern.status]} tone={STATUS_TONE[concern.status]} />
       </View>
       <Text style={styles.reasonText}>{concern.reason}</Text>
       {concern.description && <Text style={styles.bodyText}>{concern.description}</Text>}
@@ -185,18 +186,18 @@ function ConcernCard({ concern, notes }: { concern: Concern; notes: ConcernNote[
           ))}
         </View>
       )}
-    </LightCard>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)' },
   multilineInput: { minHeight: 70, textAlignVertical: 'top', paddingTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dateLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textMuted },
-  reasonText: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: LightBrand.navy },
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, marginTop: 2 },
+  dateLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
+  reasonText: { fontFamily: 'Manrope_700Bold', fontSize: 17, color: '#FFFFFF' },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   resolutionBox: { marginTop: 8, gap: 2 },
   notesBox: { marginTop: 8, gap: 2 },
 });

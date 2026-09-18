@@ -18,11 +18,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightAuthShell } from '@/components/light/light-auth-shell';
-import { LightGhostButton, LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightBrand } from '@/constants/light-theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { TextLink } from '@/components/tappable';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { isValidMobile, sendPhoneOtp, verifyPhoneOtp } from '@/lib/data/phone-otp';
 import { updateMyProfile } from '@/lib/data/profile';
@@ -125,18 +125,18 @@ export default function SignupScreen() {
 
   if (stage === 'email-pending') {
     return (
-      <LightAuthShell title="Check your email" subtitle={`We sent a confirmation link to ${email.trim()}. Verify it, then log in.`}>
-        <LightPrimaryButton size="lg" onPress={() => router.replace('/login')}>
+      <AuthShell title="Check your email" subtitle={`We sent a confirmation link to ${email.trim()}. Verify it, then log in.`}>
+        <PrimaryButton size="lg" onPress={() => router.replace('/login')}>
           Go to login
-        </LightPrimaryButton>
-      </LightAuthShell>
+        </PrimaryButton>
+      </AuthShell>
     );
   }
 
   if (stage === 'phone-otp') {
     return (
-      <LightAuthShell title="Verify your phone" subtitle={`Enter the code we sent to ${mobile.trim()}.`}>
-        <LightTextField
+      <AuthShell title="Verify your phone" subtitle={`Enter the code we sent to ${mobile.trim()}.`}>
+        <TextField
           icon="keypad-outline"
           placeholder="6-digit code"
           keyboardType="number-pad"
@@ -151,23 +151,23 @@ export default function SignupScreen() {
           </Text>
         )}
 
-        <LightPrimaryButton onPress={onVerifyOtp} loading={submitting} size="lg">
+        <PrimaryButton onPress={onVerifyOtp} loading={submitting} size="lg">
           Verify & continue
-        </LightPrimaryButton>
-        <LightGhostButton size="sm" onPress={onResend} disabled={submitting} style={styles.centerBtn}>
+        </PrimaryButton>
+        <GhostButton size="sm" onPress={onResend} disabled={submitting} style={styles.centerBtn}>
           Resend code
-        </LightGhostButton>
-        <LightTextLink onPress={finishSignup} style={styles.skipLink}>
+        </GhostButton>
+        <TextLink onPress={finishSignup} style={styles.skipLink}>
           Skip for now (demo — phone unverified)
-        </LightTextLink>
-      </LightAuthShell>
+        </TextLink>
+      </AuthShell>
     );
   }
 
   return (
-    <LightAuthShell title="Create your account" subtitle="Get matched with your coach in minutes.">
-      <LightTextField icon="person-outline" placeholder="Full name" autoComplete="name" maxLength={100} value={fullName} onChangeText={setFullName} />
-      <LightTextField
+    <AuthShell title="Create your account" subtitle="Get matched with your coach in minutes.">
+      <TextField icon="person-outline" placeholder="Full name" autoComplete="name" maxLength={100} value={fullName} onChangeText={setFullName} />
+      <TextField
         icon="mail-outline"
         placeholder="Email"
         autoCapitalize="none"
@@ -176,7 +176,7 @@ export default function SignupScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <LightTextField
+      <TextField
         icon="call-outline"
         placeholder="Mobile number"
         keyboardType="phone-pad"
@@ -184,7 +184,7 @@ export default function SignupScreen() {
         value={mobile}
         onChangeText={setMobile}
       />
-      <LightTextField
+      <TextField
         icon="lock-closed-outline"
         placeholder="Password (min. 8 characters)"
         isPassword
@@ -199,32 +199,32 @@ export default function SignupScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+      <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
         Create account
-      </LightPrimaryButton>
+      </PrimaryButton>
 
       <Text style={styles.orDivider}>OR</Text>
 
-      <LightSecondaryButton onPress={onGoogleSignUp} loading={googleSubmitting} size="lg">
+      <SecondaryButton onPress={onGoogleSignUp} loading={googleSubmitting} size="lg">
         Continue with Google
-      </LightSecondaryButton>
+      </SecondaryButton>
 
-      <LightTextLink onPress={() => router.replace('/login')} style={styles.link}>
+      <TextLink onPress={() => router.replace('/login')} style={styles.link}>
         Already have an account? Log in
-      </LightTextLink>
-    </LightAuthShell>
+      </TextLink>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
-  orDivider: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textMuted, textAlign: 'center' },
+  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  orDivider: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
   centerBtn: { alignSelf: 'center' },
   link: { alignSelf: 'center', marginTop: 8 },
   skipLink: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 13,
-    color: LightBrand.textMuted,
+    color: 'rgba(255,255,255,0.45)',
     textAlign: 'center',
     marginTop: 12,
   },

@@ -8,18 +8,18 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightGhostButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { GhostButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { listAdminCoaches, type AdminCoachListRow } from '@/lib/data/admin-coaches';
 import { useAsync } from '@/lib/data/use-async';
 
-const STATUS_TONE: Record<string, 'teal' | 'green' | 'red' | 'gray'> = { active: 'green', inactive: 'gray', 'on-leave': 'teal' };
+const STATUS_TONE: Record<string, 'yellow' | 'green' | 'red' | 'gray'> = { active: 'green', inactive: 'gray', 'on-leave': 'yellow' };
 
 export default function AdminCoachesScreen() {
   const { data: coaches, loading, error, reload } = useAsync(listAdminCoaches, []);
@@ -38,32 +38,32 @@ export default function AdminCoachesScreen() {
   }, [coaches, query]);
 
   return (
-    <LightScreenScaffold title="Coaches" subtitle={coaches ? `${coaches.length} total` : undefined}>
-      <LightGhostButton onPress={() => router.push('/coaches/new')} leading={<Ionicons name="add" size={18} color={LightBrand.tealDark} />}>
+    <ScreenScaffold title="Coaches" subtitle={coaches ? `${coaches.length} total` : undefined}>
+      <GhostButton onPress={() => router.push('/coaches/new')} leading={<Ionicons name="add" size={18} color={Brand.yellow} />}>
         Add Coach
-      </LightGhostButton>
+      </GhostButton>
 
-      <LightTextField icon="search-outline" placeholder="Search by name" value={query} onChangeText={setQuery} />
+      <TextField icon="search-outline" placeholder="Search by name" value={query} onChangeText={setQuery} />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message="No coaches match." icon="barbell-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message="No coaches match." icon="barbell-outline" />}
       {!loading && !error && filtered.map((coach) => <CoachRow key={coach.id} coach={coach} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 function CoachRow({ coach }: { coach: AdminCoachListRow }) {
   return (
     <Pressable onPress={() => router.push({ pathname: '/coaches/[id]', params: { id: coach.id } })} accessibilityRole="button" accessibilityLabel={coach.full_name}>
-      <LightCard style={styles.row}>
-        <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={44} />
+      <GlassCard style={styles.row}>
+        <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={44} />
         <View style={styles.info}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>
               {coach.full_name}
             </Text>
-            <LightBadge label={coach.status} tone={STATUS_TONE[coach.status] ?? 'gray'} />
+            <Badge label={coach.status} tone={STATUS_TONE[coach.status] ?? 'gray'} />
           </View>
           <Text style={styles.meta}>#{coach.employeeCode} · {coach.specialization ?? 'Coach'}</Text>
           <View style={styles.metaRow}>
@@ -72,7 +72,7 @@ function CoachRow({ coach }: { coach: AdminCoachListRow }) {
             {coach.rating != null && <Text style={styles.metaSmall}>★ {coach.rating.toFixed(1)}</Text>}
           </View>
         </View>
-      </LightCard>
+      </GlassCard>
     </Pressable>
   );
 }
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   info: { flex: 1, gap: 3 },
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy, flexShrink: 1 },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF', flexShrink: 1 },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   metaRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  metaSmall: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted },
+  metaSmall: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
 });

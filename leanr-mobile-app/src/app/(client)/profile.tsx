@@ -11,13 +11,12 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AvatarEditor } from '@/components/avatar-editor';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightCard } from '@/components/light/light-card';
-import { LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ErrorState, LoadingState } from '@/components/ui/states';
+import { PrimaryButton } from '@/components/ui/button';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
 import { getMyOnboarding } from '@/lib/data/onboarding';
 import {
   changeMyPassword,
@@ -29,6 +28,7 @@ import {
 import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 function joinList(values: string[]) {
   return values.join(', ');
@@ -119,21 +119,21 @@ function PrePurchaseProfileScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="My Profile">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="My Profile">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error) {
     return (
-      <LightScreenScaffold title="My Profile">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="My Profile">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="My Profile">
+    <ScreenScaffold title="My Profile">
       <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
       {avatarError && (
         <Text style={lightStyles.errorText} accessibilityRole="alert">
@@ -141,25 +141,25 @@ function PrePurchaseProfileScreen() {
         </Text>
       )}
 
-      <LightCard style={lightStyles.card}>
-        <LightSectionHeader title="Your details" />
-        <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
-        <LightTextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
+      <GlassCard style={lightStyles.card}>
+        <SectionHeader title="Your details" />
+        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
+        <TextField placeholder="Phone number" value={displayPhone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone number" />
         {profileError && (
           <Text style={lightStyles.errorText} accessibilityRole="alert">
             {profileError}
           </Text>
         )}
         {profileSaved && <Text style={lightStyles.savedText}>Saved.</Text>}
-        <LightPrimaryButton onPress={onSaveProfile} loading={savingProfile} style={lightStyles.saveButton}>
+        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={lightStyles.saveButton}>
           Save
-        </LightPrimaryButton>
-      </LightCard>
+        </PrimaryButton>
+      </GlassCard>
 
-      <LightCard style={lightStyles.card}>
-        <LightSectionHeader title="Change password" />
-        <LightTextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
-        <LightTextField
+      <GlassCard style={lightStyles.card}>
+        <SectionHeader title="Change password" />
+        <TextField placeholder="New password" isPassword value={newPassword} onChangeText={setNewPassword} accessibilityLabel="New password" />
+        <TextField
           placeholder="Confirm new password"
           isPassword
           value={confirmPassword}
@@ -172,11 +172,11 @@ function PrePurchaseProfileScreen() {
           </Text>
         )}
         {passwordChanged && <Text style={lightStyles.savedText}>Password changed.</Text>}
-        <LightPrimaryButton onPress={onChangePassword} loading={changingPassword} style={lightStyles.saveButton}>
+        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={lightStyles.saveButton}>
           Change password
-        </LightPrimaryButton>
-      </LightCard>
-    </LightScreenScaffold>
+        </PrimaryButton>
+      </GlassCard>
+    </ScreenScaffold>
   );
 }
 
@@ -288,22 +288,22 @@ function EnrolledProfileScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Profile">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Profile">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Profile">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Profile">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Profile">
+    <ScreenScaffold title="Profile">
       <AvatarEditor photoUrl={displayPhotoUrl} onUploaded={onAvatarUploaded} />
       {avatarError && (
         <Text style={lightStyles.errorText} accessibilityRole="alert">
@@ -311,10 +311,10 @@ function EnrolledProfileScreen() {
         </Text>
       )}
 
-      <LightCard style={lightStyles.card}>
-        <LightSectionHeader title="Your details" />
-        <LightTextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
-        <LightTextField
+      <GlassCard style={lightStyles.card}>
+        <SectionHeader title="Your details" />
+        <TextField placeholder="Full name" value={displayName} onChangeText={setFullName} maxLength={100} accessibilityLabel="Full name" />
+        <TextField
           placeholder="Phone number"
           value={displayPhone}
           onChangeText={setPhone}
@@ -327,13 +327,13 @@ function EnrolledProfileScreen() {
           </Text>
         )}
         {profileSaved && <Text style={lightStyles.savedText}>Saved.</Text>}
-        <LightPrimaryButton onPress={onSaveProfile} loading={savingProfile} style={lightStyles.saveButton}>
+        <PrimaryButton onPress={onSaveProfile} loading={savingProfile} style={lightStyles.saveButton}>
           Save
-        </LightPrimaryButton>
-      </LightCard>
+        </PrimaryButton>
+      </GlassCard>
 
-      <LightCard style={lightStyles.card}>
-        <LightSectionHeader title="Training profile" />
+      <GlassCard style={lightStyles.card}>
+        <SectionHeader title="Training profile" />
         {(heightCm != null || weightKg != null) && (
           <View style={lightStyles.metricsRow}>
             {heightCm != null && (
@@ -356,14 +356,14 @@ function EnrolledProfileScreen() {
             )}
           </View>
         )}
-        <LightTextField placeholder="Goals (comma-separated)" value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
-        <LightTextField
+        <TextField placeholder="Goals (comma-separated)" value={displayGoals} onChangeText={setGoals} accessibilityLabel="Goals" />
+        <TextField
           placeholder="Equipment (comma-separated)"
           value={displayEquipment}
           onChangeText={setEquipment}
           accessibilityLabel="Equipment"
         />
-        <LightTextField
+        <TextField
           placeholder="Medical notes"
           value={displayMedicalNotes}
           onChangeText={setMedicalNotes}
@@ -377,21 +377,21 @@ function EnrolledProfileScreen() {
           </Text>
         )}
         {detailsSaved && <Text style={lightStyles.savedText}>Saved.</Text>}
-        <LightPrimaryButton onPress={onSaveDetails} loading={savingDetails} style={lightStyles.saveButton}>
+        <PrimaryButton onPress={onSaveDetails} loading={savingDetails} style={lightStyles.saveButton}>
           Save
-        </LightPrimaryButton>
-      </LightCard>
+        </PrimaryButton>
+      </GlassCard>
 
-      <LightCard style={lightStyles.card}>
-        <LightSectionHeader title="Change password" />
-        <LightTextField
+      <GlassCard style={lightStyles.card}>
+        <SectionHeader title="Change password" />
+        <TextField
           placeholder="New password"
           isPassword
           value={newPassword}
           onChangeText={setNewPassword}
           accessibilityLabel="New password"
         />
-        <LightTextField
+        <TextField
           placeholder="Confirm new password"
           isPassword
           value={confirmPassword}
@@ -404,11 +404,11 @@ function EnrolledProfileScreen() {
           </Text>
         )}
         {passwordChanged && <Text style={lightStyles.savedText}>Password changed.</Text>}
-        <LightPrimaryButton onPress={onChangePassword} loading={changingPassword} style={lightStyles.saveButton}>
+        <PrimaryButton onPress={onChangePassword} loading={changingPassword} style={lightStyles.saveButton}>
           Change password
-        </LightPrimaryButton>
-      </LightCard>
-    </LightScreenScaffold>
+        </PrimaryButton>
+      </GlassCard>
+    </ScreenScaffold>
   );
 }
 
@@ -421,11 +421,11 @@ export default function ClientProfileScreen() {
 const lightStyles = StyleSheet.create({
   card: { gap: 12 },
   multilineInput: { minHeight: 80, textAlignVertical: 'top', paddingTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 4 },
-  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.successEmerald, marginTop: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 4 },
+  savedText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.successEmerald, marginTop: 4 },
   saveButton: { marginTop: 4 },
   metricsRow: { flexDirection: 'row', gap: 20 },
   metric: { gap: 2 },
-  metricLabel: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
-  metricValue: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
+  metricLabel: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
+  metricValue: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
 });

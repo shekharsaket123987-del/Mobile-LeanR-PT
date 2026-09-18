@@ -15,10 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { Brand } from '@/constants/theme';
 
 function formatPrice(amount: string) {
   const n = Number(amount);
@@ -39,28 +39,28 @@ export default function PaymentSuccessScreen() {
   }>();
 
   return (
-    <LightScreenScaffold title=" ">
+    <ScreenScaffold title=" ">
       <View style={styles.iconWrap}>
-        <Ionicons name="checkmark-circle" size={72} color={LightBrand.teal} />
+        <Ionicons name="checkmark-circle" size={72} color={Brand.yellow} />
       </View>
       <Text style={styles.headline}>Payment Successful!</Text>
       <Text style={styles.subhead}>Your plan has been purchased successfully.</Text>
 
-      <LightCard>
+      <GlassCard>
         <Text style={styles.cardTitle}>Plan Details</Text>
         <Row label="Plan Name" value={planName || '—'} />
         <Row label="Amount" value={formatPrice(amount ?? '0')} />
         <Row label="Payment ID" value={paymentId || '—'} />
         <Row label="Date" value={formatDate(paidAt ?? '')} />
-      </LightCard>
+      </GlassCard>
 
-      <LightPrimaryButton size="lg" onPress={() => router.replace('/activate')}>
+      <PrimaryButton size="lg" onPress={() => router.replace('/activate')}>
         Go to Next Step
-      </LightPrimaryButton>
-      <LightSecondaryButton size="lg" onPress={() => router.push('/subscription')}>
+      </PrimaryButton>
+      <SecondaryButton size="lg" onPress={() => router.push('/subscription')}>
         View Plan Details
-      </LightSecondaryButton>
-    </LightScreenScaffold>
+      </SecondaryButton>
+    </ScreenScaffold>
   );
 }
 
@@ -80,12 +80,12 @@ const styles = StyleSheet.create({
   headline: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 22,
-    color: LightBrand.navy,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
-  subhead: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, textAlign: 'center', marginTop: -8 },
-  cardTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.textSecondary, marginBottom: 2 },
+  subhead: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: -8 },
+  cardTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
-  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy, maxWidth: '60%' },
+  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
+  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF', maxWidth: '60%' },
 });

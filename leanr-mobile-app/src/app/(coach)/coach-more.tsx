@@ -11,10 +11,10 @@
 import { router } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
-import { LightDestructiveButton } from '@/components/light/light-button';
-import { LightMenuRow } from '@/components/light/light-menu-row';
-import { LightMoreSection } from '@/components/light/light-more-section';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
+import { DestructiveButton } from '@/components/ui/button';
+import { MenuRow } from '@/components/ui/menu-row';
+import { MoreSection } from '@/components/ui/more-section';
+import { ScreenScaffold } from '@/components/screen-scaffold';
 import { useAuth } from '@/lib/auth/auth-context';
 
 type Row = {
@@ -76,9 +76,9 @@ export function CoachMoreContent({ onNavigate }: { onNavigate?: (href: string) =
   return (
     <>
       {GROUPS.map((group) => (
-        <LightMoreSection key={group.section} title={group.section}>
+        <MoreSection key={group.section} title={group.section}>
           {group.rows.map((row, i) => (
-            <LightMenuRow
+            <MenuRow
               key={row.label}
               label={row.label}
               icon={row.icon}
@@ -86,12 +86,12 @@ export function CoachMoreContent({ onNavigate }: { onNavigate?: (href: string) =
               last={i === group.rows.length - 1}
             />
           ))}
-        </LightMoreSection>
+        </MoreSection>
       ))}
 
-      <LightDestructiveButton size="lg" onPress={signOut} style={styles.signOut}>
+      <DestructiveButton size="lg" onPress={signOut} style={styles.signOut}>
         Sign out
-      </LightDestructiveButton>
+      </DestructiveButton>
     </>
   );
 }
@@ -100,9 +100,9 @@ export default function CoachMore() {
   const { session } = useAuth();
 
   return (
-    <LightScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
+    <ScreenScaffold title="More" subtitle={session?.user.email ?? undefined}>
       <CoachMoreContent />
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 

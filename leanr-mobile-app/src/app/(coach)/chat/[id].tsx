@@ -3,7 +3,7 @@
  * chat thread but for a specific conversation, sending as
  * `sender_role='coach'`. Reuses chat.ts's generic pieces directly
  * (`sendMessage`/`markMessagesRead` take a `senderRole`) and the same
- * `LightMessageBubble`/`LightMessageInput` the client Chats tab uses.
+ * `MessageBubble`/`MessageInput` the client Chats tab uses.
  * Closed conversations are read-only (PRD: "A new coach has been
  * assigned to this client — you can still see this history, but can't
  * send new messages") — the composer is hidden and this exact copy shown
@@ -13,10 +13,10 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightMessageBubble, LightMessageInput } from '@/components/light/light-chat-thread';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getMessages, markMessagesRead, sendMessage, subscribeToConversation, uploadChatImage } from '@/lib/data/chat';
 import { getMyConversations } from '@/lib/data/coach-chat';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -98,34 +98,34 @@ export default function CoachChatThreadScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Chat">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Chat">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Chat">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Chat">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   if (!conversation) {
     return (
-      <LightScreenScaffold title="Chat">
-        <LightEmptyState message="Conversation not found." />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Chat">
+        <EmptyState message="Conversation not found." />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title={conversation.clientName}>
+    <ScreenScaffold title={conversation.clientName}>
       <View style={styles.thread}>
-        {messages.length === 0 && <LightEmptyState message="No messages yet." icon="chatbubble-outline" />}
+        {messages.length === 0 && <EmptyState message="No messages yet." icon="chatbubble-outline" />}
         {messages.map((m) => (
-          <LightMessageBubble key={m.id} message={m} mine={m.sender_role === 'coach'} />
+          <MessageBubble key={m.id} message={m} mine={m.sender_role === 'coach'} />
         ))}
       </View>
 
@@ -140,7 +140,7 @@ export default function CoachChatThreadScreen() {
           A new coach has been assigned to this client — you can still see this history, but can&apos;t send new messages.
         </Text>
       ) : (
-        <LightMessageInput
+        <MessageInput
           value={draft}
           onChangeText={setDraft}
           onSend={onSend}
@@ -152,12 +152,12 @@ export default function CoachChatThreadScreen() {
           placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message your client…'}
         />
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   thread: { gap: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
-  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, textAlign: 'center', lineHeight: 18 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 18 },
 });

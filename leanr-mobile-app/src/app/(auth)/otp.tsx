@@ -19,11 +19,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightAuthShell } from '@/components/light/light-auth-shell';
-import { LightGhostButton, LightPrimaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightBrand } from '@/constants/light-theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { TextLink } from '@/components/tappable';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 type Stage = 'email' | 'code';
@@ -70,7 +70,7 @@ export default function OtpScreen() {
   };
 
   return (
-    <LightAuthShell
+    <AuthShell
       title={stage === 'email' ? 'Sign in with a code' : 'Enter your code'}
       subtitle={
         stage === 'email'
@@ -78,7 +78,7 @@ export default function OtpScreen() {
           : `Check ${email.trim()} for a 6-digit code.`
       }>
       {stage === 'email' ? (
-        <LightTextField
+        <TextField
           icon="mail-outline"
           placeholder="Email"
           autoCapitalize="none"
@@ -88,7 +88,7 @@ export default function OtpScreen() {
           onChangeText={setEmail}
         />
       ) : (
-        <LightTextField
+        <TextField
           icon="keypad-outline"
           placeholder="6-digit code"
           keyboardType="number-pad"
@@ -104,30 +104,30 @@ export default function OtpScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton onPress={stage === 'email' ? onSendCode : onVerify} loading={submitting} size="lg">
+      <PrimaryButton onPress={stage === 'email' ? onSendCode : onVerify} loading={submitting} size="lg">
         {stage === 'email' ? 'Send code' : 'Verify & continue'}
-      </LightPrimaryButton>
+      </PrimaryButton>
 
       {stage === 'code' && (
-        <LightGhostButton size="sm" onPress={() => setStage('email')} style={styles.centerBtn}>
+        <GhostButton size="sm" onPress={() => setStage('email')} style={styles.centerBtn}>
           Use a different email
-        </LightGhostButton>
+        </GhostButton>
       )}
 
-      <LightTextLink onPress={() => router.replace('/login')} style={styles.skipLink}>
+      <TextLink onPress={() => router.replace('/login')} style={styles.skipLink}>
         Skip for now — use email & password instead
-      </LightTextLink>
-    </LightAuthShell>
+      </TextLink>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
   centerBtn: { alignSelf: 'center' },
   skipLink: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 13,
-    color: LightBrand.textMuted,
+    color: 'rgba(255,255,255,0.45)',
     textAlign: 'center',
     marginTop: 12,
   },

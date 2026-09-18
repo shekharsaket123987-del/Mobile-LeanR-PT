@@ -1,17 +1,15 @@
 /**
- * Unified login — light-themed (New PRD.md pre-purchase redesign). Same
- * functional shape as before this pass (single email/password screen for
- * any role, role-based routing after sign-in, Google OAuth, email-OTP
- * alternative) — only the visual system changed to `light/*`.
+ * Unified login — single email/password screen for any role, role-based
+ * routing after sign-in, Google OAuth, email-OTP alternative.
  */
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightAuthShell } from '@/components/light/light-auth-shell';
-import { LightGhostButton, LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { AuthShell } from '@/components/ui/auth-shell';
+import { GhostButton, PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 
 export default function LoginScreen() {
@@ -44,8 +42,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <LightAuthShell title="Welcome back" subtitle="Log in to continue your training.">
-      <LightTextField
+    <AuthShell title="Welcome back" subtitle="Log in to continue your training.">
+      <TextField
         icon="mail-outline"
         placeholder="Email"
         autoCapitalize="none"
@@ -54,7 +52,7 @@ export default function LoginScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <LightTextField icon="lock-closed-outline" placeholder="Password" isPassword autoComplete="password" value={password} onChangeText={setPassword} />
+      <TextField icon="lock-closed-outline" placeholder="Password" isPassword autoComplete="password" value={password} onChangeText={setPassword} />
 
       {error && (
         <Text style={styles.error} accessibilityRole="alert">
@@ -66,17 +64,17 @@ export default function LoginScreen() {
         <Text style={styles.forgotLinkText}>Forgot password?</Text>
       </Link>
 
-      <LightPrimaryButton onPress={onSubmit} loading={submitting} size="lg">
+      <PrimaryButton onPress={onSubmit} loading={submitting} size="lg">
         Log in
-      </LightPrimaryButton>
+      </PrimaryButton>
 
-      <LightSecondaryButton onPress={onGoogleSignIn} loading={googleSubmitting} size="lg">
+      <SecondaryButton onPress={onGoogleSignIn} loading={googleSubmitting} size="lg">
         Continue with Google
-      </LightSecondaryButton>
+      </SecondaryButton>
 
-      <LightGhostButton size="lg" onPress={() => router.push('/otp')}>
+      <GhostButton size="lg" onPress={() => router.push('/otp')}>
         Sign in with a code instead
-      </LightGhostButton>
+      </GhostButton>
 
       <View style={styles.footer}>
         <Link href="/signup" style={styles.link}>
@@ -86,16 +84,16 @@ export default function LoginScreen() {
           <Text style={styles.linkTextMuted}>Just want to try it? Book a free demo — no account needed</Text>
         </Link>
       </View>
-    </LightAuthShell>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { color: LightBrand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
+  error: { color: Brand.alertRed, fontFamily: 'Manrope_500Medium', fontSize: 13 },
   forgotLink: { alignSelf: 'flex-end', marginTop: -6 },
-  forgotLinkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: LightBrand.teal },
+  forgotLinkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: Brand.yellow },
   footer: { marginTop: 8, gap: 14, alignItems: 'center' },
   link: { alignSelf: 'center' },
-  linkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: LightBrand.teal, textAlign: 'center' },
-  linkTextMuted: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textMuted, textAlign: 'center' },
+  linkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: Brand.yellow, textAlign: 'center' },
+  linkTextMuted: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
 });

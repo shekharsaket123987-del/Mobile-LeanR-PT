@@ -25,22 +25,23 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCalendarGrid } from '@/components/light/light-calendar-grid';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightStatCard } from '@/components/light/light-stat-card';
-import { LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { CalendarGrid } from '@/components/ui/calendar-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { ErrorState, LoadingState } from '@/components/ui/states';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
 import { addIstDays, formatIstDateLabel, formatIstTimeLabel, getBookingSettings, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { bookDemoSession, getLatestDemoBooking, hasExistingAssessment, type DemoBookingResult, type GenderPreference } from '@/lib/data/demo-booking';
 import { getMeasurementStatus } from '@/lib/data/measurement-status';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 type Phase = 'form' | 'booking' | 'success';
 
@@ -140,70 +141,70 @@ export default function DemoBookingScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Book a Free Demo">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Book a Free Demo">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Book a Free Demo">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Book a Free Demo">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   if (upcomingDemo && phase === 'form') {
     return (
-      <LightScreenScaffold title="Demo Already Booked">
-        <LightCard>
+      <ScreenScaffold title="Demo Already Booked">
+        <GlassCard>
           <Text style={styles.metaText}>
             You already have a demo session scheduled for {new Date(upcomingDemo.scheduledStart).toLocaleString()}.
           </Text>
-        </LightCard>
-        <LightPrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
           View my schedule
-        </LightPrimaryButton>
-      </LightScreenScaffold>
+        </PrimaryButton>
+      </ScreenScaffold>
     );
   }
 
   if (phase === 'success' && result) {
     return (
-      <LightScreenScaffold title="Your Demo is Booked!">
-        <LightStatCard emphasize value={formatIstDateLabel(selectedDate)} label="ASSESSMENT CONFIRMED" />
-        <LightCard style={styles.confirmCard}>
+      <ScreenScaffold title="Your Demo is Booked!">
+        <StatCard emphasize value={formatIstDateLabel(selectedDate)} label="ASSESSMENT CONFIRMED" />
+        <GlassCard style={styles.confirmCard}>
           <Text style={styles.metaText}>{formatIstTimeLabel(result.slotStart)}</Text>
           <View style={styles.modeRow}>
             <Text style={styles.modeText}>Online (Zoom)</Text>
           </View>
           <View style={styles.coachRow}>
-            <LightAvatar photoUrl={result.coachPhoto} name={result.coachName} size={48} />
+            <Avatar photoUrl={result.coachPhoto} name={result.coachName} size={48} />
             <Text style={styles.coachName}>{result.coachName}</Text>
           </View>
           <Text style={styles.autoMatchNote}>Your coach was automatically assigned based on availability.</Text>
-        </LightCard>
-        <LightSecondaryButton size="lg" onPress={onAddToCalendar} loading={addingToCalendar}>
+        </GlassCard>
+        <SecondaryButton size="lg" onPress={onAddToCalendar} loading={addingToCalendar}>
           Add to Calendar
-        </LightSecondaryButton>
-        <LightPrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
+        </SecondaryButton>
+        <PrimaryButton size="lg" onPress={() => router.replace('/sessions')}>
           View My Schedule
-        </LightPrimaryButton>
-      </LightScreenScaffold>
+        </PrimaryButton>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Book a Free Demo" subtitle="A free assessment session — we'll match you with an available coach">
+    <ScreenScaffold title="Book a Free Demo" subtitle="A free assessment session — we'll match you with an available coach">
       {data?.alreadyDone && (
-        <LightCard>
+        <GlassCard>
           <Text style={styles.metaText}>You already have an assessment session on record — booking another is fine too.</Text>
-        </LightCard>
+        </GlassCard>
       )}
 
       {measurementStale && (
-        <LightCard style={styles.staleBanner}>
+        <GlassCard style={styles.staleBanner}>
           <Text style={styles.staleTitle}>Update your measurements to book a demo</Text>
           <Text style={styles.staleBody}>
             We need your current measurements before matching you with a coach.{' '}
@@ -212,40 +213,40 @@ export default function DemoBookingScreen() {
             </Text>
             .
           </Text>
-        </LightCard>
+        </GlassCard>
       )}
 
-      <LightCard>
-        <LightSectionHeader title="Preferred Date" />
+      <GlassCard>
+        <SectionHeader title="Preferred Date" />
         <Text style={styles.selectedDateText}>{formatIstDateLabel(selectedDate)}</Text>
-        <LightCalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
-      </LightCard>
+        <CalendarGrid selected={selectedDate} onSelect={setSelectedDate} minDate={addIstDays(todayIst(), 1)} initialMonth={selectedDate} />
+      </GlassCard>
 
-      <LightCard>
-        <LightSectionHeader title="Preferred Time (optional)" />
-        <LightChipGrid>
-          <LightChip label="No preference" selected={preferredTime === null} onPress={() => setPreferredTime(null)} />
+      <GlassCard>
+        <SectionHeader title="Preferred Time (optional)" />
+        <ChipGrid>
+          <Chip label="No preference" selected={preferredTime === null} onPress={() => setPreferredTime(null)} />
           {settings &&
             preferredTimeHours({ startHour: settings.bookingWindowStartHour, endHour: settings.bookingWindowEndHour }).map((h) => {
               const key = `${String(h).padStart(2, '0')}:00`;
-              return <LightChip key={key} label={formatHourChipLabel(h)} selected={preferredTime === key} onPress={() => setPreferredTime(key)} />;
+              return <Chip key={key} label={formatHourChipLabel(h)} selected={preferredTime === key} onPress={() => setPreferredTime(key)} />;
             })}
-        </LightChipGrid>
-      </LightCard>
+        </ChipGrid>
+      </GlassCard>
 
-      <LightCard>
-        <LightSectionHeader title="Coach Gender (optional)" />
-        <LightChipGrid>
+      <GlassCard>
+        <SectionHeader title="Coach Gender (optional)" />
+        <ChipGrid>
           {GENDER_OPTIONS.map((opt) => (
-            <LightChip
+            <Chip
               key={opt.key}
               label={opt.label}
               selected={opt.key === 'none' ? genderPreference === null : genderPreference === opt.key}
               onPress={() => setGenderPreference(opt.key === 'none' ? null : opt.key)}
             />
           ))}
-        </LightChipGrid>
-      </LightCard>
+        </ChipGrid>
+      </GlassCard>
 
       <Text style={styles.helperText}>
         We&apos;ll automatically match you with the best available coach for your chosen time — no need to pick one yourself.
@@ -257,26 +258,26 @@ export default function DemoBookingScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton size="lg" onPress={onBookDemo} loading={phase === 'booking'} disabled={measurementStale}>
+      <PrimaryButton size="lg" onPress={onBookDemo} loading={phase === 'booking'} disabled={measurementStale}>
         Book Free Demo Session
-      </LightPrimaryButton>
-    </LightScreenScaffold>
+      </PrimaryButton>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.teal, marginBottom: 4 },
-  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
-  helperText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, paddingHorizontal: 4 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  selectedDateText: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: Brand.yellow, marginBottom: 4 },
+  metaText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  helperText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', paddingHorizontal: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   confirmCard: { gap: 8 },
   modeRow: { flexDirection: 'row', alignItems: 'center' },
-  modeText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textMuted },
+  modeText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.45)' },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
-  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.textPrimary },
-  autoMatchNote: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 4 },
-  staleBanner: { borderWidth: 1, borderColor: LightBrand.alertRed + '4D', backgroundColor: LightBrand.alertRed + '0D', gap: 4 },
-  staleTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.alertRed },
-  staleBody: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.alertRed },
+  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  autoMatchNote: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
+  staleBanner: { borderWidth: 1, borderColor: Brand.alertRed + '4D', backgroundColor: Brand.alertRed + '0D', gap: 4 },
+  staleTitle: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: Brand.alertRed },
+  staleBody: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: Brand.alertRed },
   staleLink: { fontFamily: 'Manrope_700Bold', textDecorationLine: 'underline' },
 });

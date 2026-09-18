@@ -10,14 +10,14 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightStatCard } from '@/components/light/light-stat-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { StatCard } from '@/components/ui/stat-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { sessionTypeLabel } from '@/lib/data/bookings';
 import { getMyPerformance, getMyPerformanceLast30Days, getRecentReviews } from '@/lib/data/coach-performance';
 import { useAsync } from '@/lib/data/use-async';
@@ -34,82 +34,82 @@ export default function CoachPerformanceScreen() {
   const [showDetail, setShowDetail] = useState(false);
 
   return (
-    <LightScreenScaffold title="My Performance">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+    <ScreenScaffold title="My Performance">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && data && (
         <>
-          <LightSectionHeader title="Last 30 Days" />
+          <SectionHeader title="Last 30 Days" />
           <View style={styles.grid}>
             <View style={styles.gridItem}>
-              <LightStatCard value={String(data.last30.total)} label="TOTAL SESSIONS" />
+              <StatCard value={String(data.last30.total)} label="TOTAL SESSIONS" />
             </View>
             <View style={styles.gridItem}>
-              <LightStatCard value={String(data.last30.completed)} label="COMPLETED" />
+              <StatCard value={String(data.last30.completed)} label="COMPLETED" />
             </View>
             <View style={styles.gridItem}>
-              <LightStatCard value={String(data.last30.cancelled)} label="CANCELLED" />
+              <StatCard value={String(data.last30.cancelled)} label="CANCELLED" />
             </View>
             <View style={styles.gridItem}>
-              <LightStatCard value={String(data.last30.rescheduled)} label="RESCHEDULED" />
+              <StatCard value={String(data.last30.rescheduled)} label="RESCHEDULED" />
             </View>
           </View>
 
-          <LightStatCard
+          <StatCard
             emphasize
             value={data.allTime.averageTrainerRating !== null ? data.allTime.averageTrainerRating.toFixed(1) : '—'}
             label={`CLIENT FEEDBACK · ${data.allTime.ratingCount} reviews`}
           />
 
-          <LightPrimaryButton size="lg" onPress={() => setShowDetail((v) => !v)}>
+          <PrimaryButton size="lg" onPress={() => setShowDetail((v) => !v)}>
             {showDetail ? 'Hide Detailed Report' : 'View Detailed Report'}
-          </LightPrimaryButton>
+          </PrimaryButton>
 
-          <LightSectionHeader title="Recent Reviews" />
-          {data.recentReviews.length === 0 && <LightEmptyState message="No client ratings yet." icon="star-outline" />}
+          <SectionHeader title="Recent Reviews" />
+          {data.recentReviews.length === 0 && <EmptyState message="No client ratings yet." icon="star-outline" />}
           {data.recentReviews.map((review) => (
-            <LightCard key={review.bookingId} style={styles.reviewCard}>
+            <GlassCard key={review.bookingId} style={styles.reviewCard}>
               <View style={styles.reviewHeaderRow}>
                 <Text style={styles.reviewClient}>{review.clientName}</Text>
-                <LightBadge label={sessionTypeLabel(review.sessionType)} tone="outline" />
+                <Badge label={sessionTypeLabel(review.sessionType)} tone="outline" />
               </View>
               <Text style={styles.reviewStars}>
                 ★ {review.trainerRating ?? '—'} trainer · ★ {review.qualityRating ?? '—'} quality
               </Text>
               {review.note && <Text style={styles.reviewNote}>&quot;{review.note}&quot;</Text>}
               <Text style={styles.reviewMeta}>{formatReviewDate(review.ratedAt)}</Text>
-            </LightCard>
+            </GlassCard>
           ))}
 
           {showDetail && (
             <>
-              <LightSectionHeader title="All Time" />
+              <SectionHeader title="All Time" />
               <View style={styles.grid}>
                 <View style={styles.gridItem}>
-                  <LightStatCard value={String(data.allTime.completedSessions)} label="COMPLETED" />
+                  <StatCard value={String(data.allTime.completedSessions)} label="COMPLETED" />
                 </View>
                 <View style={styles.gridItem}>
-                  <LightStatCard value={String(data.allTime.upcomingSessions)} label="UPCOMING" />
+                  <StatCard value={String(data.allTime.upcomingSessions)} label="UPCOMING" />
                 </View>
               </View>
-              <LightStatCard value={String(data.allTime.missedSessions)} label="MISSED SESSIONS" />
+              <StatCard value={String(data.allTime.missedSessions)} label="MISSED SESSIONS" />
               <Text style={styles.note}>Read only — performance stats aren&apos;t editable.</Text>
             </>
           )}
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   gridItem: { width: '47%' },
-  note: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted, textAlign: 'center' },
+  note: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
   reviewCard: { gap: 4 },
   reviewHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  reviewClient: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
-  reviewStars: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.amber },
-  reviewNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textPrimary, fontStyle: 'italic' },
-  reviewMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  reviewClient: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
+  reviewStars: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: Brand.yellow },
+  reviewNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: '#FFFFFF', fontStyle: 'italic' },
+  reviewMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
 });

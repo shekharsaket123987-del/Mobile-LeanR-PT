@@ -22,15 +22,14 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightMessageBubble, LightMessageInput } from '@/components/light/light-chat-thread';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
-import { LightMenuRow } from '@/components/light/light-menu-row';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { Avatar } from '@/components/ui/avatar';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { MessageBubble, MessageInput } from '@/components/ui/chat-thread';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { MenuRow } from '@/components/ui/menu-row';
 import {
   getMyActiveConversation,
   getMyPastConversations,
@@ -47,6 +46,7 @@ import type { Message } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { pickChatImage, type PickedImage } from '@/lib/media/pick-chat-image';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 /**
  * Pre-purchase Coach Profile — three states per ClientPortal.md §12:
@@ -58,24 +58,24 @@ function PrePurchaseCoachScreen() {
   const { data: coach, loading, error, reload } = useAsync(getMyCoach, []);
 
   return (
-    <LightScreenScaffold title="Coach Profile">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+    <ScreenScaffold title="Coach Profile">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && !coach && (
         <>
-          <LightEmptyState
+          <EmptyState
             message="You'll be matched with a coach automatically once you book a free demo session or choose a plan."
             icon="person-outline"
           />
-          <LightPrimaryButton size="lg" onPress={() => router.push('/demo-booking')}>
+          <PrimaryButton size="lg" onPress={() => router.push('/demo-booking')}>
             Book Free Demo Session
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
       {!loading && !error && coach && coach.source === 'demo' && (
-        <LightCard style={lightStyles.coachCard}>
+        <GlassCard style={lightStyles.coachCard}>
           <View style={lightStyles.coachRow}>
-            <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
+            <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
             <View style={lightStyles.coachInfo}>
               <Text style={lightStyles.coachName} numberOfLines={1}>
                 {coach.full_name}
@@ -87,12 +87,12 @@ function PrePurchaseCoachScreen() {
             This is a temporary assignment for your demo only — you&apos;ll be matched with your ongoing coach once you
             choose a plan.
           </Text>
-        </LightCard>
+        </GlassCard>
       )}
       {!loading && !error && coach && coach.source !== 'demo' && (
-        <LightCard style={lightStyles.coachCard}>
+        <GlassCard style={lightStyles.coachCard}>
           <View style={lightStyles.coachRow}>
-            <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
+            <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
             <View style={lightStyles.coachInfo}>
               <Text style={lightStyles.coachName} numberOfLines={1}>
                 {coach.full_name}
@@ -106,9 +106,9 @@ function PrePurchaseCoachScreen() {
             </View>
           </View>
           {coach.bio && <Text style={lightStyles.coachBio}>{coach.bio}</Text>}
-        </LightCard>
+        </GlassCard>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -213,8 +213,8 @@ function EnrolledChatsScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Chats">
-      <LightSegmentedControl
+    <ScreenScaffold title="Chats">
+      <SegmentedControl
         options={[
           { key: 'coach', label: coach?.full_name ?? 'Coach' },
           { key: 'support', label: 'Support' },
@@ -224,23 +224,23 @@ function EnrolledChatsScreen() {
       />
 
       {tab === 'support' && (
-        <LightCard>
-          <LightEmptyState
+        <GlassCard>
+          <EmptyState
             message="Live support chat isn't available yet — coming soon. To raise an issue today, use My Concerns from More."
             icon="construct-outline"
           />
-        </LightCard>
+        </GlassCard>
       )}
 
       {tab === 'coach' && (
         <>
-          {loading && <LightLoadingState />}
-          {error && <LightErrorState message={error} onRetry={reload} />}
-          {!loading && !error && !coach && <LightEmptyState message="No coach assigned yet." icon="person-outline" />}
+          {loading && <LoadingState />}
+          {error && <ErrorState message={error} onRetry={reload} />}
+          {!loading && !error && !coach && <EmptyState message="No coach assigned yet." icon="person-outline" />}
 
           {!loading && !error && coach && (
             <View style={lightStyles.headerRow}>
-              <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={36} />
+              <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={36} />
               <View>
                 <Text style={lightStyles.coachNameSmall}>{coach.full_name}</Text>
                 <View style={lightStyles.onlineRow}>
@@ -252,15 +252,15 @@ function EnrolledChatsScreen() {
           )}
 
           {!loading && !error && coach && !conversation && (
-            <LightEmptyState message="No conversation with your coach yet." icon="chatbubble-outline" />
+            <EmptyState message="No conversation with your coach yet." icon="chatbubble-outline" />
           )}
 
           {!loading && !error && conversation && (
             <>
               <View style={lightStyles.thread}>
-                {messages.length === 0 && <LightEmptyState message="Say hello to your coach." icon="hand-left-outline" />}
+                {messages.length === 0 && <EmptyState message="Say hello to your coach." icon="hand-left-outline" />}
                 {messages.map((m) => (
-                  <LightMessageBubble key={m.id} message={m} mine={m.sender_role === 'client'} />
+                  <MessageBubble key={m.id} message={m} mine={m.sender_role === 'client'} />
                 ))}
               </View>
 
@@ -270,7 +270,7 @@ function EnrolledChatsScreen() {
                 </Text>
               )}
 
-              <LightMessageInput
+              <MessageInput
                 value={draft}
                 onChangeText={setDraft}
                 onSend={onSend}
@@ -285,8 +285,8 @@ function EnrolledChatsScreen() {
           )}
 
           {!loading && !error && pastConversations.length > 0 && (
-            <LightCard>
-              <LightMenuRow
+            <GlassCard>
+              <MenuRow
                 label={`Past Coaches (${pastConversations.length})`}
                 icon={pastOpen ? 'chevron-up-outline' : 'chevron-down-outline'}
                 onPress={() => setPastOpen((v) => !v)}
@@ -294,7 +294,7 @@ function EnrolledChatsScreen() {
               />
               {pastOpen &&
                 pastConversations.map((pc, i) => (
-                  <LightMenuRow
+                  <MenuRow
                     key={pc.id}
                     label={pc.coachName ?? 'Former coach'}
                     icon="person-outline"
@@ -302,25 +302,25 @@ function EnrolledChatsScreen() {
                     last={i === pastConversations.length - 1}
                   />
                 ))}
-            </LightCard>
+            </GlassCard>
           )}
 
           {viewingPast && (
-            <LightCard>
+            <GlassCard>
               <Text style={lightStyles.pastNotice}>
                 This coach is no longer assigned to you — you can still see this history.
               </Text>
               <View style={lightStyles.thread}>
                 {pastMessages.map((m) => (
-                  <LightMessageBubble key={m.id} message={m} mine={m.sender_role === 'client'} />
+                  <MessageBubble key={m.id} message={m} mine={m.sender_role === 'client'} />
                 ))}
               </View>
-              <LightMenuRow label="Close" icon="close-outline" onPress={() => setViewingPast(null)} last />
-            </LightCard>
+              <MenuRow label="Close" icon="close-outline" onPress={() => setViewingPast(null)} last />
+            </GlassCard>
           )}
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -334,16 +334,16 @@ const lightStyles = StyleSheet.create({
   coachCard: { gap: 10 },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   coachInfo: { flexShrink: 1, gap: 3 },
-  coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: LightBrand.navy },
-  coachSpecialty: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
-  coachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
-  coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, lineHeight: 20 },
+  coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: '#FFFFFF' },
+  coachSpecialty: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  coachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
+  coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  coachNameSmall: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  coachNameSmall: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
   onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: LightBrand.successEmerald },
-  onlineText: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Brand.successEmerald },
+  onlineText: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
   thread: { gap: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
-  pastNotice: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginBottom: 8 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  pastNotice: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginBottom: 8 },
 });

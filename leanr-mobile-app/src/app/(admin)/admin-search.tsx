@@ -8,17 +8,16 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { searchAdmin, type AdminSearchResult } from '@/lib/data/admin-search';
 import { getErrorMessage } from '@/lib/data/errors';
 
 const KIND_LABEL: Record<AdminSearchResult['kind'], string> = { client: 'Client', coach: 'Coach', plan: 'Plan' };
-const KIND_TONE: Record<AdminSearchResult['kind'], 'teal' | 'green' | 'gray'> = { client: 'teal', coach: 'green', plan: 'gray' };
+const KIND_TONE: Record<AdminSearchResult['kind'], 'yellow' | 'green' | 'gray'> = { client: 'yellow', coach: 'green', plan: 'gray' };
 
 export default function AdminSearchScreen() {
   const [query, setQuery] = useState('');
@@ -50,8 +49,8 @@ export default function AdminSearchScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Global Search">
-      <LightTextField
+    <ScreenScaffold title="Global Search">
+      <TextField
         icon="search-outline"
         placeholder="Search by name, ID, email, or phone"
         value={query}
@@ -59,30 +58,30 @@ export default function AdminSearchScreen() {
         accessibilityLabel="Search clients, coaches, or plans"
       />
 
-      {loading && <LightLoadingState rows={1} />}
-      {error && <LightErrorState message={error} onRetry={() => onSearch(query)} />}
-      {!loading && !error && results !== null && results.length === 0 && <LightEmptyState message="No results found." icon="search-outline" />}
+      {loading && <LoadingState rows={1} />}
+      {error && <ErrorState message={error} onRetry={() => onSearch(query)} />}
+      {!loading && !error && results !== null && results.length === 0 && <EmptyState message="No results found." icon="search-outline" />}
       {!loading &&
         !error &&
         results?.map((r) => (
           <Pressable key={`${r.kind}-${r.id}`} onPress={() => onOpen(r)} accessibilityRole="button" accessibilityLabel={r.title}>
-            <LightCard>
+            <GlassCard>
               <View style={styles.row}>
                 <Text style={styles.title} numberOfLines={1}>
                   {r.title}
                 </Text>
-                <LightBadge label={KIND_LABEL[r.kind]} tone={KIND_TONE[r.kind]} />
+                <Badge label={KIND_LABEL[r.kind]} tone={KIND_TONE[r.kind]} />
               </View>
               <Text style={styles.subtitle}>{r.subtitle}</Text>
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy, flexShrink: 1 },
-  subtitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 2 },
+  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  subtitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
 });

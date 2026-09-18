@@ -7,11 +7,11 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { PrimaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
 import { StarRating } from '@/components/ui/star-rating';
-import { LightBrand } from '@/constants/light-theme';
+import { Brand } from '@/constants/theme';
 import { getErrorMessage } from '@/lib/data/errors';
 
 export function RateSessionSheet({
@@ -58,14 +58,14 @@ export function RateSessionSheet({
   };
 
   return (
-    <LightBottomSheet visible={visible} onClose={onClose} title={title}>
+    <BottomSheet visible={visible} onClose={onClose} title={title}>
       <Text style={styles.label}>SESSION QUALITY</Text>
       <StarRating value={quality} onChange={setQuality} />
       <Text style={[styles.label, styles.labelSpacing]}>TRAINER</Text>
       <StarRating value={trainer} onChange={setTrainer} />
 
       <Text style={[styles.label, styles.labelSpacing]}>NOTE (OPTIONAL)</Text>
-      <LightTextField
+      <TextField
         placeholder="Anything you'd like to add?"
         value={note}
         onChangeText={setNote}
@@ -80,17 +80,17 @@ export function RateSessionSheet({
         </Text>
       )}
 
-      <LightPrimaryButton size="lg" onPress={submit} loading={submitting} style={styles.button}>
+      <PrimaryButton size="lg" onPress={submit} loading={submitting} style={styles.button}>
         Submit rating
-      </LightPrimaryButton>
-    </LightBottomSheet>
+      </PrimaryButton>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)' },
   labelSpacing: { marginTop: 14 },
   noteInput: { minHeight: 72, textAlignVertical: 'top', paddingTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 8 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 8 },
   button: { marginTop: 14 },
 });

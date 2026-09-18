@@ -10,12 +10,12 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { searchClients, type ClientSearchResult } from '@/lib/data/coach-search';
 import { getErrorMessage } from '@/lib/data/errors';
 
@@ -43,8 +43,8 @@ export default function CoachSearchScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Search Clients">
-      <LightTextField
+    <ScreenScaffold title="Search Clients">
+      <TextField
         icon="search-outline"
         placeholder="Search by name…"
         value={query}
@@ -52,9 +52,9 @@ export default function CoachSearchScreen() {
         accessibilityLabel="Search clients by name"
       />
 
-      {loading && <LightLoadingState rows={1} />}
-      {error && <LightErrorState message={error} onRetry={() => onSearch(query)} />}
-      {!loading && !error && results !== null && results.length === 0 && <LightEmptyState message="No clients found." icon="search-outline" />}
+      {loading && <LoadingState rows={1} />}
+      {error && <ErrorState message={error} onRetry={() => onSearch(query)} />}
+      {!loading && !error && results !== null && results.length === 0 && <EmptyState message="No clients found." icon="search-outline" />}
       {!loading &&
         !error &&
         results?.map((r) => (
@@ -63,25 +63,25 @@ export default function CoachSearchScreen() {
             onPress={() => router.push({ pathname: '/clients/[id]', params: { id: r.id } })}
             accessibilityRole="button"
             accessibilityLabel={r.fullName}>
-            <LightCard>
+            <GlassCard>
               <View style={styles.row}>
                 <Text style={styles.name}>{r.fullName}</Text>
-                {r.isMyClient && <LightBadge label="Your client" tone="green" />}
+                {r.isMyClient && <Badge label="Your client" tone="green" />}
               </View>
               <Text style={styles.meta}>
                 {r.clientCode} · {r.status}
               </Text>
               {!r.isMyClient && <Text style={styles.readOnlyNote}>Read-only — not one of your clients</Text>}
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy, flexShrink: 1 },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 2 },
-  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.amber, marginTop: 4 },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  readOnlyNote: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: Brand.yellow, marginTop: 4 },
 });

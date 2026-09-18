@@ -16,10 +16,10 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightDestructiveButton, LightGhostButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { DestructiveButton, GhostButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import type { SchedulingRules } from '@/lib/data/bookings';
 import { getErrorMessage } from '@/lib/data/errors';
 import type { Booking } from '@/lib/data/types';
@@ -70,7 +70,7 @@ export function CancelSessionSheet({
   };
 
   return (
-    <LightBottomSheet visible={visible} onClose={onClose} title="Cancel this session?" subtitle={formatSessionTime(booking.scheduled_start)}>
+    <BottomSheet visible={visible} onClose={onClose} title="Cancel this session?" subtitle={formatSessionTime(booking.scheduled_start)}>
       <Text style={styles.consequence}>
         {willBackfill
           ? "This won't cost you a session — a new slot with your coach will be scheduled automatically further out."
@@ -81,7 +81,7 @@ export function CancelSessionSheet({
       </Text>
 
       <Text style={styles.label}>REASON (OPTIONAL)</Text>
-      <LightTextField placeholder="Let us know why (optional)" value={reason} onChangeText={setReason} multiline numberOfLines={3} style={styles.reasonInput} />
+      <TextField placeholder="Let us know why (optional)" value={reason} onChangeText={setReason} multiline numberOfLines={3} style={styles.reasonInput} />
 
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -89,21 +89,21 @@ export function CancelSessionSheet({
         </Text>
       )}
 
-      <LightDestructiveButton size="lg" onPress={submit} loading={submitting} style={styles.confirmButton}>
+      <DestructiveButton size="lg" onPress={submit} loading={submitting} style={styles.confirmButton}>
         Cancel session
-      </LightDestructiveButton>
-      <LightGhostButton size="lg" onPress={onClose}>
+      </DestructiveButton>
+      <GhostButton size="lg" onPress={onClose}>
         Keep session
-      </LightGhostButton>
-    </LightBottomSheet>
+      </GhostButton>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  consequence: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textPrimary, lineHeight: 19 },
-  policyLine: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 6 },
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted, marginTop: 16 },
+  consequence: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: '#FFFFFF', lineHeight: 19 },
+  policyLine: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 6 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)', marginTop: 16 },
   reasonInput: { minHeight: 64, textAlignVertical: 'top', paddingTop: 14 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed, marginTop: 8 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed, marginTop: 8 },
   confirmButton: { marginTop: 14 },
 });

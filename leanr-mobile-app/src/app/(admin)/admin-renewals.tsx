@@ -14,12 +14,12 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getAdminRenewalOpportunities, type AdminRenewalOpportunity } from '@/lib/data/admin-renewals';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -37,17 +37,17 @@ export default function AdminRenewalsScreen() {
   const filtered = rows.filter((o) => o.category === tab);
 
   return (
-    <LightScreenScaffold title="Renewal Opportunities" subtitle="Every client running low on sessions or expired, platform-wide">
-      <LightSegmentedControl
+    <ScreenScaffold title="Renewal Opportunities" subtitle="Every client running low on sessions or expired, platform-wide">
+      <SegmentedControl
         options={TABS.map((t) => ({ key: t.key, label: `${t.label} (${rows.filter((r) => r.category === t.key).length})` }))}
         value={tab}
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && filtered.length === 0 && (
-        <LightEmptyState
+        <EmptyState
           message={tab === 'opportunity' ? 'Nobody is currently running low on sessions.' : 'Nobody has fully lapsed without renewing.'}
           icon="trending-up-outline"
         />
@@ -56,9 +56,9 @@ export default function AdminRenewalsScreen() {
         !error &&
         filtered.map((o) => (
           <Pressable key={o.clientId} onPress={() => router.push({ pathname: '/admin-clients/[id]', params: { id: o.clientId } })} accessibilityRole="button" accessibilityLabel={o.clientName}>
-            <LightCard style={styles.card}>
+            <GlassCard style={styles.card}>
               <View style={styles.row}>
-                <LightAvatar photoUrl={o.clientPhoto} name={o.clientName} size={36} />
+                <Avatar photoUrl={o.clientPhoto} name={o.clientName} size={36} />
                 <View style={styles.nameBlock}>
                   <Text style={styles.name} numberOfLines={1}>
                     {o.clientName}
@@ -85,10 +85,10 @@ export default function AdminRenewalsScreen() {
               <View style={[styles.badge, o.converted ? styles.badgeGreen : styles.badgeGray]}>
                 <Text style={[styles.badgeText, o.converted ? styles.badgeTextGreen : styles.badgeTextGray]}>{o.converted ? 'Converted' : 'Not Converted'}</Text>
               </View>
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -96,17 +96,17 @@ const styles = StyleSheet.create({
   card: { gap: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   nameBlock: { flex: 1, minWidth: 0 },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
-  code: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: LightBrand.textMuted },
-  sessions: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.teal },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  code: { fontFamily: 'Manrope_500Medium', fontSize: 11, color: 'rgba(255,255,255,0.45)' },
+  sessions: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: Brand.yellow },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  coach: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textSecondary },
-  subtext: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
-  overdueText: { color: LightBrand.alertRed },
+  coach: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+  subtext: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
+  overdueText: { color: Brand.alertRed },
   badge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
   badgeGreen: { backgroundColor: '#DCFCE7' },
   badgeGray: { backgroundColor: '#F1F5F9' },
   badgeText: { fontFamily: 'Manrope_700Bold', fontSize: 11 },
   badgeTextGreen: { color: '#15803D' },
-  badgeTextGray: { color: LightBrand.textMuted },
+  badgeTextGray: { color: 'rgba(255,255,255,0.45)' },
 });

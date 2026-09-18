@@ -9,11 +9,11 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getRenewalOpportunities, type RenewalOpportunity } from '@/lib/data/coach-renewals';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -30,8 +30,8 @@ export default function CoachRenewalsScreen() {
   const filtered = (opportunities ?? []).filter((o) => tab === 'all' || bucket(o) === tab);
 
   return (
-    <LightScreenScaffold title="Renewals" subtitle="Clients running low on sessions">
-      <LightSegmentedControl
+    <ScreenScaffold title="Renewals" subtitle="Clients running low on sessions">
+      <SegmentedControl
         options={[
           { key: 'all', label: 'All' },
           { key: 'due_soon', label: 'Due Soon' },
@@ -41,15 +41,15 @@ export default function CoachRenewalsScreen() {
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && filtered.length === 0 && (
-        <LightEmptyState message="No clients here right now." icon="trending-up-outline" />
+        <EmptyState message="No clients here right now." icon="trending-up-outline" />
       )}
       {!loading &&
         !error &&
         filtered.map((o) => (
-          <LightCard key={o.subscriptionId} style={styles.card}>
+          <GlassCard key={o.subscriptionId} style={styles.card}>
             <View style={styles.row}>
               <Text style={styles.name} numberOfLines={1}>
                 {o.clientName}
@@ -65,17 +65,17 @@ export default function CoachRenewalsScreen() {
                   ? `~${o.estimatedDaysRemaining} days left`
                   : 'Sessions running low'}
             </Text>
-          </LightCard>
+          </GlassCard>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy, flexShrink: 1 },
-  sessions: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.teal },
-  subtext: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
-  overdueText: { color: LightBrand.alertRed },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF', flexShrink: 1 },
+  sessions: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: Brand.yellow },
+  subtext: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
+  overdueText: { color: Brand.alertRed },
 });

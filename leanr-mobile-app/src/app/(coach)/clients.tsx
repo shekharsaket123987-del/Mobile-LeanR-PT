@@ -9,21 +9,21 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { getCoachClientsList, type CoachClientListRow, type DerivedClientStatus } from '@/lib/data/coach-clients';
 import { useAsync } from '@/lib/data/use-async';
 
-const STATUS_TONE: Record<DerivedClientStatus, 'teal' | 'green' | 'red' | 'gray'> = {
+const STATUS_TONE: Record<DerivedClientStatus, 'yellow' | 'green' | 'red' | 'gray'> = {
   active: 'green',
-  paused: 'teal',
-  created: 'teal',
+  paused: 'yellow',
+  created: 'yellow',
   expired: 'gray',
   demo: 'gray',
   not_paid: 'gray',
@@ -66,20 +66,20 @@ export default function CoachClients() {
   }, [clients, query, statusFilter]);
 
   return (
-    <LightScreenScaffold title="My Clients">
-      <LightTextField icon="search-outline" placeholder="Search by name or ID" value={query} onChangeText={setQuery} />
+    <ScreenScaffold title="My Clients">
+      <TextField icon="search-outline" placeholder="Search by name or ID" value={query} onChangeText={setQuery} />
 
-      <LightChipGrid>
+      <ChipGrid>
         {FILTERS.map((f) => (
-          <LightChip key={f.key} label={f.label} selected={statusFilter === f.key} onPress={() => setStatusFilter(f.key)} />
+          <Chip key={f.key} label={f.label} selected={statusFilter === f.key} onPress={() => setStatusFilter(f.key)} />
         ))}
-      </LightChipGrid>
+      </ChipGrid>
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message="No clients match." icon="people-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message="No clients match." icon="people-outline" />}
       {!loading && !error && filtered.map((client) => <ClientRow key={client.id} client={client} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -89,14 +89,14 @@ function ClientRow({ client }: { client: CoachClientListRow }) {
       onPress={() => router.push({ pathname: '/clients/[id]', params: { id: client.id } })}
       accessibilityRole="button"
       accessibilityLabel={client.full_name}>
-      <LightCard style={styles.row}>
-        <LightAvatar photoUrl={client.photo_url} name={client.full_name} size={44} />
+      <GlassCard style={styles.row}>
+        <Avatar photoUrl={client.photo_url} name={client.full_name} size={44} />
         <View style={styles.info}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>
               {client.full_name}
             </Text>
-            <LightBadge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
+            <Badge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
           </View>
           {client.client_code && <Text style={styles.meta}>#{client.client_code}</Text>}
           {client.planName && <Text style={styles.meta}>{client.planName}</Text>}
@@ -110,7 +110,7 @@ function ClientRow({ client }: { client: CoachClientListRow }) {
             </Text>
           )}
         </View>
-      </LightCard>
+      </GlassCard>
     </Pressable>
   );
 }
@@ -119,8 +119,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   info: { flex: 1, gap: 3 },
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy, flexShrink: 1 },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF', flexShrink: 1 },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   metaRow: { flexDirection: 'row', gap: 10 },
-  metaSmall: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted },
+  metaSmall: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
 });

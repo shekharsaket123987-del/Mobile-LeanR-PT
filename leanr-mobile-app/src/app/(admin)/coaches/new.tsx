@@ -9,13 +9,14 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightPrimaryButton, LightGhostButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { PrimaryButton, GhostButton, SecondaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { Brand } from '@/constants/theme';
 import { COACH_LANGUAGES, COACH_SKILLS } from '@/lib/constants/coach-tags';
 import { createCoach, type CreateCoachInput } from '@/lib/data/admin-provisioning';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -107,99 +108,99 @@ export default function AdminAddCoachScreen() {
 
   if (result) {
     return (
-      <LightScreenScaffold title="Coach Created">
-        <LightCard variant="teal" style={styles.card}>
+      <ScreenScaffold title="Coach Created">
+        <GlassCard variant="yellow" style={styles.card}>
           <Text style={styles.successTitle}>Account created</Text>
           <Text style={styles.successBody}>Share these one-time credentials with the coach:</Text>
           <Text style={styles.credential}>Email: {email}</Text>
           <Text style={styles.credential}>Temporary Password: {password}</Text>
-        </LightCard>
-        <LightPrimaryButton onPress={() => router.replace({ pathname: '/coaches/[id]', params: { id: result.coachId } })}>Back to Coaches</LightPrimaryButton>
-        <LightGhostButton onPress={resetForm}>Add Another Coach</LightGhostButton>
-      </LightScreenScaffold>
+        </GlassCard>
+        <PrimaryButton onPress={() => router.replace({ pathname: '/coaches/[id]', params: { id: result.coachId } })}>Back to Coaches</PrimaryButton>
+        <GhostButton onPress={resetForm}>Add Another Coach</GhostButton>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Add Coach">
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Identity" />
-        <LightTextField placeholder="Full Name" value={fullName} onChangeText={setFullName} accessibilityLabel="Full name" />
-        <LightTextField placeholder="Employee Code" value={employeeCode} onChangeText={setEmployeeCode} accessibilityLabel="Employee code" />
-        <LightTextField placeholder="Login Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" accessibilityLabel="Login email" />
+    <ScreenScaffold title="Add Coach">
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Identity" />
+        <TextField placeholder="Full Name" value={fullName} onChangeText={setFullName} accessibilityLabel="Full name" />
+        <TextField placeholder="Employee Code" value={employeeCode} onChangeText={setEmployeeCode} accessibilityLabel="Employee code" />
+        <TextField placeholder="Login Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" accessibilityLabel="Login email" />
         <View style={styles.passwordRow}>
           <View style={styles.passwordField}>
-            <LightTextField placeholder="Temporary Password" value={password} onChangeText={setPassword} accessibilityLabel="Temporary password" />
+            <TextField placeholder="Temporary Password" value={password} onChangeText={setPassword} accessibilityLabel="Temporary password" />
           </View>
-          <LightGhostButton size="sm" onPress={() => setPassword(randomPassword())}>
+          <GhostButton size="sm" onPress={() => setPassword(randomPassword())}>
             Shuffle
-          </LightGhostButton>
+          </GhostButton>
         </View>
-      </LightCard>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Skills" />
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Skills" />
         <Text style={styles.fieldLabel}>Primary Specialization</Text>
-        <LightChipGrid>
+        <ChipGrid>
           {COACH_SKILLS.map((s) => (
-            <LightChip key={s} label={s} selected={specialization === s} onPress={() => setSpecialization(s)} />
+            <Chip key={s} label={s} selected={specialization === s} onPress={() => setSpecialization(s)} />
           ))}
-        </LightChipGrid>
+        </ChipGrid>
         <Text style={styles.fieldLabel}>Additional Skills</Text>
-        <LightChipGrid>
+        <ChipGrid>
           {COACH_SKILLS.filter((s) => s !== specialization).map((s) => (
-            <LightChip key={s} label={s} selected={additionalSkills.includes(s)} onPress={() => toggleAdditionalSkill(s)} />
+            <Chip key={s} label={s} selected={additionalSkills.includes(s)} onPress={() => toggleAdditionalSkill(s)} />
           ))}
-        </LightChipGrid>
-      </LightCard>
+        </ChipGrid>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Languages" eyebrow="REQUIRED · AT LEAST ONE" />
-        <LightChipGrid>
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Languages" eyebrow="REQUIRED · AT LEAST ONE" />
+        <ChipGrid>
           {COACH_LANGUAGES.map((lang) => (
-            <LightChip key={lang} label={lang} selected={languages.includes(lang)} onPress={() => toggleLanguage(lang)} />
+            <Chip key={lang} label={lang} selected={languages.includes(lang)} onPress={() => toggleLanguage(lang)} />
           ))}
-        </LightChipGrid>
-      </LightCard>
+        </ChipGrid>
+      </GlassCard>
 
-      <LightCard style={styles.card}>
-        <LightSectionHeader title="Weekly Slot Openings" eyebrow="REQUIRED · AT LEAST ONE" />
+      <GlassCard style={styles.card}>
+        <SectionHeader title="Weekly Slot Openings" eyebrow="REQUIRED · AT LEAST ONE" />
         {slots.map((s, i) => (
           <View key={i} style={styles.slotRow}>
-            <LightChipGrid>
+            <ChipGrid>
               {HOUR_OPTIONS.map((h) => (
-                <LightChip
+                <Chip
                   key={h}
                   label={formatHour(h)}
                   selected={s.hour === h}
                   onPress={() => setSlots((cur) => cur.map((x, idx) => (idx === i ? { ...x, hour: h } : x)))}
                 />
               ))}
-            </LightChipGrid>
-            <LightChipGrid>
+            </ChipGrid>
+            <ChipGrid>
               {DAYS.map((d) => (
-                <LightChip key={d.key} label={d.label} selected={s.days.includes(d.key)} onPress={() => toggleSlotDay(i, d.key)} />
+                <Chip key={d.key} label={d.label} selected={s.days.includes(d.key)} onPress={() => toggleSlotDay(i, d.key)} />
               ))}
-            </LightChipGrid>
+            </ChipGrid>
             {slots.length > 1 && (
-              <LightGhostButton size="sm" onPress={() => setSlots((cur) => cur.filter((_, idx) => idx !== i))}>
+              <GhostButton size="sm" onPress={() => setSlots((cur) => cur.filter((_, idx) => idx !== i))}>
                 Remove Slot
-              </LightGhostButton>
+              </GhostButton>
             )}
           </View>
         ))}
-        <LightSecondaryButton onPress={() => setSlots((cur) => [...cur, { days: [], hour: HOUR_OPTIONS[0] }])}>Add Slot</LightSecondaryButton>
-      </LightCard>
+        <SecondaryButton onPress={() => setSlots((cur) => [...cur, { days: [], hour: HOUR_OPTIONS[0] }])}>Add Slot</SecondaryButton>
+      </GlassCard>
 
       {error && (
         <Text style={styles.errorText} accessibilityRole="alert">
           {error}
         </Text>
       )}
-      <LightPrimaryButton size="lg" loading={submitting} disabled={!canSubmit} onPress={onSubmit}>
+      <PrimaryButton size="lg" loading={submitting} disabled={!canSubmit} onPress={onSubmit}>
         Create Coach
-      </LightPrimaryButton>
-    </LightScreenScaffold>
+      </PrimaryButton>
+    </ScreenScaffold>
   );
 }
 
@@ -207,10 +208,10 @@ const styles = StyleSheet.create({
   card: { gap: 8 },
   passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   passwordField: { flex: 1 },
-  fieldLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: LightBrand.textMuted, marginTop: 4 },
+  fieldLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
   slotRow: { gap: 8, marginBottom: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed },
-  successTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.tealDark },
-  successBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
-  credential: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.alertRed },
+  successTitle: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: Brand.yellow },
+  successBody: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  credential: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
 });

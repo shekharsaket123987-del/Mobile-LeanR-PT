@@ -1,10 +1,9 @@
 /**
- * Coach tab bar — New PRD.md §4.B coach nav, relit to match the
+ * Coach tab bar — New PRD.md §4.B coach nav, matching the
  * "Coach Portal – Complete Features & Workflow" mockup's 5-tab bar
- * (Home/Clients/Schedule/Chats/More), replacing the dark `FloatingTabBar`
- * with the same `LightTabBar` the client portal uses. "Chats" is
- * promoted from a pushed screen to a real tab per the mockup; every
- * other coach screen stays reachable by push (`href: null`), same
+ * (Home/Clients/Schedule/Chats/More) with the dark glass `FloatingTabBar`.
+ * "Chats" is promoted from a pushed screen to a real tab per the mockup;
+ * every other coach screen stays reachable by push (`href: null`), same
  * convention as `(client)/_layout.tsx`.
  *
  * Also mounts `CoachPendingTasksGateModal` — New PRD.md §4.B "Global
@@ -28,8 +27,8 @@ import { useEffect, useState } from 'react';
 import { ColorValue } from 'react-native';
 
 import { CoachPendingTasksGateModal } from '@/components/gates/coach-pending-tasks-gate-modal';
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightTabBar } from '@/components/light/light-tab-bar';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
 import { getCoachPendingTasks } from '@/lib/data/coach-portal';
@@ -85,7 +84,7 @@ export default function CoachLayout() {
     <>
       <CoachGlobalGates />
       <Tabs
-        tabBar={(props) => <LightTabBar {...props} moreRouteName="coach-more" onMorePress={() => setMoreOpen(true)} />}
+        tabBar={(props) => <FloatingTabBar {...props} moreRouteName="coach-more" onMorePress={() => setMoreOpen(true)} />}
         screenOptions={{ headerShown: false }}
       >
         <Tabs.Screen
@@ -142,14 +141,14 @@ export default function CoachLayout() {
         <Tabs.Screen name="chat/[id]" options={{ href: null, title: 'Chat' }} />
         <Tabs.Screen name="search" options={{ href: null, title: 'Search' }} />
       </Tabs>
-      <LightBottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
+      <BottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
         <CoachMoreContent
           onNavigate={(href) => {
             setMoreOpen(false);
             router.push(href as Parameters<typeof router.push>[0]);
           }}
         />
-      </LightBottomSheet>
+      </BottomSheet>
     </>
   );
 }

@@ -33,16 +33,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { TextLink } from '@/components/tappable';
 import { formatLocalHourLabel, getBookingSettings } from '@/lib/data/booking-wizard';
 import { getMyCoach } from '@/lib/data/coach';
 import type { GenderPreference } from '@/lib/data/demo-booking';
@@ -66,6 +66,7 @@ import { getMySubscription } from '@/lib/data/subscription';
 import type { CoachProfile } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 function formatHourLabel(hour: number) {
   return formatLocalHourLabel(hour);
@@ -279,40 +280,40 @@ export default function MyScheduleScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="My Schedule">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="My Schedule">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="My Schedule">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="My Schedule">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   if (!subscription) {
     return (
-      <LightScreenScaffold title="My Schedule">
-        <LightEmptyState message="You need an active plan before setting up a recurring schedule." icon="lock-closed-outline" />
-        <LightPrimaryButton size="lg" onPress={() => router.push('/plans')}>
+      <ScreenScaffold title="My Schedule">
+        <EmptyState message="You need an active plan before setting up a recurring schedule." icon="lock-closed-outline" />
+        <PrimaryButton size="lg" onPress={() => router.push('/plans')}>
           View plans
-        </LightPrimaryButton>
-      </LightScreenScaffold>
+        </PrimaryButton>
+      </ScreenScaffold>
     );
   }
 
   // doc §5: the read-only current-schedule gate — only a "Change My Schedule" tap reveals the picker.
   if (phase === 'summary') {
     return (
-      <LightScreenScaffold title="My Schedule" subtitle="Your current weekly pattern.">
-        <LightCard>
-          <LightSectionHeader title="Current schedule" />
+      <ScreenScaffold title="My Schedule" subtitle="Your current weekly pattern.">
+        <GlassCard>
+          <SectionHeader title="Current schedule" />
           {currentCoach && (
             <View style={styles.summaryCoachRow}>
-              <LightAvatar photoUrl={currentCoach.photo_url} name={currentCoach.full_name} size={40} />
+              <Avatar photoUrl={currentCoach.photo_url} name={currentCoach.full_name} size={40} />
               <Text style={styles.summaryCoachName}>{currentCoach.full_name ?? 'Your coach'}</Text>
             </View>
           )}
@@ -321,20 +322,20 @@ export default function MyScheduleScreen() {
               {dayLabel(s.day_of_week)} — {formatHourLabel(Number(s.start_time.slice(0, 2)))}
             </Text>
           ))}
-        </LightCard>
-        <LightPrimaryButton size="lg" onPress={() => setPhase('pick')}>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => setPhase('pick')}>
           Change My Schedule
-        </LightPrimaryButton>
-      </LightScreenScaffold>
+        </PrimaryButton>
+      </ScreenScaffold>
     );
   }
 
   if (phase === 'success') {
     return (
-      <LightScreenScaffold title="Your Coach is Ready!" subtitle="We've matched you with the best coach for your goals.">
-        <LightCard style={styles.successCard}>
+      <ScreenScaffold title="Your Coach is Ready!" subtitle="We've matched you with the best coach for your goals.">
+        <GlassCard style={styles.successCard}>
           <View style={styles.successCoachRow}>
-            <LightAvatar photoUrl={assignedCoach?.photo_url} name={assignedCoach?.full_name} size={64} ring />
+            <Avatar photoUrl={assignedCoach?.photo_url} name={assignedCoach?.full_name} size={64} ring />
             <View style={styles.successCoachInfo}>
               <Text style={styles.successCoachName}>{assignedCoach?.full_name ?? matchResult?.coachName}</Text>
               {assignedCoach?.rating != null && <Text style={styles.successCoachRating}>★ {assignedCoach.rating.toFixed(1)}</Text>}
@@ -347,25 +348,25 @@ export default function MyScheduleScreen() {
             </Text>
           ))}
           <Text style={styles.successHint}>Your next few sessions have already been added to your calendar.</Text>
-        </LightCard>
-        <LightPrimaryButton size="lg" onPress={() => router.push('/my-coach')}>
+        </GlassCard>
+        <PrimaryButton size="lg" onPress={() => router.push('/my-coach')}>
           View Coach Profile
-        </LightPrimaryButton>
-        <LightSecondaryButton size="lg" onPress={() => router.replace('/(client)')}>
+        </PrimaryButton>
+        <SecondaryButton size="lg" onPress={() => router.replace('/(client)')}>
           Go to Dashboard
-        </LightSecondaryButton>
-      </LightScreenScaffold>
+        </SecondaryButton>
+      </ScreenScaffold>
     );
   }
 
   if (phase === 'result') {
     return (
-      <LightScreenScaffold title="Set Up Your Schedule">
-        {searching && <LightLoadingState />}
+      <ScreenScaffold title="Set Up Your Schedule">
+        {searching && <LoadingState />}
 
         {!searching && matchResult && (
-          <LightCard>
-            <LightBadge label={resultLabel} tone={matchResult.exact ? 'green' : 'teal'} />
+          <GlassCard>
+            <Badge label={resultLabel} tone={matchResult.exact ? 'green' : 'yellow'} />
             <Text style={styles.matchedCoachText}>Matched with {matchResult.coachName}</Text>
             {matchResult.days.map((d) => (
               <Text key={d} style={styles.resultRow}>
@@ -375,12 +376,12 @@ export default function MyScheduleScreen() {
             {!matchResult.exact && (
               <Text style={styles.hintText}>This isn&apos;t exactly what you asked for — review before confirming.</Text>
             )}
-          </LightCard>
+          </GlassCard>
         )}
 
         {!searching && noMatch && (
-          <LightCard>
-            <LightEmptyState message="No coach can be matched to that request." icon="calendar-outline" />
+          <GlassCard>
+            <EmptyState message="No coach can be matched to that request." icon="calendar-outline" />
             {dayCoverage && (
               <View style={styles.coverageBlock}>
                 {Object.entries(dayCoverage).map(([d, ok]) => (
@@ -391,10 +392,10 @@ export default function MyScheduleScreen() {
               </View>
             )}
             <Text style={styles.hintText}>Try a 2-day pairing, custom days, or notify support to resolve manually.</Text>
-            <LightTextLink onPress={onNotifySupport} style={styles.notifyLink}>
+            <TextLink onPress={onNotifySupport} style={styles.notifyLink}>
               Notify Support
-            </LightTextLink>
-          </LightCard>
+            </TextLink>
+          </GlassCard>
         )}
 
         {matchError && (
@@ -404,114 +405,114 @@ export default function MyScheduleScreen() {
         )}
 
         {!searching && matchResult && (
-          <LightPrimaryButton size="lg" onPress={onConfirm} loading={confirming}>
+          <PrimaryButton size="lg" onPress={onConfirm} loading={confirming}>
             Confirm
-          </LightPrimaryButton>
+          </PrimaryButton>
         )}
-        <LightSecondaryButton size="lg" onPress={() => setPhase('pick')}>
+        <SecondaryButton size="lg" onPress={() => setPhase('pick')}>
           Back
-        </LightSecondaryButton>
-      </LightScreenScaffold>
+        </SecondaryButton>
+      </ScreenScaffold>
     );
   }
 
   const genderChosen = trainerPreference !== 'new' || !isRenewal || genderPreference !== null;
 
   return (
-    <LightScreenScaffold title="Set Up Your Schedule" subtitle={isChangeContext ? 'Choose your new weekly pattern.' : `Step 1 of ${isChangeContext ? 2 : 1}`}>
-      <LightCard>
-        <LightSectionHeader title="Choose your weekly pattern" />
-        <LightChipGrid>
+    <ScreenScaffold title="Set Up Your Schedule" subtitle={isChangeContext ? 'Choose your new weekly pattern.' : `Step 1 of ${isChangeContext ? 2 : 1}`}>
+      <GlassCard>
+        <SectionHeader title="Choose your weekly pattern" />
+        <ChipGrid>
           {PATTERN_PRESETS.map((preset) => (
-            <LightChip
+            <Chip
               key={preset.key}
               label={preset.key === 'sixday' ? '6 Days a Week — Mon–Sat' : `${preset.label} — 3 sessions a week`}
               selected={slotType === preset.key}
               onPress={() => onSelectPattern(preset)}
             />
           ))}
-        </LightChipGrid>
+        </ChipGrid>
 
         {!showMoreOptions && (
-          <LightTextLink onPress={() => setShowMoreOptions(true)} style={styles.moreOptionsLink}>
+          <TextLink onPress={() => setShowMoreOptions(true)} style={styles.moreOptionsLink}>
             Not happy with these slots?
-          </LightTextLink>
+          </TextLink>
         )}
 
         {showMoreOptions && (
           <>
-            <LightSectionHeader title="2 Days a Week" />
-            <LightChipGrid>
+            <SectionHeader title="2 Days a Week" />
+            <ChipGrid>
               {ALL_PAIRS.map((pair) => (
-                <LightChip
+                <Chip
                   key={`${pair[0]}-${pair[1]}`}
                   label={`${dayLabel(pair[0])} + ${dayLabel(pair[1])}`}
                   selected={slotType === 'pair' && selectedDays[0] === pair[0] && selectedDays[1] === pair[1]}
                   onPress={() => onSelectPair(pair)}
                 />
               ))}
-            </LightChipGrid>
+            </ChipGrid>
 
-            <LightSectionHeader title="Choose Your Own Days (2–5 days)" />
-            <LightChipGrid>
+            <SectionHeader title="Choose Your Own Days (2–5 days)" />
+            <ChipGrid>
               {WEEKDAYS.map((d) => (
-                <LightChip
+                <Chip
                   key={d.dow}
                   label={d.short}
                   selected={slotType === 'custom' && selectedDays.includes(d.dow)}
                   onPress={() => toggleCustomDay(d.dow)}
                 />
               ))}
-            </LightChipGrid>
+            </ChipGrid>
             {slotType === 'custom' && !daysValid && selectedDays.length > 0 && (
               <Text style={styles.hintText}>Pick between 2 and 5 days.</Text>
             )}
           </>
         )}
-      </LightCard>
+      </GlassCard>
 
-      <LightCard>
-        <LightSectionHeader title="Preferred time" />
+      <GlassCard>
+        <SectionHeader title="Preferred time" />
         {settings && (
-          <LightChipGrid>
+          <ChipGrid>
             {Array.from({ length: settings.bookingWindowEndHour - settings.bookingWindowStartHour }, (_, i) => settings.bookingWindowStartHour + i).map(
               (h) => (
-                <LightChip key={h} label={formatHourLabel(h)} selected={h === preferredHour} onPress={() => setPreferredHour(h)} />
+                <Chip key={h} label={formatHourLabel(h)} selected={h === preferredHour} onPress={() => setPreferredHour(h)} />
               )
             )}
-          </LightChipGrid>
+          </ChipGrid>
         )}
-      </LightCard>
+      </GlassCard>
 
       {isChangeContext && (
-        <LightCard>
-          <LightSectionHeader title="Trainer preference" />
-          <LightChipGrid>
-            <LightChip label="Same trainer" selected={trainerPreference === 'same'} onPress={() => setTrainerPreference('same')} />
-            <LightChip label="New trainer" selected={trainerPreference === 'new'} onPress={() => setTrainerPreference('new')} />
+        <GlassCard>
+          <SectionHeader title="Trainer preference" />
+          <ChipGrid>
+            <Chip label="Same trainer" selected={trainerPreference === 'same'} onPress={() => setTrainerPreference('same')} />
+            <Chip label="New trainer" selected={trainerPreference === 'new'} onPress={() => setTrainerPreference('new')} />
             {/* doc §6.1: "No Preference" is offered for a regular mid-plan change but NOT for a renewal's Change flow. */}
             {!isRenewal && (
-              <LightChip
+              <Chip
                 label="Any Available (Best Match)"
                 selected={trainerPreference === 'no_preference'}
                 onPress={() => setTrainerPreference('no_preference')}
               />
             )}
-          </LightChipGrid>
+          </ChipGrid>
 
           {/* doc §6.1: the Gender Preference selector only exists on the renewal + New Trainer path. */}
           {isRenewal && trainerPreference === 'new' && (
             <>
-              <LightSectionHeader title="Preferred coach gender" />
-              <LightChipGrid>
-                <LightChip label="Male" selected={genderPreference === 'male'} onPress={() => setGenderPreference('male')} />
-                <LightChip label="Female" selected={genderPreference === 'female'} onPress={() => setGenderPreference('female')} />
-                <LightChip label="Other" selected={genderPreference === 'other'} onPress={() => setGenderPreference('other')} />
-              </LightChipGrid>
+              <SectionHeader title="Preferred coach gender" />
+              <ChipGrid>
+                <Chip label="Male" selected={genderPreference === 'male'} onPress={() => setGenderPreference('male')} />
+                <Chip label="Female" selected={genderPreference === 'female'} onPress={() => setGenderPreference('female')} />
+                <Chip label="Other" selected={genderPreference === 'other'} onPress={() => setGenderPreference('other')} />
+              </ChipGrid>
               {!genderChosen && <Text style={styles.hintText}>Pick a preferred coach gender to continue.</Text>}
             </>
           )}
-        </LightCard>
+        </GlassCard>
       )}
 
       {matchError && (
@@ -520,41 +521,41 @@ export default function MyScheduleScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton
+      <PrimaryButton
         size="lg"
         onPress={onCheckAvailability}
         loading={searching}
         disabled={!daysValid || preferredHour === null || !genderChosen}
       >
         Check Availability
-      </LightPrimaryButton>
+      </PrimaryButton>
       {isChangeContext && !isRenewal && (
-        <LightSecondaryButton size="lg" onPress={() => setPhase('summary')}>
+        <SecondaryButton size="lg" onPress={() => setPhase('summary')}>
           Back
-        </LightSecondaryButton>
+        </SecondaryButton>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary, marginTop: 10 },
-  resultRow: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy, marginTop: 4 },
-  slotRow: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: LightBrand.textSecondary, marginTop: 4 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
-  hintText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 6 },
+  eyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.6)', marginTop: 10 },
+  resultRow: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF', marginTop: 4 },
+  slotRow: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
+  hintText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 6 },
   coverageBlock: { gap: 4, marginTop: 8 },
-  coverageOk: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark },
-  coverageBad: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.alertRed },
+  coverageOk: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: Brand.yellow },
+  coverageBad: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: Brand.alertRed },
   moreOptionsLink: { marginTop: 10 },
   notifyLink: { marginTop: 10 },
   successCard: { gap: 8 },
   successCoachRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   successCoachInfo: { gap: 2 },
-  successCoachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: LightBrand.navy },
-  successCoachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
-  successHint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted, marginTop: 8 },
-  matchedCoachText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary, marginTop: 6, marginBottom: 2 },
+  successCoachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: '#FFFFFF' },
+  successCoachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
+  successHint: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)', marginTop: 8 },
+  matchedCoachText: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.6)', marginTop: 6, marginBottom: 2 },
   summaryCoachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  summaryCoachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  summaryCoachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
 });

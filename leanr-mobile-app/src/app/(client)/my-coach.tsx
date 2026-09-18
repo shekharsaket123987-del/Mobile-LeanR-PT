@@ -13,16 +13,16 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { PrimaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { TextField } from '@/components/ui/text-field';
 import { getBookingSettings } from '@/lib/data/booking-wizard';
 import { getMyCoach } from '@/lib/data/coach';
 import {
@@ -36,6 +36,7 @@ import { getDemoAssignedCoach } from '@/lib/data/demo-booking';
 import { findAvailableCoachExact, RECURRING_SESSION_DURATION_MINUTES, WEEKDAYS, type CoachMatchCandidate } from '@/lib/data/recurring-schedule';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 function formatHourLabel(hour: number) {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -51,8 +52,8 @@ const CHANGE_STATUS_LABEL: Record<CoachChangeStatus, string> = {
   approved: 'Approved',
   rejected: 'Not approved',
 };
-const CHANGE_STATUS_TONE: Record<CoachChangeStatus, 'teal' | 'green' | 'red'> = {
-  pending: 'teal',
+const CHANGE_STATUS_TONE: Record<CoachChangeStatus, 'yellow' | 'green' | 'red'> = {
+  pending: 'yellow',
   approved: 'green',
   rejected: 'red',
 };
@@ -72,14 +73,14 @@ export default function MyCoachScreen() {
   const demoCoach = !coach && data?.demoAssignedCoach?.status === 'upcoming' ? data.demoAssignedCoach : null;
 
   return (
-    <LightScreenScaffold title="My Coach">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+    <ScreenScaffold title="My Coach">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
 
       {!loading && !error && !coach && demoCoach && (
-        <LightCard style={styles.coachCard}>
+        <GlassCard style={styles.coachCard}>
           <View style={styles.coachRow}>
-            <LightAvatar photoUrl={demoCoach.coachPhoto} name={demoCoach.coachName} size={64} ring />
+            <Avatar photoUrl={demoCoach.coachPhoto} name={demoCoach.coachName} size={64} ring />
             <View style={styles.coachInfo}>
               <Text style={styles.coachName} numberOfLines={1}>
                 {demoCoach.coachName}
@@ -87,14 +88,14 @@ export default function MyCoachScreen() {
               <Text style={styles.coachMeta}>Assigned for your upcoming demo session</Text>
             </View>
           </View>
-        </LightCard>
+        </GlassCard>
       )}
-      {!loading && !error && !coach && !demoCoach && <LightEmptyState message="No coach assigned yet." icon="person-outline" />}
+      {!loading && !error && !coach && !demoCoach && <EmptyState message="No coach assigned yet." icon="person-outline" />}
 
       {!loading && !error && coach && (
-        <LightCard style={styles.coachCard}>
+        <GlassCard style={styles.coachCard}>
           <View style={styles.coachRow}>
-            <LightAvatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
+            <Avatar photoUrl={coach.photo_url} name={coach.full_name} size={64} ring />
             <View style={styles.coachInfo}>
               <Text style={styles.coachName} numberOfLines={1}>
                 {coach.full_name}
@@ -115,23 +116,23 @@ export default function MyCoachScreen() {
           {coach.languages && coach.languages.length > 0 && (
             <View style={styles.tagRow}>
               {coach.languages.map((l) => (
-                <LightBadge key={l} label={l} tone="outline" />
+                <Badge key={l} label={l} tone="outline" />
               ))}
             </View>
           )}
           {tags.length > 0 && (
             <View style={styles.tagRow}>
               {tags.map((t) => (
-                <LightBadge key={t} label={t} tone="teal" />
+                <Badge key={t} label={t} tone="yellow" />
               ))}
             </View>
           )}
           {coach.bio && <Text style={styles.coachBio}>{coach.bio}</Text>}
-        </LightCard>
+        </GlassCard>
       )}
 
       {!loading && !error && coach && <CoachChangeSection requests={changeRequests} onSubmitted={reload} />}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -165,7 +166,7 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
   };
 
   return (
-    <LightCard>
+    <GlassCard>
       <View style={styles.changeHeader}>
         <Text style={styles.sectionLabel}>COACH CHANGE</Text>
         {!hasOpenRequest && (
@@ -178,7 +179,7 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
       {requests.map((r) => (
         <View key={r.id} style={styles.changeRow}>
           <Text style={styles.metaLabel}>{formatDate(r.created_at)}</Text>
-          <LightBadge label={CHANGE_STATUS_LABEL[r.status]} tone={CHANGE_STATUS_TONE[r.status]} />
+          <Badge label={CHANGE_STATUS_LABEL[r.status]} tone={CHANGE_STATUS_TONE[r.status]} />
         </View>
       ))}
       {requests.some((r) => r.status === 'approved' && r.new_coach_id) && (
@@ -193,7 +194,7 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
 
       {showForm && (
         <View style={styles.changeForm}>
-          <LightTextField
+          <TextField
             placeholder="Why do you want to switch coaches?"
             value={reason}
             onChangeText={setReason}
@@ -220,12 +221,12 @@ function CoachChangeSection({ requests, onSubmitted }: { requests: CoachChangeRe
               {formError}
             </Text>
           )}
-          <LightPrimaryButton onPress={onSubmit} loading={submitting}>
+          <PrimaryButton onPress={onSubmit} loading={submitting}>
             Submit request
-          </LightPrimaryButton>
+          </PrimaryButton>
         </View>
       )}
-    </LightCard>
+    </GlassCard>
   );
 }
 
@@ -309,12 +310,12 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
   if (done) return null;
 
   return (
-    <LightCard style={styles.completionCard}>
-      <LightSectionHeader eyebrow="Approved" title="Pick your new schedule" />
+    <GlassCard style={styles.completionCard}>
+      <SectionHeader eyebrow="Approved" title="Pick your new schedule" />
       <Text style={styles.metaLabel}>DAYS (2-5)</Text>
-      <LightChipGrid>
+      <ChipGrid>
         {WEEKDAYS.map((d) => (
-          <LightChip
+          <Chip
             key={d.dow}
             label={d.short}
             selected={selectedDays.includes(d.dow)}
@@ -324,12 +325,12 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
             }}
           />
         ))}
-      </LightChipGrid>
+      </ChipGrid>
 
       <Text style={styles.metaLabel}>PREFERRED TIME</Text>
-      <LightChipGrid>
+      <ChipGrid>
         {windowHours.map((h) => (
-          <LightChip
+          <Chip
             key={h}
             label={formatHourLabel(h)}
             selected={h === preferredHour}
@@ -339,12 +340,12 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
             }}
           />
         ))}
-      </LightChipGrid>
+      </ChipGrid>
 
       {!match && (
-        <LightPrimaryButton onPress={onFindCoach} loading={searching} style={styles.findCoachButton}>
+        <PrimaryButton onPress={onFindCoach} loading={searching} style={styles.findCoachButton}>
           Find available coach
-        </LightPrimaryButton>
+        </PrimaryButton>
       )}
 
       {match && (
@@ -352,9 +353,9 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
           <Text style={styles.changeNote}>
             Matched with {match.coach.full_name} — {formatHourLabel(match.hour)}
           </Text>
-          <LightPrimaryButton onPress={onConfirm} loading={confirming} style={styles.findCoachButton}>
+          <PrimaryButton onPress={onConfirm} loading={confirming} style={styles.findCoachButton}>
             Confirm {match.coach.full_name}
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
 
@@ -363,7 +364,7 @@ function CoachChangeCompletionCard({ requestId, onCompleted }: { requestId: stri
           {error}
         </Text>
       )}
-    </LightCard>
+    </GlassCard>
   );
 }
 
@@ -371,17 +372,17 @@ const styles = StyleSheet.create({
   coachCard: { gap: 10 },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   coachInfo: { flexShrink: 1, gap: 2 },
-  coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: LightBrand.navy },
-  coachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
-  coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
-  coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, lineHeight: 20 },
+  coachName: { fontFamily: 'Manrope_800ExtraBold', fontSize: 19, color: '#FFFFFF' },
+  coachRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
+  coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
+  coachBio: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 20 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  sectionLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: LightBrand.textSecondary },
-  metaLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: LightBrand.textMuted },
+  sectionLabel: { fontFamily: 'Manrope_700Bold', fontSize: 12, letterSpacing: 0.8, color: 'rgba(255,255,255,0.6)' },
+  metaLabel: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
   changeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  changeToggle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal },
+  changeToggle: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
   changeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  changeNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 6, color: LightBrand.textSecondary },
+  changeNote: { fontFamily: 'Manrope_500Medium', fontSize: 13, marginTop: 6, color: 'rgba(255,255,255,0.6)' },
   changeForm: { marginTop: 8, gap: 10 },
   reasonInput: { minHeight: 80, textAlignVertical: 'top', paddingTop: 14 },
   ratingRow: { flexDirection: 'row', gap: 8 },
@@ -391,12 +392,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: LightBrand.bg,
+    backgroundColor: Brand.bg,
   },
-  ratingChipSelected: { backgroundColor: LightBrand.teal },
-  ratingChipText: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.textPrimary },
-  ratingChipTextSelected: { color: '#FFFFFF' },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  ratingChipSelected: { backgroundColor: Brand.yellow },
+  ratingChipText: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
+  ratingChipTextSelected: { color: Brand.black },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
   completionCard: { gap: 8 },
   findCoachButton: { marginTop: 8 },
 });

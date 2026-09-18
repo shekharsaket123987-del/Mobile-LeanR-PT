@@ -19,21 +19,20 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { ClientTimeline } from '@/components/client-timeline';
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge, LightStatusBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge, StatusBadge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { getCoachClientDetail, type DerivedClientStatus } from '@/lib/data/coach-clients';
 import { useAsync } from '@/lib/data/use-async';
 
-const STATUS_TONE: Record<DerivedClientStatus, 'teal' | 'green' | 'red' | 'gray'> = {
+const STATUS_TONE: Record<DerivedClientStatus, 'yellow' | 'green' | 'red' | 'gray'> = {
   active: 'green',
-  paused: 'teal',
-  created: 'teal',
+  paused: 'yellow',
+  created: 'yellow',
   expired: 'gray',
   demo: 'gray',
   not_paid: 'gray',
@@ -64,42 +63,42 @@ export default function CoachClientDetailScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Client Details">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Client Details">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error || !client) {
     return (
-      <LightScreenScaffold title="Client Details">
-        <LightErrorState message={error ?? 'Client not found.'} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Client Details">
+        <ErrorState message={error ?? 'Client not found.'} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Client Details">
+    <ScreenScaffold title="Client Details">
       {!client.isAssignedToMe && (
-        <LightCard variant="teal">
+        <GlassCard variant="yellow">
           <Text style={styles.bannerText}>
             Read-only — this client isn&apos;t assigned to you, found via Global Search. Billing, progress, and session details
             are only visible to their assigned coach.
           </Text>
-        </LightCard>
+        </GlassCard>
       )}
 
-      <LightCard style={styles.headerCard}>
+      <GlassCard style={styles.headerCard}>
         <View style={styles.headerRow}>
-          <LightAvatar photoUrl={client.photo_url} name={client.full_name} size={56} ring />
+          <Avatar photoUrl={client.photo_url} name={client.full_name} size={56} ring />
           <View style={styles.headerInfo}>
             <Text style={styles.name}>{client.full_name}</Text>
             {client.client_code && <Text style={styles.code}>#{client.client_code}</Text>}
           </View>
-          <LightBadge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
+          <Badge label={STATUS_LABEL[client.derivedStatus]} tone={STATUS_TONE[client.derivedStatus]} />
         </View>
-      </LightCard>
+      </GlassCard>
 
-      <LightSegmentedControl
+      <SegmentedControl
         options={[
           { key: 'overview', label: 'Overview' },
           { key: 'plan', label: 'Plan' },
@@ -112,19 +111,19 @@ export default function CoachClientDetailScreen() {
       />
 
       {tab === 'overview' && (
-        <LightCard>
-          <LightSectionHeader title="Overview" />
+        <GlassCard>
+          <SectionHeader title="Overview" />
           <Row label="Phone" value={client.phone ?? '—'} />
           <Row label="Plan" value={client.planName ?? '—'} />
           <Row label="Start Date" value={formatDate(client.startDate)} />
           <Row label="Slot" value={client.slotSummary ?? '—'} />
           {client.sessionsTotal != null && <Row label="Sessions Used" value={`${client.sessionsUsed ?? 0} / ${client.sessionsTotal}`} />}
-        </LightCard>
+        </GlassCard>
       )}
 
       {tab === 'plan' && (
-        <LightCard>
-          <LightSectionHeader title="Plan" />
+        <GlassCard>
+          <SectionHeader title="Plan" />
           <Row label="Plan Name" value={client.planName ?? '—'} />
           <Row label="Start Date" value={formatDate(client.startDate)} />
           <Row label="Status" value={STATUS_LABEL[client.derivedStatus]} />
@@ -134,44 +133,44 @@ export default function CoachClientDetailScreen() {
               <Row label="Sessions Total" value={String(client.sessionsTotal)} />
             </>
           )}
-        </LightCard>
+        </GlassCard>
       )}
 
       {tab === 'timeline' && (
         <>
-          <LightSectionHeader title="Progress Timeline" />
+          <SectionHeader title="Progress Timeline" />
           <ClientTimeline clientId={id} />
         </>
       )}
 
       {tab === 'sessions' && (
         <>
-          <LightSectionHeader title="Session History" />
-          {client.sessionHistory.length === 0 && <LightEmptyState message="No sessions yet." icon="calendar-outline" />}
+          <SectionHeader title="Session History" />
+          {client.sessionHistory.length === 0 && <EmptyState message="No sessions yet." icon="calendar-outline" />}
           {client.sessionHistory.map((b) => (
-            <LightCard key={b.id} style={styles.sessionRow}>
+            <GlassCard key={b.id} style={styles.sessionRow}>
               <Text style={styles.sessionTime}>{formatSessionTime(b.scheduled_start)}</Text>
-              <LightStatusBadge status={b.status} />
-            </LightCard>
+              <StatusBadge status={b.status} />
+            </GlassCard>
           ))}
         </>
       )}
 
       {tab === 'notes' && (
         <>
-          <LightSectionHeader title="Session Notes" />
-          {client.sessionNotes.length === 0 && <LightEmptyState message="No session notes yet." icon="document-text-outline" />}
+          <SectionHeader title="Session Notes" />
+          {client.sessionNotes.length === 0 && <EmptyState message="No session notes yet." icon="document-text-outline" />}
           {client.sessionNotes.map((n) => (
-            <LightCard key={n.booking_id} style={styles.notesCard}>
+            <GlassCard key={n.booking_id} style={styles.notesCard}>
               <Text style={styles.notesBody}>{n.notes}</Text>
               {n.exercises_performed && <Text style={styles.notesMeta}>Exercises: {n.exercises_performed}</Text>}
               {n.performance_rating && <Text style={styles.notesMeta}>Performance: {n.performance_rating}</Text>}
               {n.homework && <Text style={styles.notesMeta}>Homework: {n.homework}</Text>}
-            </LightCard>
+            </GlassCard>
           ))}
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -187,18 +186,18 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  bannerText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.tealDark, lineHeight: 19 },
+  bannerText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: '#FFFFFF', lineHeight: 19 },
   headerCard: { gap: 4 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headerInfo: { flex: 1, gap: 2 },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },
-  code: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
+  code: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
-  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy, maxWidth: '60%' },
+  rowLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
+  rowValue: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF', maxWidth: '60%' },
   sessionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sessionTime: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
+  sessionTime: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
   notesCard: { gap: 4 },
-  notesBody: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: LightBrand.textPrimary },
-  notesMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  notesBody: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: '#FFFFFF' },
+  notesMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
 });

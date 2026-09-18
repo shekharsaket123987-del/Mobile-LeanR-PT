@@ -26,17 +26,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CelebrationOverlay } from '@/components/celebration-overlay';
 import { RateSessionSheet } from '@/components/rate-session-sheet';
-import { IconButton } from '@/components/ui/button';
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightStatCard } from '@/components/light/light-stat-card';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { DisplayFont } from '@/constants/theme';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { IconButton, PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { SectionHeader } from '@/components/ui/section-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { TextLink } from '@/components/tappable';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
 import { addToDeviceCalendar } from '@/lib/media/add-to-calendar';
 import { getSessionsByStatus, getUpcomingBookings, markClientJoined, rateSession, sessionTypeLabel } from '@/lib/data/bookings';
@@ -168,9 +166,9 @@ function DemoJoinRow({ booking }: { booking: Booking }) {
       {state === 'too-early' && <Text style={lightStyles.joinHint}>Join opens 5 min before start</Text>}
       {state === 'joinable' && (
         <Animated.View style={blinkStyle}>
-          <LightPrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
+          <PrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
             {joining ? 'Starting…' : 'Join Now'}
-          </LightPrimaryButton>
+          </PrimaryButton>
         </Animated.View>
       )}
     </View>
@@ -236,29 +234,29 @@ function PrePurchaseHomeScreen() {
         <View style={lightStyles.topBar}>
           <Text style={lightStyles.greeting}>Good Morning,{'\n'}{greetingName}!</Text>
           <IconButton accessibilityLabel="Notifications" onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={19} color={LightBrand.navy} />
+            <Ionicons name="notifications-outline" size={19} color={'#FFFFFF'} />
           </IconButton>
         </View>
 
         <ScrollView contentContainerStyle={lightStyles.scroll}>
-          {loading && <LightLoadingState />}
-          {error && <LightErrorState message={error} onRetry={reload} />}
+          {loading && <LoadingState />}
+          {error && <ErrorState message={error} onRetry={reload} />}
 
           {!loading && !error && stage === 'demo_booked' && nextBooking && (
-            <LightCard style={lightStyles.heroCard}>
+            <GlassCard style={lightStyles.heroCard}>
               <View style={lightStyles.notifyRow}>
-                <Ionicons name="notifications" size={15} color={LightBrand.amber} />
+                <Ionicons name="notifications" size={15} color={Brand.yellow} />
                 <Text style={lightStyles.heroEyebrow}>YOUR DEMO IS COMING UP</Text>
               </View>
               <Text style={lightStyles.heroDate}>{formatSessionDateTime(nextBooking.scheduled_start)}</Text>
               <View style={lightStyles.modeRow}>
-                <Ionicons name="videocam-outline" size={15} color={LightBrand.teal} />
+                <Ionicons name="videocam-outline" size={15} color={Brand.yellow} />
                 <Text style={lightStyles.modeText}>Online (Zoom)</Text>
               </View>
 
               {coach && (
                 <View style={lightStyles.coachRow}>
-                  <LightAvatar photoUrl={coach.photo_url} name={nextBooking.coach_name ?? coach.full_name} size={40} />
+                  <Avatar photoUrl={coach.photo_url} name={nextBooking.coach_name ?? coach.full_name} size={40} />
                   <View>
                     <Text style={lightStyles.coachName}>{nextBooking.coach_name ?? coach.full_name}</Text>
                     {coach.rating != null && <Text style={lightStyles.coachMeta}>★ {coach.rating.toFixed(1)}</Text>}
@@ -268,38 +266,38 @@ function PrePurchaseHomeScreen() {
 
               <DemoJoinRow booking={nextBooking} />
 
-              <LightSecondaryButton size="md" onPress={() => onAddToCalendar(nextBooking)} loading={addingToCalendar} style={lightStyles.calendarButton}>
+              <SecondaryButton size="md" onPress={() => onAddToCalendar(nextBooking)} loading={addingToCalendar} style={lightStyles.calendarButton}>
                 Add to Calendar
-              </LightSecondaryButton>
+              </SecondaryButton>
               {coach && (
-                <LightPrimaryButton size="md" onPress={() => router.push('/coach')} style={lightStyles.coachProfileButton}>
+                <PrimaryButton size="md" onPress={() => router.push('/coach')} style={lightStyles.coachProfileButton}>
                   View Coach Profile
-                </LightPrimaryButton>
+                </PrimaryButton>
               )}
-            </LightCard>
+            </GlassCard>
           )}
 
           {!loading && !error && stage === 'demo_completed' && unratedDemo && (
-            <LightCard style={lightStyles.heroCard}>
+            <GlassCard style={lightStyles.heroCard}>
               <Text style={lightStyles.heroEyebrow}>HOW WAS YOUR DEMO?</Text>
               <Text style={lightStyles.modeText}>Rate your session to unlock choosing a plan — or skip for now.</Text>
-            </LightCard>
+            </GlassCard>
           )}
 
           {!loading && !error && stage === 'demo_completed' && !unratedDemo && (
-            <LightPrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
+            <PrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
               Choose Your Plan
-            </LightPrimaryButton>
+            </PrimaryButton>
           )}
 
           {!loading && !error && stage === 'marketing' && (
             <>
-              <LightCard>
-                <LightEmptyState message="No demo booked yet." icon="calendar-outline" actionLabel="Book a Free Demo" onAction={() => router.push('/demo-booking')} />
-              </LightCard>
-              <LightPrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
+              <GlassCard>
+                <EmptyState message="No demo booked yet." icon="calendar-outline" actionLabel="Book a Free Demo" onAction={() => router.push('/demo-booking')} />
+              </GlassCard>
+              <PrimaryButton size="lg" onPress={() => router.push('/(client)/plans')}>
                 Choose Your Plan
-              </LightPrimaryButton>
+              </PrimaryButton>
             </>
           )}
         </ScrollView>
@@ -345,9 +343,9 @@ function EnrolledJoinRow({ booking }: { booking: Booking }) {
   }
 
   return (
-    <LightPrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
+    <PrimaryButton size="md" onPress={onJoin} loading={joining} style={lightStyles.joinButton}>
       {joining ? 'Starting…' : label}
-    </LightPrimaryButton>
+    </PrimaryButton>
   );
 }
 
@@ -382,18 +380,18 @@ function RecentSessionRow({ booking }: { booking: Booking }) {
 function TodaysTasksCard() {
   const tasks = ['Log your water intake', 'Complete your meal plan', 'Track your workout'];
   return (
-    <LightCard>
+    <GlassCard>
       <View style={lightStyles.tasksHeader}>
         <Text style={lightStyles.tasksTitle}>Today&apos;s Tasks</Text>
         <Text style={lightStyles.comingSoonBadge}>Coming soon</Text>
       </View>
       {tasks.map((t) => (
         <View key={t} style={lightStyles.taskRow}>
-          <Ionicons name="ellipse-outline" size={16} color={LightBrand.textMuted} />
+          <Ionicons name="ellipse-outline" size={16} color={'rgba(255,255,255,0.45)'} />
           <Text style={lightStyles.taskText}>{t}</Text>
         </View>
       ))}
-    </LightCard>
+    </GlassCard>
   );
 }
 
@@ -535,7 +533,7 @@ function EnrolledHomeScreen() {
       <View style={lightStyles.root}>
         <SafeAreaView style={lightStyles.flex} edges={['top']}>
           <Text style={lightStyles.gateCheckingText}>Setting things up…</Text>
-          <LightLoadingState />
+          <LoadingState />
         </SafeAreaView>
       </View>
     );
@@ -554,18 +552,18 @@ function EnrolledHomeScreen() {
             )}
           </View>
           <IconButton accessibilityLabel="Notifications" onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications-outline" size={19} color={LightBrand.navy} />
+            <Ionicons name="notifications-outline" size={19} color={'#FFFFFF'} />
           </IconButton>
         </View>
 
         <ScrollView contentContainerStyle={lightStyles.scroll}>
-          {loading && <LightLoadingState />}
-          {error && <LightErrorState message={error} onRetry={reload} />}
+          {loading && <LoadingState />}
+          {error && <ErrorState message={error} onRetry={reload} />}
 
           {!loading && !error && (
             <>
               {subscription && (
-                <LightStatCard
+                <StatCard
                   emphasize
                   value={String(sessionsLeft)}
                   label="Sessions left"
@@ -581,13 +579,13 @@ function EnrolledHomeScreen() {
               )}
 
               {nextBooking ? (
-                <LightCard style={lightStyles.heroCard}>
+                <GlassCard style={lightStyles.heroCard}>
                   <Text style={lightStyles.heroEyebrow}>NEXT UP</Text>
                   <Text style={lightStyles.heroDate}>{formatSessionDay(nextBooking.scheduled_start)}</Text>
                   <Text style={lightStyles.heroTime}>{formatSessionTime(nextBooking.scheduled_start)}</Text>
 
                   <View style={lightStyles.coachRow}>
-                    <LightAvatar photoUrl={coach?.photo_url} name={nextBooking.coach_name ?? coach?.full_name} size={36} />
+                    <Avatar photoUrl={coach?.photo_url} name={nextBooking.coach_name ?? coach?.full_name} size={36} />
                     <View style={lightStyles.coachTextCol}>
                       <Text style={lightStyles.coachName} numberOfLines={1}>
                         {nextBooking.coach_name ?? coach?.full_name ?? 'your coach'}
@@ -597,44 +595,44 @@ function EnrolledHomeScreen() {
                   </View>
 
                   <View style={lightStyles.tagRow}>
-                    {coach?.specialization && <LightBadge label={coach.specialization} tone="teal" />}
+                    {coach?.specialization && <Badge label={coach.specialization} tone="yellow" />}
                     <View style={lightStyles.modeRow}>
-                      <Ionicons name="videocam-outline" size={14} color={LightBrand.teal} />
+                      <Ionicons name="videocam-outline" size={14} color={Brand.yellow} />
                       <Text style={lightStyles.modeText}>Live Video Session</Text>
                     </View>
                   </View>
 
                   <NextSessionCountdown booking={nextBooking} />
                   <EnrolledJoinRow booking={nextBooking} />
-                </LightCard>
+                </GlassCard>
               ) : (
-                <LightCard>
-                  <LightEmptyState
+                <GlassCard>
+                  <EmptyState
                     message="No upcoming sessions booked yet."
                     icon="calendar-outline"
                     actionLabel="Manage my schedule"
                     onAction={() => router.push('/my-schedule')}
                   />
-                </LightCard>
+                </GlassCard>
               )}
 
               {subscription && (
                 <View style={lightStyles.statGrid}>
                   <View style={lightStyles.statCell}>
-                    <LightStatCard value={String(completedBookings?.length ?? 0)} label="Sessions Completed" />
+                    <StatCard value={String(completedBookings?.length ?? 0)} label="Sessions Completed" />
                   </View>
                   <View style={lightStyles.statCell}>
-                    <LightStatCard value={`${streakWeeks} wks`} label="Current Streak" />
+                    <StatCard value={`${streakWeeks} wks`} label="Current Streak" />
                   </View>
                   <View style={lightStyles.statCell}>
-                    <LightStatCard value={`${packageProgressPct}%`} label="Package Progress" />
+                    <StatCard value={`${packageProgressPct}%`} label="Package Progress" />
                   </View>
                 </View>
               )}
 
               {subscription && latestProgress && (
-                <LightCard>
-                  <LightSectionHeader title="Progress Since Day 1" />
+                <GlassCard>
+                  <SectionHeader title="Progress Since Day 1" />
                   {PROGRESS_METRICS.map((m) => (
                     <View key={m.key} style={lightStyles.metricRow}>
                       <Text style={lightStyles.metricLabel}>{m.label}</Text>
@@ -647,35 +645,35 @@ function EnrolledHomeScreen() {
                     </View>
                   ))}
                   {measurementStatus?.stale ? (
-                    <LightTextLink onPress={() => router.push('/progress')} style={lightStyles.measurementUpdateLink}>
+                    <TextLink onPress={() => router.push('/progress')} style={lightStyles.measurementUpdateLink}>
                       Update your measurements to keep this up to date.
-                    </LightTextLink>
+                    </TextLink>
                   ) : (
                     <Text style={lightStyles.measurementFreshText}>
                       You&apos;re all set on this week&apos;s measurement update — nice work staying consistent.
                     </Text>
                   )}
-                </LightCard>
+                </GlassCard>
               )}
 
               {subscription && (
-                <LightCard>
-                  <LightSectionHeader title="Recent Sessions" />
+                <GlassCard>
+                  <SectionHeader title="Recent Sessions" />
                   {completedBookings && completedBookings.length > 0 ? (
                     completedBookings.slice(0, 5).map((b) => <RecentSessionRow key={b.id} booking={b} />)
                   ) : (
-                    <LightEmptyState message="No completed sessions yet." icon="time-outline" />
+                    <EmptyState message="No completed sessions yet." icon="time-outline" />
                   )}
-                </LightCard>
+                </GlassCard>
               )}
 
               <TodaysTasksCard />
 
               {/* GAP-10: subscribed clients manage sessions via the recurring schedule, not the
                   ad-hoc wizard — matches web spec §13's post-subscription route guard. */}
-              <LightPrimaryButton size="lg" onPress={() => router.push(nextBooking ? '/sessions' : '/my-schedule')}>
+              <PrimaryButton size="lg" onPress={() => router.push(nextBooking ? '/sessions' : '/my-schedule')}>
                 {nextBooking ? 'View sessions' : 'Manage my schedule'}
-              </LightPrimaryButton>
+              </PrimaryButton>
             </>
           )}
         </ScrollView>
@@ -698,7 +696,7 @@ export default function HomeScreen() {
     return (
       <View style={lightStyles.root}>
         <SafeAreaView style={lightStyles.flex} edges={['top']}>
-          <LightLoadingState />
+          <LoadingState />
         </SafeAreaView>
       </View>
     );
@@ -707,29 +705,29 @@ export default function HomeScreen() {
 }
 
 const lightStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: LightBrand.bg },
+  root: { flex: 1, backgroundColor: Brand.bg },
   flex: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
   greetingCol: { flex: 1, gap: 4, paddingRight: 12 },
-  greeting: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 22, color: LightBrand.navy, lineHeight: 26 },
-  journeySubtitleText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  greeting: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 22, color: '#FFFFFF', lineHeight: 26 },
+  journeySubtitleText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   scroll: { flexGrow: 1, padding: 20, paddingTop: 16, paddingBottom: 40, gap: 16 },
   heroCard: { gap: 6, paddingVertical: 18 },
-  heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.teal },
-  heroDate: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: LightBrand.navy },
-  heroTime: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 34, color: LightBrand.navy, letterSpacing: -0.5 },
+  heroEyebrow: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: Brand.yellow },
+  heroDate: { fontFamily: 'Manrope_800ExtraBold', fontSize: 18, color: '#FFFFFF' },
+  heroTime: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 34, color: '#FFFFFF', letterSpacing: -0.5 },
   modeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  modeText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
+  modeText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.6)' },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.textPrimary, flexShrink: 1 },
-  coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  coachName: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF', flexShrink: 1 },
+  coachMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   calendarButton: { marginTop: 10 },
   coachProfileButton: { marginTop: 8 },
-  joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textMuted, marginTop: 10 },
+  joinHint: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 10 },
   gateCheckingText: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 12.5,
-    color: LightBrand.textMuted,
+    color: 'rgba(255,255,255,0.45)',
     textAlign: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -737,14 +735,14 @@ const lightStyles = StyleSheet.create({
   joinButton: { marginTop: 10, alignSelf: 'flex-start' },
   notifyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   joinBlock: { marginTop: 8 },
-  countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, color: LightBrand.navy, letterSpacing: -0.3 },
+  countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 20, color: '#FFFFFF', letterSpacing: -0.3 },
   sessionsLeftMeta: { marginTop: 8, gap: 2 },
-  sessionsLeftPackage: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.tealDark },
-  sessionsLeftUsage: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textSecondary },
+  sessionsLeftPackage: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: Brand.yellow },
+  sessionsLeftUsage: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
   coachTextCol: { flexShrink: 1 },
-  sessionTypeText: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  sessionTypeText: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
   tagRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  joinCountdownText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal, marginTop: 8 },
+  joinCountdownText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginTop: 8 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCell: { flexGrow: 1, flexBasis: '30%' },
   metricRow: {
@@ -753,13 +751,13 @@ const lightStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: LightBrand.border,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  metricLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
+  metricLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
   metricValues: { alignItems: 'flex-end' },
-  metricValue: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
-  metricDelta: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textSecondary },
-  measurementFreshText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.tealDark, marginTop: 10 },
+  metricValue: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
+  metricDelta: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.6)' },
+  measurementFreshText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: Brand.yellow, marginTop: 10 },
   measurementUpdateLink: { marginTop: 10 },
   recentRow: {
     flexDirection: 'row',
@@ -767,15 +765,15 @@ const lightStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: LightBrand.border,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   recentTextCol: { gap: 2 },
-  recentDate: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.navy },
-  recentMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
-  recentRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.amber },
+  recentDate: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: '#FFFFFF' },
+  recentMeta: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
+  recentRating: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow },
   tasksHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tasksTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
-  comingSoonBadge: { fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, color: LightBrand.textMuted },
+  tasksTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
+  comingSoonBadge: { fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, color: 'rgba(255,255,255,0.45)' },
   taskRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  taskText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textMuted },
+  taskText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.45)' },
 });

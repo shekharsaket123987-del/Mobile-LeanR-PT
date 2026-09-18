@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import { ColorValue } from 'react-native';
 
-import { LightTabBar } from '@/components/light/light-tab-bar';
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
 
@@ -25,7 +25,7 @@ export default function MarketingLayout() {
   if (session && profile) return <Redirect href={getHomeRouteForRole(profile.role)} />;
 
   return (
-    <Tabs tabBar={(props) => <LightTabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs tabBar={(props) => <FloatingTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="index"
         options={{ title: 'Home', tabBarIcon: ({ focused, color }) => <TabIcon name={focused ? 'home' : 'home-outline'} color={color} /> }}

@@ -6,11 +6,10 @@
  */
 import { StyleSheet, Text } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { listMyShadowAssignments, type MyShadowAssignment } from '@/lib/data/coach-shadow';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -18,32 +17,32 @@ export default function ShadowAssignmentsScreen() {
   const { data: assignments, loading, error, reload } = useAsync(listMyShadowAssignments, []);
 
   return (
-    <LightScreenScaffold title="My Shadow Assignments" subtitle="Sessions you're covering for another coach">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+    <ScreenScaffold title="My Shadow Assignments" subtitle="Sessions you're covering for another coach">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
       {!loading && !error && (assignments ?? []).length === 0 && (
-        <LightEmptyState message="You aren't covering for anyone right now." icon="shield-checkmark-outline" />
+        <EmptyState message="You aren't covering for anyone right now." icon="shield-checkmark-outline" />
       )}
       {!loading && !error && (assignments ?? []).map((a) => <AssignmentRow key={a.id} assignment={a} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 function AssignmentRow({ assignment }: { assignment: MyShadowAssignment }) {
   return (
-    <LightCard style={styles.row}>
+    <GlassCard style={styles.row}>
       <Text style={styles.name}>{assignment.clientName}</Text>
       <Text style={styles.meta}>
         Covering {assignment.primaryCoachName}, {assignment.startsOn}
         {assignment.endsOn !== assignment.startsOn ? ` – ${assignment.endsOn}` : ''}
       </Text>
-      <LightBadge label={assignment.status === 'active' ? 'Active' : 'Cancelled'} tone={assignment.status === 'active' ? 'green' : 'gray'} />
-    </LightCard>
+      <Badge label={assignment.status === 'active' ? 'Active' : 'Cancelled'} tone={assignment.status === 'active' ? 'green' : 'gray'} />
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
   row: { gap: 4, alignItems: 'flex-start' },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: LightBrand.navy },
-  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: '#FFFFFF' },
+  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
 });

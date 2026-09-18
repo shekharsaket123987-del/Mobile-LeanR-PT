@@ -6,8 +6,8 @@
  */
 import { Redirect } from 'expo-router';
 
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightTestimonialsList } from '@/components/light/light-testimonials-list';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { TestimonialsList } from '@/components/ui/testimonials-list';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -17,8 +17,8 @@ export default function ReviewsScreen() {
   if (subscription) return <Redirect href="/(client)" />;
 
   return (
-    <LightScreenScaffold title="Client Reviews" subtitle="Real stories from the LEANR community.">
-      <LightTestimonialsList />
-    </LightScreenScaffold>
+    <ScreenScaffold title="Client Reviews" subtitle="Real stories from the LEANR community.">
+      <TestimonialsList />
+    </ScreenScaffold>
   );
 }

@@ -2,7 +2,7 @@
  * Progress — LEANR_PT_NEXTGEN_APP_PRD.md §9.3 / New PRD.md §4.A
  * `/client/progress`, wired to real `progress_logs` data. Relit for the
  * post-purchase light theme (mockup frame 13): a real weight-trend chart
- * (`LightMeasurementChart`, new — no charting library existed anywhere in
+ * (`MeasurementChart`, new — no charting library existed anywhere in
  * this app before this pass) plus metric/range filter chips.
  *
  * The mockup's Measurements/Photos segmented control is reproduced, but
@@ -26,17 +26,17 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightMeasurementChart, type ChartPoint } from '@/components/light/light-measurement-chart';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
-import { DisplayFont } from '@/constants/theme';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { MeasurementChart, type ChartPoint } from '@/components/ui/measurement-chart';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand, DisplayFont } from '@/constants/theme';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
 import type { ProgressLog } from '@/lib/data/types';
 import { useAsync } from '@/lib/data/use-async';
@@ -139,8 +139,8 @@ export default function ProgressScreen() {
   const unit = METRICS.find((m) => m.key === metric)?.unit ?? '';
 
   return (
-    <LightScreenScaffold title="Progress">
-      <LightSegmentedControl
+    <ScreenScaffold title="Progress">
+      <SegmentedControl
         options={[
           { key: 'measurements', label: 'Measurements' },
           { key: 'photos', label: 'Photos (soon)' },
@@ -149,30 +149,30 @@ export default function ProgressScreen() {
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
 
       {!loading && !error && tab === 'photos' && (
-        <LightCard>
-          <LightEmptyState message="Progress photos aren't available yet — coming soon." icon="camera-outline" />
-        </LightCard>
+        <GlassCard>
+          <EmptyState message="Progress photos aren't available yet — coming soon." icon="camera-outline" />
+        </GlassCard>
       )}
 
       {!loading && !error && tab === 'measurements' && (
         <>
-          <LightChipGrid>
+          <ChipGrid>
             {METRICS.map((m) => (
-              <LightChip key={m.key} label={m.label} selected={metric === m.key} onPress={() => setMetric(m.key)} />
+              <Chip key={m.key} label={m.label} selected={metric === m.key} onPress={() => setMetric(m.key)} />
             ))}
-          </LightChipGrid>
-          <LightChipGrid>
+          </ChipGrid>
+          <ChipGrid>
             {RANGES.map((r) => (
-              <LightChip key={r.key} label={r.label} selected={range === r.key} onPress={() => setRange(r.key)} />
+              <Chip key={r.key} label={r.label} selected={range === r.key} onPress={() => setRange(r.key)} />
             ))}
-          </LightChipGrid>
+          </ChipGrid>
 
           {latest ? (
-            <LightCard>
+            <GlassCard>
               {delta != null && (
                 <Text style={[styles.deltaValue, delta < 0 ? styles.deltaDown : styles.deltaUp]}>
                   {delta > 0 ? '+' : ''}
@@ -180,9 +180,9 @@ export default function ProgressScreen() {
                 </Text>
               )}
               {chartPoints.length >= 2 ? (
-                <LightMeasurementChart points={chartPoints} />
+                <MeasurementChart points={chartPoints} />
               ) : (
-                <LightEmptyState message="Log a couple more weeks to see your trend." icon="trending-up-outline" />
+                <EmptyState message="Log a couple more weeks to see your trend." icon="trending-up-outline" />
               )}
               <View style={styles.latestRow}>
                 <Text style={styles.latestLabel}>Latest Measurement</Text>
@@ -190,23 +190,23 @@ export default function ProgressScreen() {
                   {formatDate(latest.logged_at)} · {latest[metric] ?? '—'} {unit}
                 </Text>
               </View>
-            </LightCard>
+            </GlassCard>
           ) : (
-            <LightEmptyState message="No progress logged yet." icon="trending-up-outline" />
+            <EmptyState message="No progress logged yet." icon="trending-up-outline" />
           )}
 
-          <LightCard>
-            <LightSectionHeader eyebrow="Weekly check-in" title="Log this week" />
-            <LightTextField placeholder="Weight (kg)" keyboardType="numeric" value={weight} onChangeText={setWeight} />
-            <LightTextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
-            <LightTextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
+          <GlassCard>
+            <SectionHeader eyebrow="Weekly check-in" title="Log this week" />
+            <TextField placeholder="Weight (kg)" keyboardType="numeric" value={weight} onChangeText={setWeight} />
+            <TextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
+            <TextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
             {/* AUTH-006 fix: web spec has these as inches, not cm (BR-8 / ClientPortal.md §7.2). */}
-            <LightTextField placeholder="Waist (in)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
-            <LightTextField placeholder="Chest (in)" keyboardType="numeric" value={chest} onChangeText={setChest} />
-            <LightTextField placeholder="Hip (in)" keyboardType="numeric" value={hip} onChangeText={setHip} />
-            <LightTextField placeholder="Arms (in)" keyboardType="numeric" value={arms} onChangeText={setArms} />
-            <LightTextField placeholder="Thigh (in)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
-          </LightCard>
+            <TextField placeholder="Waist (in)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+            <TextField placeholder="Chest (in)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+            <TextField placeholder="Hip (in)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+            <TextField placeholder="Arms (in)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+            <TextField placeholder="Thigh (in)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
+          </GlassCard>
 
           {submitError && (
             <Text style={styles.errorText} accessibilityRole="alert">
@@ -214,21 +214,21 @@ export default function ProgressScreen() {
             </Text>
           )}
 
-          <LightPrimaryButton size="lg" onPress={onSubmit} loading={submitting}>
+          <PrimaryButton size="lg" onPress={onSubmit} loading={submitting}>
             Log New Measurement
-          </LightPrimaryButton>
+          </PrimaryButton>
         </>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   deltaValue: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 30, letterSpacing: -0.5 },
-  deltaDown: { color: LightBrand.teal },
-  deltaUp: { color: LightBrand.amber },
+  deltaDown: { color: Brand.yellow },
+  deltaUp: { color: Brand.yellow },
   latestRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  latestLabel: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
-  latestValue: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.navy },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  latestLabel: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: 'rgba(255,255,255,0.45)' },
+  latestValue: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: '#FFFFFF' },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

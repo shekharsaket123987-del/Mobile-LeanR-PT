@@ -6,12 +6,15 @@
  * simplified icon-only mark"). Keeps each screen's own state/handlers
  * untouched — this only supplies the shell.
  */
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Brand, DisplayFont } from '@/constants/theme';
+
+const LOGO_ASSET = require('../../../assets/images/leanr-logo-transparent.png');
 
 type Props = PropsWithChildren<{ title: string; subtitle?: string; compact?: boolean }>;
 
@@ -32,8 +35,7 @@ export function AuthShell({ title, subtitle, compact, children }: Props) {
             keyboardShouldPersistTaps="handled">
             {!compact && (
               <View style={styles.brand}>
-                <Text style={styles.wordmark}>LEANR</Text>
-                <Text style={styles.subLockup}>By Fitelo</Text>
+                <Image source={LOGO_ASSET} style={styles.wordmarkImage} contentFit="contain" />
               </View>
             )}
 
@@ -55,15 +57,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32 },
   contentCompact: { justifyContent: 'flex-start', paddingTop: 80 },
   brand: { marginBottom: 28 },
-  wordmark: {
-    fontFamily: DisplayFont,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    fontSize: 42,
-    color: Brand.yellow,
-    letterSpacing: -0.5,
-  },
-  subLockup: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  wordmarkImage: { width: 200, height: 68 },
   title: {
     fontFamily: DisplayFont,
     fontWeight: '700',

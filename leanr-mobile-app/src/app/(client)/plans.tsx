@@ -1,28 +1,21 @@
 /**
- * Choose Your Plan — dual-branch (New PRD.md pre-purchase redesign):
- * before any purchase, a light-themed version (same data/purchase logic
- * as the marketing shell's own Plans screen). Plans apply to everyone —
+ * Choose Your Plan — dual-branch: before any purchase vs. after (renewal),
+ * sharing the same data/purchase logic and the same `ui/*`/`GlassCard`
+ * components so both branches render identically. Plans apply to everyone —
  * no Individual/Corporate segmentation exists in the data model
  * (`package_tiers` has no such concept), so there's no tab to show.
- *
- * GAP-18 (NAV-005) fix: `EnrolledPlansScreen` (renewal/post-purchase) used to render the
- * legacy dark `ui/*`/`GlassCard` stack — the last un-migrated screen branch, jarring against
- * the rest of the now fully light-themed app, and reachable by every previously-subscribed
- * client via "Renew Now". Migrated onto the same Light* components `PrePurchasePlansScreen`
- * already uses — no business-logic change, palette only.
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
 import { RateSessionSheet } from '@/components/rate-session-sheet';
-import { DisplayFont } from '@/constants/theme';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightTextLink } from '@/components/light/light-tappable';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Brand, DisplayFont } from '@/constants/theme';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { TextLink } from '@/components/tappable';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { useAuth } from '@/lib/auth/auth-context';
 import { rateSession } from '@/lib/data/bookings';
 import { getUnratedCompletedDemo } from '@/lib/data/demo-booking';
@@ -92,31 +85,31 @@ function PrePurchasePlansScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Our Plans">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Our Plans">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error) {
     return (
-      <LightScreenScaffold title="Our Plans">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Our Plans">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   if (stage === 'demo_booked') {
     return (
-      <LightScreenScaffold title="Our Plans">
-        <LightEmptyState message="Your demo session is scheduled — plans unlock once it's done." icon="lock-closed-outline" />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Our Plans">
+        <EmptyState message="Your demo session is scheduled — plans unlock once it's done." icon="lock-closed-outline" />
+      </ScreenScaffold>
     );
   }
 
   if (stage === 'demo_completed' && unratedDemo) {
     return (
-      <LightScreenScaffold title="Our Plans">
-        <LightEmptyState message="Rate your demo session to unlock plans." icon="star-outline" />
+      <ScreenScaffold title="Our Plans">
+        <EmptyState message="Rate your demo session to unlock plans." icon="star-outline" />
         <RateSessionSheet
           visible
           title={unratedDemo.coachName ? `Rate your session with ${unratedDemo.coachName}` : 'Rate your demo session'}
@@ -124,41 +117,41 @@ function PrePurchasePlansScreen() {
           onClose={() => setFeedbackDismissed(true)}
           onSubmit={onSubmitDemoFeedback}
         />
-      </LightScreenScaffold>
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Our Plans">
+    <ScreenScaffold title="Our Plans">
       {stage === 'marketing' && (
-        <LightTextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
+        <TextLink onPress={() => router.push('/demo-booking')} style={styles.demoLink}>
           Book a Free Demo first →
-        </LightTextLink>
+        </TextLink>
       )}
 
-      {plans.length === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
+      {plans.length === 0 && <EmptyState message="No plans available right now." icon="pricetag-outline" />}
       {plans.map((plan) => (
-        <LightCard key={plan.id} style={lightStyles.planCard}>
-          <Text style={lightStyles.planName}>{plan.name}</Text>
-          <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
-          {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
-          <LightPrimaryButton
+        <GlassCard key={plan.id} style={styles.planCard}>
+          <Text style={styles.planName}>{plan.name}</Text>
+          <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
+          {plan.sessions_count ? <Text style={styles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
+          <PrimaryButton
             size="lg"
             onPress={() => onPurchase(plan.id, plan.name)}
             loading={purchasingId === plan.id}
             disabled={purchasingId !== null && purchasingId !== plan.id}
-            style={lightStyles.purchaseButton}>
+            style={styles.purchaseButton}>
             Purchase plan
-          </LightPrimaryButton>
-        </LightCard>
+          </PrimaryButton>
+        </GlassCard>
       ))}
 
       {purchaseError && (
-        <Text style={lightStyles.errorText} accessibilityRole="alert">
+        <Text style={styles.errorText} accessibilityRole="alert">
           {purchaseError}
         </Text>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -186,38 +179,38 @@ function EnrolledPlansScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Choose Your Plan" subtitle="Every plan pairs you with a dedicated live coach.">
-      <LightTextLink onPress={() => router.push('/demo-booking')} style={lightStyles.demoLink}>
+    <ScreenScaffold title="Choose Your Plan" subtitle="Every plan pairs you with a dedicated live coach.">
+      <TextLink onPress={() => router.push('/demo-booking')} style={styles.demoLink}>
         Book a Free Demo first →
-      </LightTextLink>
+      </TextLink>
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (plans?.length ?? 0) === 0 && <LightEmptyState message="No plans available right now." icon="pricetag-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (plans?.length ?? 0) === 0 && <EmptyState message="No plans available right now." icon="pricetag-outline" />}
       {!loading &&
         !error &&
         plans?.map((plan) => (
-          <LightCard key={plan.id} style={lightStyles.planCard}>
-            <Text style={lightStyles.planName}>{plan.name}</Text>
-            <Text style={lightStyles.planPrice}>{formatPrice(plan.price)}</Text>
-            {plan.sessions_count ? <Text style={lightStyles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
-            <LightPrimaryButton
+          <GlassCard key={plan.id} style={styles.planCard}>
+            <Text style={styles.planName}>{plan.name}</Text>
+            <Text style={styles.planPrice}>{formatPrice(plan.price)}</Text>
+            {plan.sessions_count ? <Text style={styles.planMeta}>{plan.sessions_count} live sessions with your coach</Text> : null}
+            <PrimaryButton
               size="lg"
               onPress={() => onPurchase(plan.id, plan.name)}
               loading={purchasingId === plan.id}
               disabled={purchasingId !== null && purchasingId !== plan.id}
-              style={lightStyles.purchaseButton}>
+              style={styles.purchaseButton}>
               Purchase plan
-            </LightPrimaryButton>
-          </LightCard>
+            </PrimaryButton>
+          </GlassCard>
         ))}
 
       {purchaseError && (
-        <Text style={lightStyles.errorText} accessibilityRole="alert">
+        <Text style={styles.errorText} accessibilityRole="alert">
           {purchaseError}
         </Text>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -227,12 +220,12 @@ export default function PlansScreen() {
   return subscription ? <EnrolledPlansScreen /> : <PrePurchasePlansScreen />;
 }
 
-const lightStyles = StyleSheet.create({
-  demoLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal, marginTop: -8 },
+const styles = StyleSheet.create({
+  demoLink: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, marginTop: -8 },
   planCard: { gap: 4 },
-  planName: { fontFamily: 'Manrope_700Bold', fontSize: 13, letterSpacing: 0.4, color: LightBrand.textSecondary },
-  planPrice: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 38, color: LightBrand.navy, letterSpacing: -0.5 },
-  planMeta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
+  planName: { fontFamily: 'Manrope_700Bold', fontSize: 13, letterSpacing: 0.4, color: 'rgba(255,255,255,0.6)' },
+  planPrice: { fontFamily: DisplayFont, fontWeight: '700', fontStyle: 'italic', fontSize: 38, color: '#FFFFFF', letterSpacing: -0.5 },
+  planMeta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
   purchaseButton: { marginTop: 12 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

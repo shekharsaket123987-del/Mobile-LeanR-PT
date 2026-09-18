@@ -6,15 +6,16 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightBadge } from '@/components/light/light-badge';
-import { LightDestructiveButton, LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { DestructiveButton, PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { listAdminCoachOptions } from '@/lib/data/admin-clients';
 import {
   approveCoachChangeRequestBlank,
@@ -36,8 +37,8 @@ export default function AdminCoachChangeRequestsScreen() {
   const { data: coachOptions } = useAsync(listAdminCoachOptions, []);
 
   return (
-    <LightScreenScaffold title="Coach Change Requests">
-      <LightSegmentedControl
+    <ScreenScaffold title="Coach Change Requests">
+      <SegmentedControl
         options={[
           { key: 'pending', label: 'Pending' },
           { key: 'resolved', label: 'Resolved' },
@@ -46,13 +47,13 @@ export default function AdminCoachChangeRequestsScreen() {
         onChange={setTab}
       />
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (requests?.length ?? 0) === 0 && <LightEmptyState message={`No ${tab} requests.`} icon="swap-horizontal-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (requests?.length ?? 0) === 0 && <EmptyState message={`No ${tab} requests.`} icon="swap-horizontal-outline" />}
       {!loading &&
         !error &&
         requests?.map((r) => <RequestCard key={r.id} request={r} coachOptions={coachOptions ?? []} onResolved={reload} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -84,13 +85,13 @@ function RequestCard({
   };
 
   return (
-    <LightCard style={styles.card}>
+    <GlassCard style={styles.card}>
       <View style={styles.headerRow}>
         <View style={styles.identity}>
-          <LightAvatar photoUrl={request.clientPhotoUrl} name={request.clientName} size={36} />
+          <Avatar photoUrl={request.clientPhotoUrl} name={request.clientName} size={36} />
           <Text style={styles.name}>{request.clientName}</Text>
         </View>
-        <LightBadge label={request.status} tone={request.status === 'pending' ? 'teal' : request.status === 'approved' ? 'green' : 'red'} />
+        <Badge label={request.status} tone={request.status === 'pending' ? 'yellow' : request.status === 'approved' ? 'green' : 'red'} />
       </View>
       {request.currentCoachName && <Text style={styles.meta}>Current coach: {request.currentCoachName}</Text>}
       <Text style={styles.reason}>{request.reason}</Text>
@@ -100,37 +101,37 @@ function RequestCard({
         <>
           {error && <Text style={styles.errorText}>{error}</Text>}
           <View style={styles.actionRow}>
-            <LightDestructiveButton loading={busy === 'reject'} disabled={busy !== null} onPress={() => run(() => rejectCoachChangeRequest(request.id), 'reject')}>
+            <DestructiveButton loading={busy === 'reject'} disabled={busy !== null} onPress={() => run(() => rejectCoachChangeRequest(request.id), 'reject')}>
               Reject
-            </LightDestructiveButton>
-            <LightPrimaryButton
+            </DestructiveButton>
+            <PrimaryButton
               loading={busy === 'approve' && !showCoachPicker}
               disabled={busy !== null}
               onPress={() => run(() => approveCoachChangeRequestBlank(request.id), 'approve')}>
               Approve
-            </LightPrimaryButton>
+            </PrimaryButton>
           </View>
-          <LightSecondaryButton onPress={() => setShowCoachPicker((v) => !v)}>{showCoachPicker ? 'Cancel' : 'Approve & Pick New Coach'}</LightSecondaryButton>
+          <SecondaryButton onPress={() => setShowCoachPicker((v) => !v)}>{showCoachPicker ? 'Cancel' : 'Approve & Pick New Coach'}</SecondaryButton>
           {showCoachPicker && (
             <View style={styles.panel}>
-              <LightChipGrid>
+              <ChipGrid>
                 {coachOptions
                   .filter((c) => c.id !== request.currentCoachId)
                   .map((c) => (
-                    <LightChip key={c.id} label={c.full_name} selected={selectedCoach === c.id} onPress={() => setSelectedCoach(c.id)} />
+                    <Chip key={c.id} label={c.full_name} selected={selectedCoach === c.id} onPress={() => setSelectedCoach(c.id)} />
                   ))}
-              </LightChipGrid>
-              <LightPrimaryButton
+              </ChipGrid>
+              <PrimaryButton
                 loading={busy === 'approve'}
                 disabled={!selectedCoach}
                 onPress={() => selectedCoach && run(() => approveCoachChangeRequestWithCoach(request.id, request.clientId, selectedCoach), 'approve')}>
                 Confirm New Coach
-              </LightPrimaryButton>
+              </PrimaryButton>
             </View>
           )}
         </>
       )}
-    </LightCard>
+    </GlassCard>
   );
 }
 
@@ -138,11 +139,11 @@ const styles = StyleSheet.create({
   card: { gap: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: LightBrand.navy },
-  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
-  reason: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textPrimary, marginTop: 2 },
-  date: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: LightBrand.textMuted },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: '#FFFFFF' },
+  meta: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
+  reason: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: '#FFFFFF', marginTop: 2 },
+  date: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, color: 'rgba(255,255,255,0.45)' },
   actionRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   panel: { gap: 8, marginTop: 8 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: Brand.alertRed },
 });

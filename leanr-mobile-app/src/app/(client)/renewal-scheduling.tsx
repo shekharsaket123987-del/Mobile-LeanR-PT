@@ -13,15 +13,15 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { carryOverRecurringSchedule } from '@/lib/data/recurring-schedule';
 import { getLatestSubscription } from '@/lib/data/subscription';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 export default function RenewalSchedulingScreen() {
   const { data: subscription, loading, error, reload } = useAsync(getLatestSubscription, []);
@@ -44,25 +44,25 @@ export default function RenewalSchedulingScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Your Schedule">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Your Schedule">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Your Schedule">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Your Schedule">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Your Schedule" subtitle="Welcome back! Keep your usual sessions, or set up a new pattern.">
-      <LightCard>
-        <LightEmptyState message="Would you like to keep your previous weekly schedule, or set up a new one?" icon="calendar-outline" />
-      </LightCard>
+    <ScreenScaffold title="Your Schedule" subtitle="Welcome back! Keep your usual sessions, or set up a new pattern.">
+      <GlassCard>
+        <EmptyState message="Would you like to keep your previous weekly schedule, or set up a new one?" icon="calendar-outline" />
+      </GlassCard>
 
       {actionError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -70,19 +70,19 @@ export default function RenewalSchedulingScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton size="lg" onPress={onKeep} loading={submitting}>
+      <PrimaryButton size="lg" onPress={onKeep} loading={submitting}>
         Keep My Schedule
-      </LightPrimaryButton>
-      <LightSecondaryButton
+      </PrimaryButton>
+      <SecondaryButton
         size="lg"
         onPress={() => subscription && router.replace({ pathname: '/my-schedule', params: { renewalSubscriptionId: subscription.id } })}
       >
         No, Change It
-      </LightSecondaryButton>
-    </LightScreenScaffold>
+      </SecondaryButton>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

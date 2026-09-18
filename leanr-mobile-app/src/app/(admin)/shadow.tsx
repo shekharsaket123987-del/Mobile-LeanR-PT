@@ -11,12 +11,12 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton, LightSecondaryButton } from '@/components/light/light-button';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { assignShadowCoach, getShadowCoverageGaps, previewShadowAssignmentPlan, type ShadowAssignmentPlan, type ShadowGap } from '@/lib/data/admin-shadow';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -25,12 +25,12 @@ export default function AdminShadowScreen() {
   const { data: gaps, loading, error, reload } = useAsync(() => getShadowCoverageGaps(), []);
 
   return (
-    <LightScreenScaffold title="Shadow Coverage" subtitle="Clients with sessions during approved leave, not yet covered">
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && (gaps ?? []).length === 0 && <LightEmptyState message="No coverage gaps right now." icon="shield-checkmark-outline" />}
+    <ScreenScaffold title="Shadow Coverage" subtitle="Clients with sessions during approved leave, not yet covered">
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && (gaps ?? []).length === 0 && <EmptyState message="No coverage gaps right now." icon="shield-checkmark-outline" />}
       {!loading && !error && (gaps ?? []).map((gap) => <GapCard key={`${gap.leaveId}-${gap.clientId}`} gap={gap} onAssigned={reload} />)}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
@@ -93,7 +93,7 @@ function GapCard({ gap, onAssigned }: { gap: ShadowGap; onAssigned: () => void }
   };
 
   return (
-    <LightCard style={styles.card}>
+    <GlassCard style={styles.card}>
       <Text style={styles.name}>{gap.clientName}</Text>
       <Text style={styles.meta}>
         {gap.affectedSessions} session{gap.affectedSessions === 1 ? '' : 's'} with {gap.primaryCoachName}, {gap.startsOn}
@@ -107,9 +107,9 @@ function GapCard({ gap, onAssigned }: { gap: ShadowGap; onAssigned: () => void }
       )}
 
       {plan === null ? (
-        <LightPrimaryButton onPress={findCoverage} loading={loadingPlan} style={styles.assignButton}>
+        <PrimaryButton onPress={findCoverage} loading={loadingPlan} style={styles.assignButton}>
           Find coverage
-        </LightPrimaryButton>
+        </PrimaryButton>
       ) : (
         <>
           {plan.assignments.length === 0 && plan.uncoveredDates.length === 0 && (
@@ -128,28 +128,28 @@ function GapCard({ gap, onAssigned }: { gap: ShadowGap; onAssigned: () => void }
           {plan.uncoveredDates.length > 0 && (
             <Text style={styles.uncoveredText}>No coach free on: {plan.uncoveredDates.join(', ')}</Text>
           )}
-          <LightTextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} />
-          <LightSecondaryButton onPress={findCoverage} loading={loadingPlan} style={styles.assignButton}>
+          <TextField placeholder="Reason (optional)" value={reason} onChangeText={setReason} />
+          <SecondaryButton onPress={findCoverage} loading={loadingPlan} style={styles.assignButton}>
             Re-check availability
-          </LightSecondaryButton>
+          </SecondaryButton>
           {plan.assignments.length > 0 && (
-            <LightPrimaryButton onPress={confirm} loading={assigning} style={styles.assignButton}>
+            <PrimaryButton onPress={confirm} loading={assigning} style={styles.assignButton}>
               Confirm assignment{plan.assignments.length > 1 ? 's' : ''}
-            </LightPrimaryButton>
+            </PrimaryButton>
           )}
         </>
       )}
-    </LightCard>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 4 },
-  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: LightBrand.navy },
-  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.textSecondary },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed, marginTop: 4 },
+  name: { fontFamily: 'Manrope_800ExtraBold', fontSize: 17, color: '#FFFFFF' },
+  meta: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.alertRed, marginTop: 4 },
   assignmentRow: { marginTop: 6 },
-  assignmentName: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: LightBrand.navy },
-  uncoveredText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: LightBrand.alertRed, marginTop: 6 },
+  assignmentName: { fontFamily: 'Manrope_700Bold', fontSize: 14, color: '#FFFFFF' },
+  uncoveredText: { fontFamily: 'Manrope_500Medium', fontSize: 13.5, color: Brand.alertRed, marginTop: 6 },
   assignButton: { marginTop: 8 },
 });

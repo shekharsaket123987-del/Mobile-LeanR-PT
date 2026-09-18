@@ -16,17 +16,17 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightMeasurementChart, type ChartPoint } from '@/components/light/light-measurement-chart';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { PrimaryButton } from '@/components/ui/button';
+import { MeasurementChart, type ChartPoint } from '@/components/ui/measurement-chart';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { getProgressLogs, logProgress } from '@/lib/data/progress';
 import { useAsync } from '@/lib/data/use-async';
 import { getErrorMessage } from '@/lib/data/errors';
+import { Brand } from '@/constants/theme';
 
 function formatMonth(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short' });
@@ -89,42 +89,42 @@ export default function RenewalCheckinScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Welcome Back">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Welcome Back">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
 
   if (error) {
     return (
-      <LightScreenScaffold title="Welcome Back">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Welcome Back">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title="Welcome Back" subtitle="Let's log a fresh baseline for your new plan.">
-      <LightCard>
-        <LightSectionHeader title="Your history" />
+    <ScreenScaffold title="Welcome Back" subtitle="Let's log a fresh baseline for your new plan.">
+      <GlassCard>
+        <SectionHeader title="Your history" />
         {chartPoints.length >= 2 ? (
-          <LightMeasurementChart points={chartPoints} />
+          <MeasurementChart points={chartPoints} />
         ) : (
-          <LightEmptyState message="Not enough history yet to chart a trend." icon="trending-up-outline" />
+          <EmptyState message="Not enough history yet to chart a trend." icon="trending-up-outline" />
         )}
-      </LightCard>
+      </GlassCard>
 
-      <LightCard>
-        <LightSectionHeader eyebrow="New baseline" title="Log today's measurements" />
-        <LightTextField placeholder="Weight (kg)" keyboardType="numeric" value={weight} onChangeText={setWeight} />
-        <LightTextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
-        <LightTextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
-        <LightTextField placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
-        <LightTextField placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
-        <LightTextField placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
-        <LightTextField placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
-        <LightTextField placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
-      </LightCard>
+      <GlassCard>
+        <SectionHeader eyebrow="New baseline" title="Log today's measurements" />
+        <TextField placeholder="Weight (kg)" keyboardType="numeric" value={weight} onChangeText={setWeight} />
+        <TextField placeholder="Body fat %" keyboardType="numeric" value={bodyFat} onChangeText={setBodyFat} />
+        <TextField placeholder="Muscle %" keyboardType="numeric" value={muscle} onChangeText={setMuscle} />
+        <TextField placeholder="Waist (cm)" keyboardType="numeric" value={waist} onChangeText={setWaist} />
+        <TextField placeholder="Chest (cm)" keyboardType="numeric" value={chest} onChangeText={setChest} />
+        <TextField placeholder="Hip (cm)" keyboardType="numeric" value={hip} onChangeText={setHip} />
+        <TextField placeholder="Arms (cm)" keyboardType="numeric" value={arms} onChangeText={setArms} />
+        <TextField placeholder="Thigh (cm)" keyboardType="numeric" value={thigh} onChangeText={setThigh} />
+      </GlassCard>
 
       {submitError && (
         <Text style={styles.errorText} accessibilityRole="alert">
@@ -132,13 +132,13 @@ export default function RenewalCheckinScreen() {
         </Text>
       )}
 
-      <LightPrimaryButton size="lg" onPress={onSubmit} loading={submitting}>
+      <PrimaryButton size="lg" onPress={onSubmit} loading={submitting}>
         Continue
-      </LightPrimaryButton>
-    </LightScreenScaffold>
+      </PrimaryButton>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

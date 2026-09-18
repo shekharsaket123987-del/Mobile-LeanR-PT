@@ -1,10 +1,14 @@
-/** Shared testimonials content — used by both (marketing)/reviews.tsx and (client)/reviews.tsx (pre-purchase branch). */
+/**
+ * Shared testimonials content — used by both (marketing)/reviews.tsx and
+ * (client)/reviews.tsx (pre-purchase branch). Dark counterpart of
+ * light-testimonials-list.tsx.
+ */
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightAvatar } from '@/components/light/light-avatar';
-import { LightCard } from '@/components/light/light-card';
-import { LightBrand } from '@/constants/light-theme';
+import { Brand } from '@/constants/theme';
+import { Avatar } from './avatar';
+import { GlassCard } from './glass-card';
 
 const TESTIMONIALS = [
   { name: 'Ananya P.', quote: 'Lost 8kg in 3 months with a plan that actually fit my schedule. My coach kept me honest every week.', stars: 5 },
@@ -13,24 +17,24 @@ const TESTIMONIALS = [
   { name: 'Karan V.', quote: 'The progress tracking keeps me accountable in a way no app-only program ever did.', stars: 5 },
 ];
 
-export function LightTestimonialsList() {
+export function TestimonialsList() {
   return (
     <>
       {TESTIMONIALS.map((t) => (
-        <LightCard key={t.name} style={styles.card}>
+        <GlassCard key={t.name} style={styles.card}>
           <View style={styles.headerRow}>
-            <LightAvatar name={t.name} size={40} />
+            <Avatar name={t.name} size={40} />
             <View style={styles.headerText}>
               <Text style={styles.name}>{t.name}</Text>
               <View style={styles.starsRow}>
                 {Array.from({ length: 5 }, (_, i) => (
-                  <Ionicons key={i} name={i < t.stars ? 'star' : 'star-outline'} size={13} color={LightBrand.amber} />
+                  <Ionicons key={i} name={i < t.stars ? 'star' : 'star-outline'} size={13} color={Brand.yellow} />
                 ))}
               </View>
             </View>
           </View>
           <Text style={styles.quote}>&ldquo;{t.quote}&rdquo;</Text>
-        </LightCard>
+        </GlassCard>
       ))}
     </>
   );
@@ -40,7 +44,7 @@ const styles = StyleSheet.create({
   card: { gap: 10 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerText: { gap: 3 },
-  name: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.textPrimary },
+  name: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
   starsRow: { flexDirection: 'row', gap: 2 },
-  quote: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, lineHeight: 20, fontStyle: 'italic' },
+  quote: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 20, fontStyle: 'italic' },
 });

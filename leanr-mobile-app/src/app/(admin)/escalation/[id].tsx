@@ -8,15 +8,16 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightPrimaryButton } from '@/components/light/light-button';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSectionHeader } from '@/components/light/light-section-header';
-import { LightTextField } from '@/components/light/light-text-field';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { PrimaryButton } from '@/components/ui/button';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SectionHeader } from '@/components/ui/section-header';
+import { TextField } from '@/components/ui/text-field';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import {
   addEscalationNote,
   confirmCalledClient,
@@ -49,9 +50,9 @@ const ISSUE_TYPE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const STATUS_TONE: Record<string, 'teal' | 'green' | 'red'> = {
+const STATUS_TONE: Record<string, 'yellow' | 'green' | 'red'> = {
   open: 'red',
-  in_progress: 'teal',
+  in_progress: 'yellow',
   resolved: 'green',
 };
 
@@ -119,29 +120,29 @@ export default function AdminEscalationDetailScreen() {
 
   if (loading) {
     return (
-      <LightScreenScaffold title="Escalation">
-        <LightLoadingState />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Escalation">
+        <LoadingState />
+      </ScreenScaffold>
     );
   }
   if (error) {
     return (
-      <LightScreenScaffold title="Escalation">
-        <LightErrorState message={error} onRetry={reload} />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Escalation">
+        <ErrorState message={error} onRetry={reload} />
+      </ScreenScaffold>
     );
   }
   if (!escalation) {
     return (
-      <LightScreenScaffold title="Escalation">
-        <LightEmptyState message="Escalation not found." />
-      </LightScreenScaffold>
+      <ScreenScaffold title="Escalation">
+        <EmptyState message="Escalation not found." />
+      </ScreenScaffold>
     );
   }
 
   return (
-    <LightScreenScaffold title={escalation.reason} subtitle={formatDate(escalation.created_at)}>
-      <LightCard variant={isResolved ? 'default' : 'teal'} style={styles.summaryCard}>
+    <ScreenScaffold title={escalation.reason} subtitle={formatDate(escalation.created_at)}>
+      <GlassCard variant={isResolved ? 'default' : 'yellow'} style={styles.summaryCard}>
         <Text style={styles.metaLine}>{escalation.clientCode ? `#${escalation.clientCode}` : `#${escalation.id.slice(0, 8).toUpperCase()}`}</Text>
         {escalation.clientName && <Text style={styles.metaLine}>Client: {escalation.clientName}</Text>}
         {escalation.coachName && <Text style={styles.metaLine}>Coach: {escalation.coachName}</Text>}
@@ -155,13 +156,13 @@ export default function AdminEscalationDetailScreen() {
             Resolved {formatDate(escalation.resolved_at)} · {formatTime(escalation.resolved_at)}
           </Text>
         )}
-        <LightBadge label={escalation.status.replace('_', ' ')} tone={STATUS_TONE[escalation.status] ?? 'gray'} />
-      </LightCard>
+        <Badge label={escalation.status.replace('_', ' ')} tone={STATUS_TONE[escalation.status] ?? 'gray'} />
+      </GlassCard>
 
       {!called && (
-        <LightPrimaryButton size="lg" onPress={() => run(() => confirmCalledClient(id), setConfirming)} loading={confirming}>
+        <PrimaryButton size="lg" onPress={() => run(() => confirmCalledClient(id), setConfirming)} loading={confirming}>
           Confirm I&apos;ve called the client
-        </LightPrimaryButton>
+        </PrimaryButton>
       )}
 
       {called && (
@@ -170,25 +171,25 @@ export default function AdminEscalationDetailScreen() {
         </Text>
       )}
 
-      {!called && <LightEmptyState message="Assessment, notes, and resolution unlock once you've confirmed the call." icon="call-outline" />}
+      {!called && <EmptyState message="Assessment, notes, and resolution unlock once you've confirmed the call." icon="call-outline" />}
 
       {called && (
         <>
-          <LightCard style={styles.card}>
-            <LightSectionHeader title="Issue type" />
-            <LightChipGrid>
+          <GlassCard style={styles.card}>
+            <SectionHeader title="Issue type" />
+            <ChipGrid>
               {ISSUE_TYPE_OPTIONS.map((opt) => (
-                <LightChip key={opt.value} label={opt.label} selected={issueType === opt.value} onPress={() => setIssueType(opt.value)} />
+                <Chip key={opt.value} label={opt.label} selected={issueType === opt.value} onPress={() => setIssueType(opt.value)} />
               ))}
-            </LightChipGrid>
+            </ChipGrid>
             <Text style={styles.label}>FAULT</Text>
-            <LightChipGrid>
+            <ChipGrid>
               {FAULT_OPTIONS.map((opt) => (
-                <LightChip key={opt.value} label={opt.label} selected={fault === opt.value} onPress={() => setFault(opt.value)} />
+                <Chip key={opt.value} label={opt.label} selected={fault === opt.value} onPress={() => setFault(opt.value)} />
               ))}
-            </LightChipGrid>
+            </ChipGrid>
             <Text style={styles.label}>SUMMARY</Text>
-            <LightTextField
+            <TextField
               placeholder="Assessment summary"
               value={summary}
               onChangeText={setSummary}
@@ -196,7 +197,7 @@ export default function AdminEscalationDetailScreen() {
               style={styles.multilineInput}
               accessibilityLabel="Assessment summary"
             />
-            <LightPrimaryButton
+            <PrimaryButton
               onPress={() =>
                 run(
                   () => updateEscalationAssessment(id, { adminIssueType: issueType, fault, adminSummary: summary || null }),
@@ -206,11 +207,11 @@ export default function AdminEscalationDetailScreen() {
               loading={savingAssessment}
               style={styles.saveButton}>
               Save assessment
-            </LightPrimaryButton>
-          </LightCard>
+            </PrimaryButton>
+          </GlassCard>
 
-          <LightCard style={styles.card}>
-            <LightSectionHeader title="Notes (client-visible)" />
+          <GlassCard style={styles.card}>
+            <SectionHeader title="Notes (client-visible)" />
             {notes.length === 0 && <Text style={styles.bodyText}>No notes yet.</Text>}
             {notes.map((n) => (
               <View key={n.id} style={styles.noteRow}>
@@ -220,7 +221,7 @@ export default function AdminEscalationDetailScreen() {
                 </Text>
               </View>
             ))}
-            <LightTextField
+            <TextField
               placeholder="Add a note…"
               value={newNote}
               onChangeText={setNewNote}
@@ -228,7 +229,7 @@ export default function AdminEscalationDetailScreen() {
               style={styles.multilineInput}
               accessibilityLabel="New note"
             />
-            <LightPrimaryButton
+            <PrimaryButton
               onPress={() =>
                 run(async () => {
                   if (!newNote.trim()) throw new Error('Write a note first.');
@@ -239,18 +240,18 @@ export default function AdminEscalationDetailScreen() {
               loading={savingNote}
               style={styles.saveButton}>
               Add note
-            </LightPrimaryButton>
-          </LightCard>
+            </PrimaryButton>
+          </GlassCard>
 
           {!isResolved && (
-            <LightCard style={styles.card}>
-              <LightSectionHeader title="Resolve" />
+            <GlassCard style={styles.card}>
+              <SectionHeader title="Resolve" />
               {escalation.status === 'open' && (
-                <LightPrimaryButton onPress={() => run(() => markEscalationInProgress(id), setMarkingInProgress)} loading={markingInProgress}>
+                <PrimaryButton onPress={() => run(() => markEscalationInProgress(id), setMarkingInProgress)} loading={markingInProgress}>
                   Mark in progress
-                </LightPrimaryButton>
+                </PrimaryButton>
               )}
-              <LightTextField
+              <TextField
                 placeholder="Resolution notes"
                 value={resolutionNotes}
                 onChangeText={setResolutionNotes}
@@ -258,7 +259,7 @@ export default function AdminEscalationDetailScreen() {
                 style={styles.multilineInput}
                 accessibilityLabel="Resolution notes"
               />
-              <LightPrimaryButton
+              <PrimaryButton
                 onPress={() =>
                   run(async () => {
                     if (!resolutionNotes.trim()) throw new Error('Add resolution notes first.');
@@ -268,15 +269,15 @@ export default function AdminEscalationDetailScreen() {
                 loading={resolving}
                 style={styles.saveButton}>
                 Mark resolved & close
-              </LightPrimaryButton>
-            </LightCard>
+              </PrimaryButton>
+            </GlassCard>
           )}
 
           {isResolved && escalation.resolution_notes && (
-            <LightCard variant="teal" style={styles.card}>
-              <LightSectionHeader title="Resolution" />
+            <GlassCard variant="yellow" style={styles.card}>
+              <SectionHeader title="Resolution" />
               <Text style={styles.bodyText}>{escalation.resolution_notes}</Text>
-            </LightCard>
+            </GlassCard>
           )}
         </>
       )}
@@ -286,19 +287,19 @@ export default function AdminEscalationDetailScreen() {
           {actionError}
         </Text>
       )}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   summaryCard: { gap: 4 },
   card: { gap: 6 },
-  metaLine: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: LightBrand.textSecondary },
-  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textPrimary, marginTop: 2 },
-  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: LightBrand.textMuted, marginTop: 6 },
+  metaLine: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  bodyText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: '#FFFFFF', marginTop: 2 },
+  label: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)', marginTop: 6 },
   noteRow: { marginTop: 4 },
-  noteMeta: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: LightBrand.textMuted, marginTop: 1 },
+  noteMeta: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 1 },
   multilineInput: { minHeight: 60, textAlignVertical: 'top' },
   saveButton: { marginTop: 6 },
-  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.alertRed },
+  errorText: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: Brand.alertRed },
 });

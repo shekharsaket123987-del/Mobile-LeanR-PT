@@ -7,12 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightChip, LightChipGrid } from '@/components/light/light-chip';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Chip } from '@/components/ui/chip';
+import { ChipGrid } from '@/components/ui/chip-grid';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import { getAvailabilityForDate } from '@/lib/data/admin-availability';
 import { useAsync } from '@/lib/data/use-async';
 
@@ -45,49 +46,49 @@ export default function AdminAvailabilityCheckScreen() {
   }, [slots, filter]);
 
   return (
-    <LightScreenScaffold title="Availability Check">
-      <LightCard style={styles.dateRow}>
+    <ScreenScaffold title="Availability Check">
+      <GlassCard style={styles.dateRow}>
         <Pressable onPress={() => setDate(addDays(date, -1))} accessibilityRole="button" accessibilityLabel="Previous day" hitSlop={8}>
-          <Ionicons name="chevron-back" size={20} color={LightBrand.navy} />
+          <Ionicons name="chevron-back" size={20} color={'#FFFFFF'} />
         </Pressable>
         <Text style={styles.dateLabel}>{formatDate(date)}</Text>
         <Pressable onPress={() => setDate(addDays(date, 1))} accessibilityRole="button" accessibilityLabel="Next day" hitSlop={8}>
-          <Ionicons name="chevron-forward" size={20} color={LightBrand.navy} />
+          <Ionicons name="chevron-forward" size={20} color={'#FFFFFF'} />
         </Pressable>
-      </LightCard>
+      </GlassCard>
 
-      <LightChipGrid>
-        <LightChip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <LightChip label="Booked" selected={filter === 'booked'} onPress={() => setFilter('booked')} />
-        <LightChip label="Free" selected={filter === 'free'} onPress={() => setFilter('free')} />
-      </LightChipGrid>
+      <ChipGrid>
+        <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Chip label="Booked" selected={filter === 'booked'} onPress={() => setFilter('booked')} />
+        <Chip label="Free" selected={filter === 'free'} onPress={() => setFilter('free')} />
+      </ChipGrid>
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message="No slots to show." icon="calendar-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message="No slots to show." icon="calendar-outline" />}
       {!loading &&
         !error &&
         filtered.map((s, i) => (
-          <LightCard key={`${s.coachId}-${s.time}-${i}`} style={styles.slotRow}>
+          <GlassCard key={`${s.coachId}-${s.time}-${i}`} style={styles.slotRow}>
             <View>
               <Text style={styles.time}>{formatTime(s.time)}</Text>
               <Text style={styles.coach}>{s.coachName}</Text>
               {s.booked && s.clientName && <Text style={styles.client}>{s.clientName}</Text>}
               {!s.booked && s.freeReason && <Text style={styles.freeReason}>{s.freeReason}</Text>}
             </View>
-            <LightBadge label={s.booked ? 'Booked' : 'Free'} tone={s.booked ? 'red' : 'green'} />
-          </LightCard>
+            <Badge label={s.booked ? 'Booked' : 'Free'} tone={s.booked ? 'red' : 'green'} />
+          </GlassCard>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dateLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: LightBrand.navy },
+  dateLabel: { fontFamily: 'Manrope_700Bold', fontSize: 15, color: '#FFFFFF' },
   slotRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  time: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
-  coach: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: LightBrand.textSecondary },
-  client: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.tealDark, marginTop: 2 },
-  freeReason: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted, marginTop: 2 },
+  time: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
+  coach: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, color: 'rgba(255,255,255,0.6)' },
+  client: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: Brand.yellow, marginTop: 2 },
+  freeReason: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
 });

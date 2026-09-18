@@ -21,9 +21,9 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
-import { LightBadge } from '@/components/light/light-badge';
-import { LightCard } from '@/components/light/light-card';
-import { LightBrand } from '@/constants/light-theme';
+import { Badge } from '@/components/ui/badge';
+import { GlassCard } from '@/components/ui/glass-card';
+import { Brand } from '@/constants/theme';
 import { attendanceEligible, markAttendance, markJoined } from '@/lib/data/coach-portal';
 import { getErrorMessage } from '@/lib/data/errors';
 import type { Booking } from '@/lib/data/types';
@@ -45,9 +45,9 @@ function formatCountdown(ms: number): string {
 }
 
 const ATTENDANCE_OPTIONS: { key: 'present' | 'late' | 'absent'; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
-  { key: 'present', label: 'Present', icon: 'checkmark-circle-outline', color: LightBrand.successEmerald },
-  { key: 'late', label: 'Late', icon: 'time-outline', color: LightBrand.amber },
-  { key: 'absent', label: 'Absent', icon: 'close-circle-outline', color: LightBrand.alertRed },
+  { key: 'present', label: 'Present', icon: 'checkmark-circle-outline', color: Brand.successEmerald },
+  { key: 'late', label: 'Late', icon: 'time-outline', color: Brand.yellow },
+  { key: 'absent', label: 'Absent', icon: 'close-circle-outline', color: Brand.alertRed },
 ];
 
 export function CoachTaskRow({
@@ -112,45 +112,45 @@ export function CoachTaskRow({
 
   if (booking.status === 'missed') {
     return (
-      <LightCard style={styles.card}>
+      <GlassCard style={styles.card}>
         <View style={styles.headerRow}>
           <Text style={styles.time}>{formatTime(booking.scheduled_start)}</Text>
-          <LightBadge label="Absent — logged" tone="red" />
+          <Badge label="Absent — logged" tone="red" />
         </View>
-      </LightCard>
+      </GlassCard>
     );
   }
 
   if (booking.status === 'completed') {
     return (
-      <LightCard style={styles.card}>
+      <GlassCard style={styles.card}>
         <View style={styles.headerRow}>
           <Text style={styles.time}>{formatTime(booking.scheduled_start)}</Text>
-          <LightBadge label="Notes submitted" tone="green" />
+          <Badge label="Notes submitted" tone="green" />
         </View>
-      </LightCard>
+      </GlassCard>
     );
   }
 
   if (attendanceStatus === 'present' || attendanceStatus === 'late') {
     return (
-      <LightCard style={styles.card}>
+      <GlassCard style={styles.card}>
         <View style={styles.headerRow}>
           <Text style={styles.time}>{formatTime(booking.scheduled_start)}</Text>
-          <LightBadge label={attendanceStatus === 'present' ? 'Present' : 'Late'} tone="teal" />
+          <Badge label={attendanceStatus === 'present' ? 'Present' : 'Late'} tone="yellow" />
         </View>
         <Pressable onPress={openDetail} accessibilityRole="button" style={styles.addNotesBtn}>
-          <Ionicons name="document-text-outline" size={16} color={LightBrand.teal} />
+          <Ionicons name="document-text-outline" size={16} color={Brand.yellow} />
           <Text style={styles.addNotesText}>Add Notes</Text>
         </Pressable>
-      </LightCard>
+      </GlassCard>
     );
   }
 
   const eligible = attendanceEligible(booking);
 
   return (
-    <LightCard style={styles.card}>
+    <GlassCard style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.time}>{formatTime(booking.scheduled_start)}</Text>
       </View>
@@ -159,7 +159,7 @@ export function CoachTaskRow({
       )}
       <Animated.View style={joinBlinkStyle}>
         <Pressable onPress={onJoin} disabled={busy} accessibilityRole="button" style={styles.joinRow}>
-          <Ionicons name={booking.coach_joined_at ? 'checkmark-circle' : 'videocam-outline'} size={17} color={LightBrand.teal} />
+          <Ionicons name={booking.coach_joined_at ? 'checkmark-circle' : 'videocam-outline'} size={17} color={Brand.yellow} />
           <Text style={styles.joinText}>{booking.coach_joined_at ? 'Joined — reopen Zoom' : 'Join'}</Text>
         </Pressable>
       </Animated.View>
@@ -173,23 +173,23 @@ export function CoachTaskRow({
             accessibilityLabel={opt.label}
             accessibilityState={{ disabled: !eligible || busy }}
             style={[styles.attendanceBtn, { borderColor: opt.color + '55' }, (!eligible || busy) && styles.attendanceBtnDisabled]}>
-            <Ionicons name={opt.icon} size={17} color={eligible ? opt.color : LightBrand.textMuted} />
-            <Text style={[styles.attendanceLabel, { color: eligible ? opt.color : LightBrand.textMuted }]}>{opt.label}</Text>
+            <Ionicons name={opt.icon} size={17} color={eligible ? opt.color : 'rgba(255,255,255,0.45)'} />
+            <Text style={[styles.attendanceLabel, { color: eligible ? opt.color : 'rgba(255,255,255,0.45)' }]}>{opt.label}</Text>
           </Pressable>
         ))}
       </View>
       {!eligible && <Text style={styles.hint}>Available once the session&apos;s scheduled time has passed.</Text>}
-    </LightCard>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
   card: { gap: 8 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
+  time: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: '#FFFFFF' },
   joinRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
-  joinText: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.teal },
-  countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: LightBrand.navy },
+  joinText: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: Brand.yellow },
+  countdownText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 16, color: '#FFFFFF' },
   attendanceRow: { flexDirection: 'row', gap: 8 },
   attendanceBtn: {
     flex: 1,
@@ -204,6 +204,6 @@ const styles = StyleSheet.create({
   attendanceBtnDisabled: { opacity: 0.5 },
   attendanceLabel: { fontFamily: 'Manrope_700Bold', fontSize: 11.5 },
   addNotesBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 32 },
-  addNotesText: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: LightBrand.teal },
-  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: LightBrand.textMuted },
+  addNotesText: { fontFamily: 'Manrope_700Bold', fontSize: 13.5, color: Brand.yellow },
+  hint: { fontFamily: 'Manrope_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.45)' },
 });

@@ -10,11 +10,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LightCard } from '@/components/light/light-card';
-import { LightScreenScaffold } from '@/components/light/light-screen-scaffold';
-import { LightSegmentedControl } from '@/components/light/light-segmented-control';
-import { LightEmptyState, LightErrorState, LightLoadingState } from '@/components/light/light-states';
-import { LightBrand } from '@/constants/light-theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { ScreenScaffold } from '@/components/screen-scaffold';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
+import { Brand } from '@/constants/theme';
 import {
   getMyNotifications,
   markAllNotificationsRead,
@@ -50,8 +50,8 @@ export default function CoachNotificationsScreen() {
   };
 
   return (
-    <LightScreenScaffold title="Notifications">
-      <LightSegmentedControl
+    <ScreenScaffold title="Notifications">
+      <SegmentedControl
         options={[
           { key: 'all', label: 'All' },
           { key: 'clients', label: 'Clients' },
@@ -67,14 +67,14 @@ export default function CoachNotificationsScreen() {
         </Pressable>
       )}
 
-      {loading && <LightLoadingState />}
-      {error && <LightErrorState message={error} onRetry={reload} />}
-      {!loading && !error && filtered.length === 0 && <LightEmptyState message="No notifications yet." icon="notifications-off-outline" />}
+      {loading && <LoadingState />}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && filtered.length === 0 && <EmptyState message="No notifications yet." icon="notifications-off-outline" />}
       {!loading &&
         !error &&
         filtered.map((n) => (
           <Pressable key={n.id} onPress={() => onPress(n)} accessibilityRole="button" accessibilityLabel={n.title}>
-            <LightCard variant={n.read ? 'default' : 'teal'}>
+            <GlassCard variant={n.read ? 'default' : 'yellow'}>
               <View style={styles.row}>
                 {!n.read && <View style={styles.dot} />}
                 <Text style={styles.title} numberOfLines={1}>
@@ -83,18 +83,18 @@ export default function CoachNotificationsScreen() {
               </View>
               <Text style={styles.message}>{n.message}</Text>
               <Text style={styles.date}>{formatDate(n.created_at)}</Text>
-            </LightCard>
+            </GlassCard>
           </Pressable>
         ))}
-    </LightScreenScaffold>
+    </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  markAllText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: LightBrand.teal, alignSelf: 'flex-end' },
+  markAllText: { fontFamily: 'Manrope_700Bold', fontSize: 13, color: Brand.yellow, alignSelf: 'flex-end' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LightBrand.teal },
-  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: LightBrand.navy, flexShrink: 1 },
-  message: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: LightBrand.textSecondary, marginTop: 2 },
-  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: LightBrand.textMuted, marginTop: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Brand.yellow },
+  title: { fontFamily: 'Manrope_700Bold', fontSize: 16, color: '#FFFFFF', flexShrink: 1 },
+  message: { fontFamily: 'Manrope_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  date: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, color: 'rgba(255,255,255,0.45)', marginTop: 6 },
 });

@@ -4,7 +4,7 @@
  * reversing the earlier reduced-scope decision (see git history —
  * previously Escalations/Leave/Shadow only). Relit to match the approved
  * "Admin Portal – Complete Features & Workflow" reference image's 5-tab
- * bar (Home/Clients/Coaches/Reports/More), same `LightTabBar` shell the
+ * bar (Home/Clients/Coaches/Reports/More), same `FloatingTabBar` shell the
  * Coach portal already uses.
  *
  * Every other admin screen (Search, Sessions, Availability Check, Coach
@@ -24,8 +24,8 @@ import { Redirect, router, Tabs } from 'expo-router';
 import { useState } from 'react';
 import { ColorValue } from 'react-native';
 
-import { LightBottomSheet } from '@/components/light/light-bottom-sheet';
-import { LightTabBar } from '@/components/light/light-tab-bar';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { FloatingTabBar } from '@/components/ui/floating-tab-bar';
 import { useAuth } from '@/lib/auth/auth-context';
 import { getHomeRouteForRole } from '@/lib/auth/role-routing';
 import { AdminMoreContent } from './admin-more';
@@ -47,7 +47,7 @@ export default function AdminLayout() {
   return (
     <>
       <Tabs
-        tabBar={(props) => <LightTabBar {...props} moreRouteName="admin-more" onMorePress={() => setMoreOpen(true)} />}
+        tabBar={(props) => <FloatingTabBar {...props} moreRouteName="admin-more" onMorePress={() => setMoreOpen(true)} />}
         screenOptions={{ headerShown: false }}
       >
         <Tabs.Screen
@@ -113,14 +113,14 @@ export default function AdminLayout() {
         <Tabs.Screen name="settings" options={{ href: null, title: 'Settings' }} />
         <Tabs.Screen name="admin-profile" options={{ href: null, title: 'Profile' }} />
       </Tabs>
-      <LightBottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
+      <BottomSheet visible={moreOpen} onClose={() => setMoreOpen(false)} title="More" subtitle={session?.user.email ?? undefined}>
         <AdminMoreContent
           onNavigate={(href) => {
             setMoreOpen(false);
             router.push(href as Parameters<typeof router.push>[0]);
           }}
         />
-      </LightBottomSheet>
+      </BottomSheet>
     </>
   );
 }

@@ -14,6 +14,7 @@ import { ScreenScaffold } from '@/components/screen-scaffold';
 import { GlassCard } from '@/components/ui/glass-card';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/button';
 import { Brand, DisplayFont } from '@/constants/theme';
+import { useAuth } from '@/lib/auth/auth-context';
 
 const WHY_CHOOSE: { icon: keyof typeof Ionicons.glyphMap; title: string }[] = [
   { icon: 'people-outline', title: 'Expert Coaches' },
@@ -22,13 +23,16 @@ const WHY_CHOOSE: { icon: keyof typeof Ionicons.glyphMap; title: string }[] = [
 ];
 
 export default function MarketingHomeScreen() {
+  const { session } = useAuth();
+  const onBookFreeDemo = () => router.push(session ? '/book-free-demo' : '/login');
+
   return (
     <ScreenScaffold title="Get Expert Guidance" subtitle="Tailored to your goals — book a free demo with our certified coaches.">
       <LinearGradient colors={['#2A2600', Brand.bgElevated]} style={styles.heroCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <Ionicons name="fitness-outline" size={40} color={Brand.yellow} />
       </LinearGradient>
 
-      <PrimaryButton size="lg" onPress={() => router.push('/book-free-demo')}>
+      <PrimaryButton size="lg" onPress={onBookFreeDemo}>
         Book a Free Demo
       </PrimaryButton>
 

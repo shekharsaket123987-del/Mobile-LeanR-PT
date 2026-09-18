@@ -6,7 +6,7 @@
  * Requires `GestureHandlerRootView` at the app root (wired in app/_layout.tsx).
  */
 import { PropsWithChildren, useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -83,7 +83,7 @@ export function BottomSheet({ visible, onClose, title, subtitle, children }: Pro
 
         <GestureDetector gesture={pan}>
           <Animated.View style={[styles.sheetWrap, { paddingBottom: insets.bottom + 16 }, sheetStyle]}>
-            <GlassPanel style={styles.panel}>
+            <GlassPanel style={[styles.panel, { maxHeight: height * 0.82 }]}>
               <View style={styles.grabber} />
               {title && (
                 <View style={styles.header}>
@@ -96,7 +96,9 @@ export function BottomSheet({ visible, onClose, title, subtitle, children }: Pro
                   </IconButton>
                 </View>
               )}
-              {children}
+              <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {children}
+              </ScrollView>
             </GlassPanel>
           </Animated.View>
         </GestureDetector>
@@ -110,6 +112,8 @@ const styles = StyleSheet.create({
   backdrop: { backgroundColor: 'rgba(0,0,0,0.6)' },
   sheetWrap: { paddingHorizontal: 12 },
   panel: { borderRadius: Radius.lg, paddingTop: 10 },
+  scrollArea: { flexShrink: 1 },
+  scrollContent: { paddingBottom: 4 },
   grabber: {
     alignSelf: 'center',
     width: 36,

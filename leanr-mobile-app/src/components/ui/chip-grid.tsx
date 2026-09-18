@@ -7,5 +7,5 @@ export function ChipGrid({ children }: PropsWithChildren) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
 });

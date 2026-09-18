@@ -1,6 +1,10 @@
 /**
- * Book a Free Demo — no account required. See `anonymous-demo-booking.ts`
- * for why this needs its own privileged Edge Function rather than a direct
+ * Book a Free Demo — now requires sign-in first (product decision: no more
+ * anonymous lead capture). Reached only from CTAs that already check
+ * `session` and send an unauthenticated visitor to /login instead — this
+ * guard is the backstop for any other path (direct URL, deep link) into
+ * this route. See `anonymous-demo-booking.ts` for why the actual booking
+ * still needs its own privileged Edge Function rather than a direct
  * Supabase call.
  *
  * No hold->confirm two-step here (unlike the authenticated flow) —
@@ -9,7 +13,7 @@
  * (see its own header comment for why best-effort is the right bar for
  * a pure lead-capture record).
  */
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -25,6 +29,7 @@ import { TextLink } from '@/components/tappable';
 import { TextField } from '@/components/ui/text-field';
 import { EmptyState, LoadingState } from '@/components/ui/states';
 import { Brand } from '@/constants/theme';
+import { useAuth } from '@/lib/auth/auth-context';
 import { addIstDays, formatIstDateLabel, formatIstTimeLabel, todayIst, type IstDate } from '@/lib/data/booking-wizard';
 import { confirmAnonymousDemoBooking, findAnonymousDemoSlots, type AnonymousDemoMatch } from '@/lib/data/anonymous-demo-booking';
 import { getErrorMessage } from '@/lib/data/errors';
@@ -32,6 +37,7 @@ import { getErrorMessage } from '@/lib/data/errors';
 type Phase = 'pick' | 'details' | 'confirming' | 'success';
 
 export default function BookFreeDemoScreen() {
+  const { session } = useAuth();
   const [selectedDate, setSelectedDate] = useState<IstDate>(() => addIstDays(todayIst(), 1));
   const [match, setMatch] = useState<AnonymousDemoMatch | null>(null);
   const [matchLoading, setMatchLoading] = useState(false);
@@ -65,6 +71,8 @@ export default function BookFreeDemoScreen() {
       cancelled = true;
     };
   }, [selectedDate]);
+
+  if (!session) return <Redirect href="/login" />;
 
   const onPickSlot = (slotIso: string) => {
     setSelectedSlot(slotIso);

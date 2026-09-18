@@ -80,9 +80,6 @@ export default function LoginScreen() {
         <Link href="/signup" style={styles.link}>
           <Text style={styles.linkText}>New to LEANR? Create an account</Text>
         </Link>
-        <Link href="/book-free-demo" style={styles.link}>
-          <Text style={styles.linkTextMuted}>Just want to try it? Book a free demo — no account needed</Text>
-        </Link>
       </View>
     </AuthShell>
   );
@@ -95,5 +92,4 @@ const styles = StyleSheet.create({
   footer: { marginTop: 8, gap: 14, alignItems: 'center' },
   link: { alignSelf: 'center' },
   linkText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: Brand.yellow, textAlign: 'center' },
-  linkTextMuted: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
 });

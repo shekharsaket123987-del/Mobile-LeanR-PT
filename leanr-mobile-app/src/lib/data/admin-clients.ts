@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase/client';
 import { getBookingSettings } from './booking-wizard';
 import { deriveClientStatus, type DerivedClientStatus } from './coach-clients';
 import { notifyProfile, resolveProfileIdForCoach } from './notify';
+import { getSessionsUsedCount } from './subscription';
 import { logTimelineEvent } from './timeline';
 import type { Booking } from './types';
 
@@ -252,16 +253,128 @@ export async function getAdminClientDetail(clientId: string): Promise<AdminClien
   };
 }
 
-export async function adjustClientSessions(subscriptionId: string, newTotal: number): Promise<void> {
-  const { data: sub, error: fetchError } = await supabase.from('subscriptions').select('client_id').eq('id', subscriptionId).maybeSingle();
-  if (fetchError) throw fetchError;
+export type AdjustSessionsResult = { previousTotal: number; newTotal: number; cancelledCount: number; generatedCount: number };
 
-  const { error } = await supabase.from('subscriptions').update({ sessions_total: newTotal }).eq('id', subscriptionId);
+/**
+ * Adjusting the package size also reconciles the subscription's `upcoming`
+ * bookings to match, instead of just changing a number the booking list
+ * ignores. Reacts to the SIZE OF THE EDIT (newTotal - previousTotal), not to
+ * some "upcoming should equal total-completed" steady state — this
+ * codebase's own convention (admin-provisioning, coach-change-actions) is to
+ * only ever keep a small rolling batch of `upcoming` bookings queued per
+ * recurring_slot, generated a few at a time, never the client's whole
+ * remaining package at once. Reconciling to a steady state would flood the
+ * calendar (e.g. a 24-session plan with only 7 of those pre-scheduled so far
+ * would suddenly get 17 more booked the moment an admin bumped the total by
+ * 1) — so this only ever adds/removes exactly as many sessions as the admin's
+ * edit itself represents:
+ *  - Increase by N: books N more occurrences on the client's existing active
+ *    recurring_slot(s) — same coach, same day/time pattern — via the same
+ *    `generate_bookings_from_recurring_slot` RPC first-time setup uses
+ *    (recurring-schedule.ts's header). Round-robins across slots so e.g. a
+ *    Mon/Wed/Fri pattern gets sessions added evenly rather than piling them
+ *    all on Monday.
+ *  - Decrease by N: cancels the N FURTHEST-OUT upcoming bookings (latest
+ *    scheduled_start first — "last booked, first cut"), freeing the coach's
+ *    slot for those dates; nearer sessions are never touched just because
+ *    the plan shrank. Capped at however many upcoming bookings actually
+ *    exist — e.g. a 24 -> 0 drop with only 7 upcoming just cancels all 7.
+ *  - Landing exactly on the number of sessions already completed (0
+ *    remaining, including a literal 0 total when nothing's completed yet)
+ *    also marks the subscription 'inactive' (same status
+ *    expireClientSubscription uses — what deriveClientStatus already reads
+ *    as "Expired" and what getMySubscription() already excludes), since a
+ *    plan with 0 sessions left is functionally over.
+ * Never allowed to go below sessions already completed — that would make
+ * "used > total" nonsensical everywhere it's displayed (progress bars,
+ * remaining-sessions math).
+ */
+export async function adjustClientSessions(subscriptionId: string, newTotal: number): Promise<AdjustSessionsResult> {
+  if (!Number.isInteger(newTotal) || newTotal < 0) throw new Error('Sessions total must be zero or a positive whole number.');
+
+  const { data: sub, error: fetchError } = await supabase.from('subscriptions').select('client_id, sessions_total').eq('id', subscriptionId).maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!sub) throw new Error('Subscription not found.');
+
+  const previousTotal = sub.sessions_total as number;
+  const completedCount = await getSessionsUsedCount(subscriptionId);
+  if (newTotal < completedCount) {
+    throw new Error(`Can't set the total below the ${completedCount} session${completedCount === 1 ? '' : 's'} already completed.`);
+  }
+
+  const delta = newTotal - previousTotal;
+  let cancelledCount = 0;
+  let generatedCount = 0;
+
+  if (delta < 0) {
+    const { data: upcomingRows, error: upcomingError } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('subscription_id', subscriptionId)
+      .eq('status', 'upcoming')
+      .order('scheduled_start', { ascending: true });
+    if (upcomingError) throw upcomingError;
+    const upcoming = upcomingRows ?? [];
+
+    // Ascending order means the tail is the furthest-out (latest-scheduled) — cancel those
+    // first, capped at however many upcoming bookings actually exist.
+    const cancelCount = Math.min(-delta, upcoming.length);
+    const toCancel = upcoming.slice(upcoming.length - cancelCount).map((b) => b.id as string);
+    if (toCancel.length > 0) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { error: cancelError } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled', cancelled_by: user?.id ?? null, cancel_reason: 'Admin reduced package size' })
+        .in('id', toCancel);
+      if (cancelError) throw cancelError;
+      cancelledCount = toCancel.length;
+    }
+  } else if (delta > 0) {
+    const { data: slots, error: slotsError } = await supabase
+      .from('recurring_slots')
+      .select('id')
+      .eq('subscription_id', subscriptionId)
+      .eq('status', 'active');
+    if (slotsError) throw slotsError;
+
+    if (slots && slots.length > 0) {
+      let remaining = delta;
+      let idx = 0;
+      let emptyPassStreak = 0;
+      while (remaining > 0 && emptyPassStreak < slots.length) {
+        const slot = slots[idx % slots.length];
+        const { data: generated, error: genError } = await supabase.rpc('generate_bookings_from_recurring_slot', {
+          p_recurring_slot_id: slot.id,
+          p_count: 1,
+        });
+        if (genError) throw genError;
+        const got = (generated ?? []).length;
+        generatedCount += got;
+        remaining -= got;
+        emptyPassStreak = got > 0 ? 0 : emptyPassStreak + 1;
+        idx += 1;
+      }
+    }
+  }
+
+  const isFullyWoundDown = newTotal === completedCount;
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({ sessions_total: newTotal, ...(isFullyWoundDown ? { status: 'inactive' } : {}) })
+    .eq('id', subscriptionId);
   if (error) throw error;
 
-  if (sub) {
-    await logTimelineEvent(sub.client_id, 'plan_extended', `Plan extended to ${newTotal} sessions`, { metadata: { subscriptionId, newTotal } });
+  if (newTotal !== previousTotal) {
+    const eventType = newTotal > previousTotal ? 'plan_extended' : 'plan_reduced';
+    const title = newTotal > previousTotal ? `Plan extended to ${newTotal} sessions` : `Plan reduced to ${newTotal} sessions`;
+    await logTimelineEvent(sub.client_id, eventType, title, {
+      metadata: { subscriptionId, previousTotal, newTotal, cancelledCount, generatedCount },
+    });
   }
+
+  return { previousTotal, newTotal, cancelledCount, generatedCount };
 }
 
 export async function grantPauseDays(subscriptionId: string, newPauseDaysAllowed: number): Promise<void> {
@@ -321,6 +434,32 @@ export async function pauseClientSubscription(subscriptionId: string): Promise<v
   const { clientProfileId, coachProfileId, planName } = await getSubscriptionNotifyContext(subscriptionId);
   await notifyProfile(clientProfileId, 'system', 'Subscription paused', `Your ${planName} subscription has been paused.`, 'subscription_paused_client');
   await notifyProfile(coachProfileId, 'system', 'Client subscription paused', `A client's ${planName} subscription has been paused.`, 'subscription_paused_coach');
+}
+
+/**
+ * Manually end a client's plan — sets status to 'inactive' rather than
+ * touching sessions_total (which has a DB check constraint, sessions_total >
+ * 0, so it can never represent "no sessions left"). 'inactive' is what
+ * getMySubscription() already excludes (client.ts:22) and what
+ * deriveClientStatus() already reads as "Expired" (coach-clients.ts:25) —
+ * this just wires up the missing write path. One-way: there's no "resume
+ * from inactive" flow anywhere in the app, a client comes back via a new
+ * subscription/renewal, not by reversing this.
+ */
+export async function expireClientSubscription(subscriptionId: string): Promise<void> {
+  const { data: sub, error: fetchError } = await supabase.from('subscriptions').select('client_id').eq('id', subscriptionId).maybeSingle();
+  if (fetchError) throw fetchError;
+
+  const { error } = await supabase.from('subscriptions').update({ status: 'inactive' }).eq('id', subscriptionId);
+  if (error) throw error;
+
+  if (sub) {
+    await logTimelineEvent(sub.client_id, 'plan_completed', 'Plan manually expired by admin', { metadata: { subscriptionId } });
+  }
+
+  const { clientProfileId, coachProfileId, planName } = await getSubscriptionNotifyContext(subscriptionId);
+  await notifyProfile(clientProfileId, 'system', 'Subscription ended', `Your ${planName} subscription has ended.`, 'subscription_expired_client');
+  await notifyProfile(coachProfileId, 'system', 'Client subscription ended', `A client's ${planName} subscription has ended.`, 'subscription_expired_coach');
 }
 
 /**

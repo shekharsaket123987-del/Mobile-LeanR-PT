@@ -37,6 +37,7 @@ export type TimelineEventType =
   | 'manual_session_added'
   | 'session_rescheduled'
   | 'plan_extended'
+  | 'plan_reduced'
   | 'plan_renewed'
   | 'refund_requested'
   | 'refund_approved'
@@ -79,6 +80,7 @@ export const TIMELINE_EVENT_SIDE: Record<TimelineEventType, TimelineSide> = {
   manual_session_added: 'internal',
   session_rescheduled: 'internal',
   plan_extended: 'internal',
+  plan_reduced: 'internal',
   plan_renewed: 'internal',
   refund_requested: 'internal',
   refund_approved: 'internal',

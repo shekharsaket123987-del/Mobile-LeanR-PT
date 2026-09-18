@@ -9,7 +9,7 @@
  */
 import { useLocalSearchParams, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ClientTimeline } from '@/components/client-timeline';
 import { LightAvatar } from '@/components/light/light-avatar';
@@ -27,6 +27,7 @@ import { LightBrand } from '@/constants/light-theme';
 import { assignShadowCoach, previewShadowAssignmentPlan, type ShadowAssignmentPlan } from '@/lib/data/admin-shadow';
 import {
   adjustClientSessions,
+  expireClientSubscription,
   getAdminClientDetail,
   getClientChatsForAdmin,
   grantPauseDays,
@@ -207,7 +208,24 @@ export default function AdminClientDetailScreen() {
               Adjust Package / Sessions
             </LightSecondaryButton>
             {panel === 'adjustSessions' && client.subscriptionId && (
-              <AdjustSessionsPanel currentTotal={client.sessionsTotal ?? 0} busy={busy} error={actionError} onSubmit={(newTotal) => run(() => adjustClientSessions(client.subscriptionId!, newTotal))} />
+              <AdjustSessionsPanel
+                currentTotal={client.sessionsTotal ?? 0}
+                busy={busy}
+                error={actionError}
+                onSubmit={(newTotal) =>
+                  run(async () => {
+                    const result = await adjustClientSessions(client.subscriptionId!, newTotal);
+                    const parts = [`Sessions total: ${result.previousTotal} → ${result.newTotal}.`];
+                    if (result.generatedCount > 0) {
+                      parts.push(`Booked ${result.generatedCount} new upcoming session${result.generatedCount === 1 ? '' : 's'} on the existing schedule.`);
+                    }
+                    if (result.cancelledCount > 0) {
+                      parts.push(`Cancelled ${result.cancelledCount} upcoming session${result.cancelledCount === 1 ? '' : 's'} and freed the coach's slot${result.cancelledCount === 1 ? '' : 's'}.`);
+                    }
+                    Alert.alert('Package updated', parts.join(' '));
+                  })
+                }
+              />
             )}
 
             <LightSecondaryButton onPress={() => togglePanel('grantPauseDays')} disabled={!client.subscriptionId} style={styles.controlButton}>
@@ -248,6 +266,19 @@ export default function AdminClientDetailScreen() {
             <LightSecondaryButton onPress={() => run(() => pauseClientSubscription(client.subscriptionId!))} disabled={!client.subscriptionId || busy} style={styles.controlButton}>
               Pause Subscription
             </LightSecondaryButton>
+
+            <LightDestructiveButton
+              onPress={() =>
+                Alert.alert('Expire this plan?', 'Ends the subscription immediately. This cannot be undone from here — the client would need a new plan/renewal to come back.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Expire Plan', style: 'destructive', onPress: () => run(() => expireClientSubscription(client.subscriptionId!)) },
+                ])
+              }
+              disabled={!client.subscriptionId || busy}
+              style={styles.controlButton}
+            >
+              Expire Plan
+            </LightDestructiveButton>
 
             <LightSecondaryButton onPress={() => togglePanel('logMeasurement')} style={styles.controlButton}>
               Log Measurement
@@ -361,6 +392,10 @@ function AdjustSessionsPanel({ currentTotal, busy, error, onSubmit }: { currentT
   return (
     <View style={styles.panel}>
       <LightTextField keyboardType="number-pad" value={value} onChangeText={setValue} placeholder="New sessions total" accessibilityLabel="New sessions total" />
+      <Text style={styles.hintText}>
+        Raising the total books more upcoming sessions on the client's existing schedule; lowering it cancels the
+        furthest-out upcoming sessions first and frees the coach's slot.
+      </Text>
       <PanelError error={error} />
       <LightPrimaryButton loading={busy} onPress={() => onSubmit(Number(value) || 0)}>
         Save
@@ -630,6 +665,7 @@ const styles = StyleSheet.create({
   panel: { gap: 8, marginTop: 8, marginBottom: 4 },
   multiline: { minHeight: 60, textAlignVertical: 'top' },
   errorText: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.alertRed },
+  hintText: { fontFamily: 'Manrope_500Medium', fontSize: 12.5, color: LightBrand.textMuted },
   timelineCard: { gap: 2 },
   timelineTitle: { fontFamily: 'Manrope_700Bold', fontSize: 14.5, color: LightBrand.navy },
   timelineDesc: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: LightBrand.textSecondary },
